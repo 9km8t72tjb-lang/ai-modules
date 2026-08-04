@@ -2,9 +2,10 @@
 description: "Scaffold and register the new ai_editorial plugin shell — both plugin.json files, README, skills/ dir, marketplace entry, and root README update."
 scope: "ai_editorial plugin"
 created: 2026-06-01T23:31:06
-updated: 2026-07-31T18:41:44
-status: ready
+updated: 2026-08-03T13:10:30
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Scaffold and register the ai_editorial plugin
@@ -16,7 +17,7 @@ Stand up the shell of a third plugin, `ai_editorial`, alongside `ai_dev` and `kn
 ## Context
 
 - This is a meta-repository; plugins live under `plugins/`. Two exist today — `ai_dev` and `knowledge_management` — and this adds the third. The standing repo rules own the generic plugin checklist; this task supplies the `ai_editorial`-specific values.
-- Three skills are filed as sibling tasks and depend on this scaffold. Build this first, then [ai-editorial_slop-catch-skill.md](ai-editorial_slop-catch-skill.md), [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md), and [ai-editorial_language-humanizer-skill.md](ai-editorial_language-humanizer-skill.md).
+- Three skills are filed as sibling tasks and depended on this scaffold shipping first: [ai-editorial_slop-catch-skill.md](../ai-editorial_slop-catch-skill.md), [ai-editorial_ghost-writer-skill.md](../ai-editorial_ghost-writer-skill.md), and [ai-editorial_language-humanizer-skill.md](../ai-editorial_language-humanizer-skill.md).
 - **Domain distinction (governs the plugin description and its skills).** `ai_editorial`'s domain is editorial craft on prose written for people to read — reports, proposals, updates, documentation. Name that domain positively in the plugin description, as a peer to the other two plugins. Keep the distinction to subject matter: every skill in this repo is invoked by a person and consumed by a model, so no plugin here is for people rather than for models, and `ai_dev`'s `ai_instruction_*` skills are the authorities to follow when authoring instruction text rather than a contrast case to steer away from.
 - Naming is settled: the plugin is `ai_editorial`; do not rename it.
 

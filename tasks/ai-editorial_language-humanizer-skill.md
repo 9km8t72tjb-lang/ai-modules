@@ -2,9 +2,10 @@
 description: "Build language_humanizer in ai_editorial: one SKILL.md that reviews, rewrites, or writes prose into clear, coherent first-read text, with a ledger pass proving no load-bearing meaning drops."
 scope: "ai_editorial plugin"
 created: 2026-07-30T20:42:30
-updated: 2026-07-31T19:06:44
-status: ready
+updated: 2026-08-03T13:12:04
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Build the language_humanizer skill
@@ -20,7 +21,7 @@ The guarantee across both paths is the skill's distinguishing commitment. Readab
 
 ## Context
 
-- Depends on the plugin shell: build [ai-editorial_plugin-scaffold.md](ai-editorial_plugin-scaffold.md) first. This skill lands in `plugins/ai_editorial/skills/language_humanizer/`.
+- The plugin shell is built (`ai-editorial_plugin-scaffold.md`, archived). This skill lands in `plugins/ai_editorial/skills/language_humanizer/`.
 - **Single self-contained file.** The skill ships as one `SKILL.md` carrying everything it needs: no `scripts/`, no `references/` directory, no external URLs, and no outside standard cited as its authority. Should the body outgrow one coherent unit, split content into a follow-up task rather than adding a reference directory.
 - **Rules carry the guidance without worked examples.** Write each rule so it stands on its own statement, and keep before/after pairs and sample passages out of the body. The demonstrating work belongs in the eval fixtures instead, where a scenario is run and graded rather than read.
 - **Router boundaries against neighbouring prose skills.** Two neighbouring skills in this repo compete for these requests, so the `description:` this task writes must make both splits legible to a router. [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md) also writes and edits prose, so split that pair by what the work optimizes rather than by whether text already exists: `ghost_writer` works toward a target genre's craft standard — what a good essay, case study, or social post is — while `language_humanizer` works toward comprehension and coherence for a named reader, on whatever material it is handed. The shipped `executive_summary` skill competes on the other side: it triggers on condensing content and synthesizing written materials, and its length contract reduces a document to a fraction of its original length, the opposite direction from this skill's. Split that pair by what survives: `language_humanizer` holds the Goal's guarantee that every load-bearing element reaches the delivered text and takes its reduction from form alone. Word the `description:` so a request for a short version at a fraction of the length reaches `executive_summary`, while a request to make a document understandable reaches `language_humanizer` even where a padded draft comes out shorter there too. This task owns the `language_humanizer` side of both splits, and writes them into the compact, trigger-carrying `description:` the standing two-audience rule requires.
