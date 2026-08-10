@@ -37,6 +37,7 @@ Three tools sit beside the spine rather than on it:
 ### Guardrail documents
 
 - **guardrail**: the hub and source of truth for the repo-root guardrail docs — `CHARTER.md`, `ARCHITECTURE.md`, `TESTING.md`, `SECURITY.md` — that keep AI agents anchored to human intent across sessions. It explains the doc set, the authority hierarchy (charter → domain guardrails → harness rule files), the shared format contract, and the presence-gated consumption convention the task family already follows; it assesses a repository's nature and suggests which guardrails fit it, grounded in how the repo actually works; and it drafts a doc only on explicit user request, marking open decisions and surfacing creation-time divergences instead of guessing. Bundled references carry the general template and rules for each doc type, so sibling skills wire the hub in rather than duplicating them.
+- **guardrail_audit**: the read-only audit sibling. It surfaces doc-vs-doc contradictions and doc-vs-code divergences among the docs that already exist, ranked by the hub's hierarchy, plus grounded missing-doc proposals where repo substance warrants an absent type. Every finding carries evidence and a reconcile recommendation; the run edits nothing and ends by asking how to proceed. Use it when retrofitting a guardrail into a mature repo or health-checking whether existing docs still match the code.
 
 ### AI instructions
 
@@ -45,13 +46,13 @@ Three tools sit beside the spine rather than on it:
 
 ### Harness portability
 
-- **harness_portability**: apply portability rules (across agent harnesses and operating systems) when creating or editing scripts, hooks, MCP helpers, command wrappers, setup flows, or execution and configuration wording bundled inside skills and plugins. It covers OpenAI Codex and Anthropic Claude compatibility, checks against official provider docs, and macOS/Linux behaviour.
+- **harness_portability**: apply portability rules (across agent harnesses and operating systems) when creating or editing scripts, hooks, agent definitions, MCP helpers, command wrappers, setup flows, output styles, or execution and configuration wording bundled inside skills and plugins. It treats OpenAI Codex and Anthropic Claude as the primary targets, with Cursor, Google Antigravity, SST OpenCode, and GitHub Copilot in VS Code as further ones, and it covers macOS/Linux behaviour. Every concrete harness fact is treated as perishable: the skill re-checks each one against official provider docs, the loader source, or the installed build, and states the gap plainly where a claim stays unconfirmed.
 
 ### Code and document formatting
 
 - **format_markdown**: apply markdown linting rules and best practices when creating or editing `.md` / `.mdc` files: blank lines around block elements, consistent bullet style, fenced code blocks with language tags, table alignment, header progression, list indentation, and link conventions.
 - **format_python**: apply formatting standards, code-quality rules, structure conventions, and lint-prevention practices when writing or editing Python, aligned with flake8, ruff, and pylint.
-- **format_rust**: apply clippy-aligned Rust practices when writing or editing `.rs` files: procedural flow, clippy-driven clarity improvements, minimal imports, Result/Option idioms, fallible builders with project error types, string prefix/suffix handling, clearer borrowing, iteration style, string building, and grouped function signatures.
+- **format_rust**: apply clippy-aligned Rust practices when writing or editing `.rs` files: procedural flow, clippy-driven clarity improvements, minimal imports, Result/Option idioms, the error-versus-invariant model with panic discipline and clippy unwrap_used enforcement, fallible builders following the error idiom by consumer, string prefix/suffix handling, clearer borrowing, iteration style, string building, and grouped function signatures.
 
 ## Agents
 

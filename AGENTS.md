@@ -16,6 +16,7 @@ plugins/<plugin>/
   .claude-plugin/plugin.json      # Claude plugin metadata
   README.md                       # plugin overview + skill list
   skills/<skill>/SKILL.md         # skill definition with YAML frontmatter
+styles/                           # tracked output styles (repo-root; not a plugin component)
 deployment/                       # deploy script + per-tool config
 tests/                            # local-only regression harnesses (gitignored)
 Makefile                          # task entry point
@@ -37,7 +38,8 @@ Makefile                          # task entry point
 - **Ship a new skill, agent, or plugin at 1.0.0.** In the commit that first introduces it, leave the version at 1.0.0 — no bump.
 - **Bump once per commit, with the change — and only at commit time.** When a commit edits an existing skill, agent, or plugin, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
 - **Use patch increments for minor maintenance changes.** For a small follow-up, wording fix, or environment-specific hint, advance only the patch component.
-- **Plugin meta stays lockstep.** When a skill or agent `version:` rises, raise the matching plugin's `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and marketplace entries to the same new plugin version in the same commit. Adding a skill to an existing plugin counts as a plugin edit; the new skill itself ships at 1.0.0.
+- **Advance the plugin minor when adding a skill or agent.** Adding a skill or agent to an existing plugin advances the plugin's minor component (`x.Y.0`); the new skill or agent itself still ships at 1.0.0. Patch stays for maintenance-only edits of already-shipped surfaces.
+- **Plugin meta stays lockstep.** When a skill or agent `version:` rises, or a skill or agent is added to an existing plugin, raise the matching plugin's `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and marketplace entries to the same new plugin version in the same commit.
 - **Local marketplaces stay current for `ai_dev` and `knowledge_management`.** When a commit publishes a new version of either plugin, update the local marketplace registrations in `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` in the same commit as the plugin manifests. When opening this repo for plugin maintenance or after updating either marketplace registration, compare the installed cached skill versions against the repo source and tell the user to restart Codex or open a new thread so the refreshed plugin cache is loaded.
 
 ## Common tasks
@@ -56,6 +58,8 @@ Makefile                          # task entry point
 `CHANGELOG.md` is git-history-derived. Update it only through the `update_changelog` skill, run on demand. Don't hand-edit CHANGELOG entries as part of other work. Committing the skill's output is fine.
 
 This repo manages upcoming work and todos with the `task` skill (`/task`). Live items (`open`, `checked`, `ready`, `implemented`, `audited`) live in `tasks/`; terminal items (`finished`, `deferred`) move to `tasks/archive/`. Task files record `reported-by`, and implemented work records `implemented-by`.
+
+This repo keeps its durable knowledge in `wiki/`, managed through the `wiki` skill family. It holds two things the shipped artefacts are the wrong container for: how this repository works and why, and the dated, sourced research on how each target harness discovers artefacts, parses frontmatter, names tools, runs hooks, and carries standing instructions. Read `wiki/index.md` before starting harness work, and write a newly verified fact back there with its date and source. A rule that changes what an agent does at authoring time stays in the skill; anything an agent needs in another repository stays in the skill or its `references/`, because the wiki travels nowhere else.
 
 Task files stay agent-harness agnostic. When a task needs standing repo instructions, cite them as the **repo rules** or **standing repo rules** rather than naming `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or another harness-specific file. Name a harness file in a task only when that file itself is the implementation target.
 
