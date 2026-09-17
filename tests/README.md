@@ -122,6 +122,16 @@ don't bring up new harnesses under Pattern B.
   shapes), plus the static SKILL.md contract. `evals/` has three
   staged fixtures driven by a sonnet-pinned `run.py` with a
   deterministic `grade.sh`; `run_all.sh` drives only the script tests.
+- **`agent_spinner/`**: Pattern A, prose-only skill. `script_tests/`
+  covers the static contract (SKILL.md budgets and blocks, the six shape
+  tags, the per-harness greps that must return nothing, the reference set,
+  and registration lockstep); `evals/` holds 21 staged fixtures, one per
+  independently staged behavioural acceptance item, driven by a
+  sonnet-pinned `evals/run.py` with a deterministic `grade.sh`. The runner
+  denies the spawn tool for the fixtures that stage a host with no
+  delegation surface, and brackets every eval with a host-checkout
+  `git status` so a sandbox escape fails the eval that caused it. See
+  `evals/README.md` for the signal each eval uses.
 - **`git_refresh/`**: Pattern A. `script_tests/` covers the bundled
   `refresh_repo.sh` over staged repositories. `evals/` defines four
   behavioral evals with fixtures but ships no runner, so an eval sweep

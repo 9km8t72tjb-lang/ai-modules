@@ -1,0 +1,19 @@
+[
+  {"query": "fan this refactor out across the twenty files under src/ and have agents do them in parallel", "should_trigger": true},
+  {"query": "how many helper agents should I spend on this, and how do I keep two of them off the same file?", "should_trigger": true},
+  {"query": "split this review into a few lenses and give each sub-agent one angle", "should_trigger": true},
+  {"query": "I want a second agent to adversarially check the first agent's output before I trust it", "should_trigger": true},
+  {"query": "one of my parallel subagents came back empty and another one never returned — what should the orchestrator do?", "should_trigger": true},
+  {"query": "plan a multi-agent run over these artifacts before anything gets dispatched", "should_trigger": true},
+  {"query": "merge what the helper agents reported into one answer without just counting how many of them agreed", "should_trigger": true},
+  {"query": "this harness has no subagents at all — can I still get the same verification quality out of one context?", "should_trigger": true},
+
+  {"query": "auto-fix the readiness issues on tasks/api_rate-limit.md until task_check says ready", "should_trigger": false},
+  {"query": "health-check and repair my whole tasks/ backlog in one pass", "should_trigger": false},
+  {"query": "audit my wiki and fix every broken link and frontmatter violation", "should_trigger": false},
+  {"query": "review this pull request and tell me whether it can be merged as it stands", "should_trigger": false},
+  {"query": "do the guardrail docs in this repo still match the code?", "should_trigger": false},
+  {"query": "will this agent definition's frontmatter load on Codex as well as Claude Code?", "should_trigger": false},
+  {"query": "which tool names do I need for a read-only subagent on each harness we target?", "should_trigger": false},
+  {"query": "implement the task tasks/calc_add-function.md", "should_trigger": false}
+]

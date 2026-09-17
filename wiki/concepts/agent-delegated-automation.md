@@ -1,7 +1,7 @@
 ---
 title: Agent-delegated automation
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-09-16
 type: concept
 tags: [skill, agent, authoring, repo-structure]
 sources: []
@@ -126,6 +126,33 @@ cannot write a bad edit, and a refute-by-default verifier cannot pass one it did
 not check. The architecture spends agents to buy the property that instruction
 text alone leaves sampled.
 
+### The general rule lives in a skill, the instances keep their own runs
+
+Everything above describes the shape as this repository runs it, and this page
+is the reasoning behind it. The harness-independent form of the rule ships
+separately, as the `agent_spinner` skill under
+`plugins/ai_dev/skills/agent_spinner/`, with its prompt templates, worked
+report shapes, degradation examples, and lower-frequency variants in that
+skill's `references/`. The split follows this wiki's own dividing test: a rule
+an agent needs while working in another repository has to travel with the
+artefact, because the wiki travels nowhere else.
+
+The skill is advisory, and the direction is one-way. It states the general
+shape, cites the shipped surfaces by name as worked instances, and restates no
+rule those surfaces already state. `task_auto_check`, `task_fix`, and
+`wiki_fix` keep authority over their own runs: where one of them states its own
+loop bounds, helper-failure policy, verification standard, aggregation rule, or
+stop-and-ask boundary, that contract wins inside that run and the skill adds
+nothing to it. The skill likewise carries none of the per-harness facts a
+delegation surface rests on, which stay with the portability review that owns
+them and re-verifies each one.
+
+What the skill adds beyond this page is a floor. Every guarantee it states is
+written to hold with no spawn surface at all, as a sequence of separately
+prompted passes in one context, so the quality contract reads the same whether
+the host fans helpers out or not. This page's architecture never had to answer
+that, because the families it describes run where the spawn surface exists.
+
 ## Open questions
 
 Whether the decomposed task-family form outperforms the collapsed wiki form is
@@ -154,6 +181,8 @@ how deeply it can verify, and where that cap falls has not been mapped.
 
 ## Derived from
 
+- The `agent_spinner` skill and its `references/`, which carry the general,
+  harness-independent form of the rule this page reasons about.
 - The `task_auto_check`, `task_fix`, and `wiki_fix` front-end skills, and the
   `auto_drift_task`, `auto_gate_task`, `auto_reviewer_task`,
   `auto_verifier_task`, `auto_shaper_task`, and `auto_shaper_wiki` agents under

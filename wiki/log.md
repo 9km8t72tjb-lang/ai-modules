@@ -652,3 +652,23 @@ each dash into ordinary punctuation with no change of meaning, then bumped
 - entities/cursor.md
 - entities/openai-codex.md
 - summaries/ai-modules-repository.md
+
+## [2026-09-16 09:43] update | Agent-delegated automation records where the general rule now lives
+
+The orchestration doctrine this page reasons about now also ships as a
+standalone skill, so the page says so and marks the direction: the skill states
+the general shape and the front-end families keep authority over their own
+runs. The split is the wiki's own travel test, since a rule an agent needs in
+another repository has to travel with the artefact.
+
+- concepts/agent-delegated-automation.md (new subsection on the general rule
+  living in a skill, the one-way advisory direction, and the inline floor the
+  skill adds beyond this page; `## Derived from` extended with the skill and
+  its references; `updated` bumped)
+- index.md (Agent-delegated automation summary widened for the skill pointer;
+  Last updated bumped)
+
+## [2026-09-16 09:44] lint | 0 blocking, 1 warn, 2 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` and
+both size infos are pre-existing; this update introduced none of them.

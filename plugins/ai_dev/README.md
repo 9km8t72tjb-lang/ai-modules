@@ -1,6 +1,6 @@
 # ai_dev
 
-A plugin of skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, checking skill artifacts with skill_doctor, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying per-language style conventions.
+A plugin of skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, checking skill artifacts with skill_doctor, orchestrating helper agents with agent_spinner, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying per-language style conventions.
 
 ## Skills
 
@@ -46,6 +46,10 @@ Three tools sit beside the spine rather than on it:
 - **ai_instruction_writing**: write content an AI reads (SKILL.md, .mdc rule files, CLAUDE.md / AGENTS.md / GEMINI.md, prompt templates, system prompts, commands, agent and sub-agent definitions, instruction sets, persona definitions) using positive, action-oriented language as the primary carrier of every instruction.
 - **ai_instruction_formatting**: organize content an AI reads into pseudo-XML, wrapping each semantic concern (role, policy, inputs, output contract) in its own tag.
 - **skill_doctor**: check-only doctor for skill artifacts. Audits `SKILL.md` frontmatter and dual-audience descriptions, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo. It reports findings with evidence and never edits targets. Cross-harness portability review stays with `harness_portability`.
+
+### Agent orchestration
+
+- **agent_spinner**: the orchestration doctrine an agent reads before it runs helper agents. It owns one question: given a job and whatever delegation the host offers, how do helpers spin off, stay contained, cross-check each other, fail, report, and get aggregated into one answer. The body is a selector in front of a named shape library, so an orchestrator picks a weight before it picks a mechanism, and every guarantee is written to hold at the inline floor, where the same passes run in one context. It owns no artifact class, so a run a shipped family already governs keeps that family's contract, and every per-harness fact stays with `harness_portability`.
 
 ### Harness portability
 

@@ -72,6 +72,7 @@ ai-modules/
 │           ├── ai_instruction_writing/
 │           ├── ai_instruction_formatting/
 │           ├── skill_doctor/
+│           ├── agent_spinner/
 │           ├── harness_portability/
 │           ├── format_markdown/
 │           ├── format_python/
@@ -86,6 +87,7 @@ ai-modules/
 │   └── archive/             # finished and deferred tasks
 ├── wiki/                    # this repo's own knowledge base, kept with the shipped wiki skill
 ├── CHARTER.md               # this repo's own guardrail doc, enforced by the charter_guardrail hook
+├── TESTING.md               # verification methodology: harness discipline and re-run economy
 ├── AGENTS.md                # standing repo instructions for coding agents
 ├── CLAUDE.md                # the same instructions for Claude Code
 ├── CHANGELOG.md             # day-grouped history, written by the shipped update_changelog skill
@@ -119,7 +121,7 @@ An LLM wiki sits between a full RAG pipeline and a loose pile of notes. It is st
 
 ### ai_dev
 
-Skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, checking skill artifacts with skill_doctor, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
+Skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, checking skill artifacts with skill_doctor, orchestrating helper agents with agent_spinner, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
 
 - **git_commit**: a step-by-step commit workflow with a hardened prepare script that handles special-character paths and detects binary files one by one. It stages changes, works out a sensible commit grouping, and writes a message that matches the project's existing style. A sibling reference covers the manual path when the script can't run.
 - **git_checkout**: a branch-switch workflow for the everyday "somebody pushed a branch, put me on it" step. It fetches every remote without pruning, switches when the branch is already local, creates a local branch with an explicit upstream when exactly one remote carries the name, asks which remote to track when several do, and tells a nonexistent branch apart from one a narrow fetch refspec never delivered. Every path ends on a named local branch rather than in detached `HEAD`.
@@ -146,6 +148,7 @@ Standing apart from that flow:
 - **ai_instruction_writing**: writes any artefact an AI reads (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of "don't" rules the model has to invert.
 - **ai_instruction_formatting**: organises content an AI reads into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in its own tag, so the model can find the right section by structure instead of re-reading the prose.
 - **skill_doctor**: check-only doctor for skill artifacts. Audits `SKILL.md` frontmatter and dual-audience descriptions, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo. Reports findings with evidence and never edits targets. Cross-harness portability review stays with `harness_portability`.
+- **agent_spinner**: how an orchestrating agent runs helper agents. It establishes the capability tier rather than inferring it, declares its phase plan and its excluded items before the first helper, picks an orchestration shape and derives its width from a written-out list, holds each helper to one path, checks work refute-by-default, classifies a helper that failed or never returned, keeps the dispatch roster on disk, and merges cited findings into one verdict-first report. Every guarantee holds at the inline floor, so a host with no spawn surface runs the same passes in one context and says so. `task_auto_check`, `task_fix`, and `wiki_fix` are its worked instances and keep authority over their own runs.
 - **harness_portability**: applies portability rules (across agent harnesses and operating systems) to scripts, hooks, agent definitions, MCP helpers, command wrappers, setup flows, output styles, and the execution and configuration wording bundled inside skills and plugins. It treats OpenAI Codex and Anthropic Claude as the primary targets, with Cursor, Google Antigravity, SST OpenCode, and GitHub Copilot in VS Code as further ones, and it covers macOS/Linux behaviour. Every concrete harness fact is treated as perishable: the skill re-checks each one against official provider docs, the loader source, or the installed build, and states the gap plainly where a claim stays unconfirmed.
 - **format_markdown / format_python / format_rust**: style guides aligned with the linters (`markdownlint`; `flake8`, `ruff`, and `pylint`; `clippy`), read as you write. The point is to produce code that already passes the linter, instead of spending a follow-up turn fixing what it reports.
 

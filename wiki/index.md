@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-09-05 | Total pages: 29
+> Last updated: 2026-09-16 | Total pages: 29
 
 ## Entities
 
@@ -18,7 +18,7 @@
 ## Concepts
 
 - [Agent definition portability](concepts/agent-definition-portability.md): three tolerance categories, disjoint tool vocabularies, read-only levers, and when a generated variant is required.
-- [Agent-delegated automation](concepts/agent-delegated-automation.md): how a thin front-end skill delegates a whole-artifact audit-and-repair job to spawned agents, with read fan-out for coverage, one serialized writer for integrity, refute-by-default verification, frozen intent, and judgement calls routed to the human.
+- [Agent-delegated automation](concepts/agent-delegated-automation.md): how a thin front-end skill delegates a whole-artifact audit-and-repair job to spawned agents, with read fan-out for coverage, one serialized writer for integrity, refute-by-default verification, frozen intent, judgement calls routed to the human, and where the general, harness-independent form of the rule now ships as a skill.
 - [Antigravity global configuration roots](concepts/antigravity-global-roots.md): the two artefact classes that split across its three products, what that costs a global deploy, and the output tree that is not a root.
 - [Antigravity tool vocabulary](concepts/antigravity-tool-vocabulary.md): the two incomplete name lists, the missing canonical registry, and why a wrong name hangs instead of failing.
 - [Claude output styles](concepts/claude-output-styles.md): the two-layer system prompt, the two delivery modes, activation, plugin bundling, and the strict four-key frontmatter.
