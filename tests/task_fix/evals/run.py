@@ -1,12 +1,25 @@
 #!/usr/bin/env python3
-"""Sonnet worker-runner for task_auto_check behavioral evals.
+"""Sonnet worker-runner for the task_fix repeated-link evals.
 
-A pass requires both a clean worker completion (CLI rc 0 with a real
-response) and a passing grade.sh. A timed-out or crashed worker fails the
-eval regardless of grade.sh, which would otherwise pass on the partial
-sandbox state an aborted loop left behind. These evals run the slow
-nested-agent loop and are the most timeout-prone in the repo, so the gate
-matters most here."""
+Same stage -> agent -> grade shape as the task_auto_check runner: one
+pinned-sonnet `claude -p` worker per eval, so the skill under test always runs
+on the same cheap, stable model, while grading stays model-free.
+
+A pass requires both a clean worker completion (CLI rc 0 with a real response)
+and a passing grade.sh. A timed-out or crashed worker fails the eval regardless
+of grade.sh, which would otherwise pass on whatever partial state an aborted
+run left in the sandbox.
+
+grade.sh runs with RESPONSE_FILE exported, because the react protocol obliges
+two surfaces: the task file's bytes live in the sandbox, and the per-finding
+disposition line exists only in the captured report.
+
+Usage:
+    python3 tests/task_fix/evals/run.py [eval_id ...]
+      # default: every `id` in evals.json, derived at startup
+      [--model claude-sonnet-4-6]   # '' inherits the CLI default
+      [--timeout 1200] [--claude-bin claude]
+"""
 
 from __future__ import annotations
 
@@ -32,12 +45,12 @@ from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 
 def source_roots_for(skill_path: str):
-    """task_auto_check loads the task_auto_check skill, which reads the base
-    `task` skill via <authority> and spawns the auto_*_task helper agents. Hash
-    the loaded skill, the base hub, and the agents dir together so an edit to the
-    base skill or any helper agent invalidates the cache — not just an edit to
-    task_auto_check itself. Over-inclusion only forces an occasional extra run; it
-    can never serve a stale pass."""
+    """task_fix loads its own SKILL.md, reads the base `task` skill via
+    <authority> for the lint rules and the repeated-link react protocol, and may
+    escalate to the auto_*_task agents. Hash the loaded skill, the base hub, and
+    the agents dir together so an edit to the base protocol or any helper agent
+    invalidates the cache, not just an edit to task_fix itself. Over-inclusion
+    only forces an occasional extra run; it can never serve a stale pass."""
     skill_dir = pathlib.Path(skill_path).parent        # .../skills/<skill>
     skills = skill_dir.parent                          # .../skills
     roots = {skill_dir, skills / "task"}               # loaded skill + base hub
@@ -47,45 +60,18 @@ def source_roots_for(skill_path: str):
     return sorted(roots)
 
 
-def eval_timeout(eval_id: str, default: int) -> int:
-    """Per-eval worker timeout from evals.json, falling back to the CLI
-    default, so a structurally slower eval declares its own budget instead of
-    forcing the whole suite up to its worst case."""
+def _all_eval_ids():
+    """Every `id` in evals.json, in authoring order.
+
+    Derived rather than hand-listed: a hand-maintained default set silently
+    drops any eval added to evals.json without a matching edit here, and a
+    regression suite that skips evals reports a clean tree it never checked.
+    Narrow a run by naming ids on the command line."""
     with open(THIS / "evals.json", encoding="utf-8") as fh:
-        for e in json.load(fh)["evals"]:
-            if e["id"] == eval_id:
-                return int(e.get("timeout", default))
-    return default
+        return [e["id"] for e in json.load(fh)["evals"]]
 
 
-DEFAULT_IDS = [
-    "mechanical_lint_ready",
-    "mechanical_lint_link",
-    "mechanical_lint_frontmatter",
-    "mechanical_lint_markdown",
-    "mechanical_lint_oversized_surface",
-    "already_ready",
-    "intent_drift_human_route",
-    "drift_gate_narrowing_clean",
-    "drift_gate_refinement_clean",
-    "drift_gate_broadening_drift",
-    "drift_gate_committed_broadening_clean",
-    "repair_to_ready",
-    "scope_split_stuck",
-    "fidelity_rejects_drift",
-    "no_verified_fix",
-    "cap_override",
-    "gate_failure_user_stop",
-    "drift_failure_user_stop",
-    "verifier_failure_user_stop",
-    "guard_rebaseline_after_gate",
-    "interaction_scan_surfaces",
-    "interaction_scan_no_false_alarm",
-    "immediate_ready_citations_survive",
-    "immediate_ready_citations_overturn",
-    "regroup_via_reviewer",
-    "regroup_immediate_ready",
-]
+DEFAULT_IDS = _all_eval_ids()
 
 WORKER_PROMPT = """\
 You are running an automated skill regression eval. Do exactly this:
@@ -123,7 +109,7 @@ def worker_completed(rc: int, stdout: str) -> bool:
     exited 0 and produced a final response. A non-zero rc (timeout → -1,
     crash, API error) or an empty response means the loop did not finish,
     so grade.sh's checks on the resulting sandbox reflect only partial state
-    and must not count as a pass — a timed-out loop that stamped an early
+    and must not count as a pass. A timed-out loop that stamped an early
     status could otherwise masquerade as a clean 'surfaced-stuck' verdict."""
     return rc == 0 and bool(stdout.strip())
 
@@ -137,7 +123,6 @@ def run_one(
     cache,
     force: bool,
 ):
-    timeout = eval_timeout(eval_id, timeout)
     eval_dir = run_dir / eval_id
     target = eval_dir / "sandbox"
     target.mkdir(parents=True, exist_ok=True)
@@ -159,7 +144,7 @@ def run_one(
                 print(f"  [{eval_id}] CACHED {verdict} "
                       f"(skill={staged['skill_name']}, "
                       f"graded {hit.get('graded_at', '?')}, "
-                      f"model={hit.get('model', '?')}) — skipped claude -p; "
+                      f"model={hit.get('model', '?')}); skipped claude -p; "
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
@@ -215,10 +200,13 @@ def run_one(
         )
     )
 
+    # RESPONSE_FILE gives grade.sh the report half of the two graded surfaces.
+    grade_env = dict(os.environ, RESPONSE_FILE=str(eval_dir / "response.txt"))
     grade = subprocess.run(
         ["bash", str(GRADE), eval_id, workdir],
         capture_output=True,
         text=True,
+        env=grade_env,
     )
     (eval_dir / "grading.txt").write_text(grade.stdout + grade.stderr)
     print(grade.stdout, end="", flush=True)
@@ -230,7 +218,7 @@ def run_one(
         why = ("timeout" if "[TIMEOUT" in stderr
                else "empty response" if not stdout.strip()
                else f"worker rc={rc}")
-        print(f"  [{eval_id}] FAIL — worker did not complete ({why}); "
+        print(f"  [{eval_id}] FAIL, worker did not complete ({why}); "
               f"grade.sh ran on partial sandbox state and cannot be trusted "
               f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
               flush=True)
@@ -252,12 +240,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("ids", nargs="*", default=None)
     parser.add_argument("--model", default="claude-sonnet-4-6")
-    parser.add_argument("--timeout", type=int, default=1800,
-                        help="Default per-eval worker timeout in seconds. The repair "
-                             "loop runs ~900-1500s solo, so the default leaves "
-                             "headroom above that band rather than sitting on its "
-                             "floor. An eval carrying its own \"timeout\" in "
-                             "evals.json overrides this.")
+    parser.add_argument("--timeout", type=int, default=1200,
+                        help="Per-eval worker timeout in seconds. A task_fix pass "
+                             "walks the whole tree and runs the coherence "
+                             "assessment, so it sits well above a single-file "
+                             "skill without reaching the auto-check loop's band.")
     parser.add_argument("--claude-bin", default="claude")
     parser.add_argument("--force", action="store_true",
                         help="Ignore cached verdicts and re-run every eval, "

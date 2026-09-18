@@ -21,6 +21,7 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `language_humanizer/` | `language_humanizer` | Pattern A (behavioral only) | 3 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py` for the qualitative assertions. |
 | `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/` holds a behavioral eval per family member. `run_all.sh` drives both script runners. |
 | `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
+| `task_fix/` | `task_fix` | Pattern A (behavioral only) | Three staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and count the archive, keep a repeat whose sites each earn their link, surface a gathering that would leave an Acceptance item nothing to measure. Grades the task file's bytes and the run's per-finding disposition line. |
 | `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks + `evals/` over the autonomous readiness loop (repair-to-ready, gate/verifier/drift stops, mechanical lint cleanup). |
 | `guardrail_audit/` | `guardrail_audit` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md and registration contract + `evals/` over five staged fixtures with byte-identity grading. |
 | `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract + `evals/` over three staged fixtures. |
@@ -57,12 +58,13 @@ aggregation) runs on the inherited session model. Concretely:
 | `git_commit/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 | `task/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 | `task_create/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
+| `task_fix/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic, reads `RESPONSE_FILE`) + operator prose-verdict confirmation |
 | `task_auto_check/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 | `git_review/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 
 Each runner takes `--model` to override, and `--model ''` inherits the
 CLI default. The behavioral eval runners (`git_commit/evals/run.py`,
-`task/evals/run.py`, `task_create/evals/run.py`,
+`task/evals/run.py`, `task_create/evals/run.py`, `task_fix/evals/run.py`,
 `task_auto_check/evals/run.py`, `git_review/evals/run.py`) automate the old
 operator-driven Phase 2: instead of running the skill yourself in-session
 (which would use the inherited model), let the runner spawn the sonnet

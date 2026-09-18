@@ -99,3 +99,57 @@ named), not that a specific token appears: an incidental token, e.g. the
 `100` inside `list(range(100))`, false-passes a loose check, while
 demanding a literal keyword false-fails a valid supersession that simply
 lowered a value.
+
+## Per-eval timeouts, and which evals need them
+
+`evals/run.py` takes a per-eval `"timeout"` from `evals.json`, falling back to
+its `--timeout` default. Three evals declare their own budget because they run
+materially longer than the ~700-1000s the loop normally takes:
+
+| Eval | Budget | Why |
+| --- | --- | --- |
+| `regroup_via_reviewer` | 3600s | Full repair path: the target carries both a gate-visible Acceptance gap and a `repeated-link` finding, so the reviewer fires several stances before one verifier pass and one apply. |
+| `regroup_immediate_ready` | 2700s | Ready verdict plus the repeated-link repair round the `<gate>` rule routes before finalization. |
+| `immediate_ready_citations_overturn` | 3600s | Citation refutation returns to the gate for a second full verdict over the largest fixture in the harness. |
+
+A timed-out worker fails its eval whatever `grade.sh` says, because the sandbox
+holds partial state. Read `timing.json` before raising a budget: a run killed
+at its ceiling with the file already edited was close to finishing, while one
+that never touched the file is stuck somewhere else.
+
+## Sandbox escape observed 2026-09-18, and the guard added for it
+
+During the repeated-link regroup-owners sweep a worker ran a close-out
+against the **real** repository: it moved a live task into `tasks/archive/`,
+restamped it `finished`, re-pointed its links for the archive location, and
+overwrote its `created` value. Nothing in the harness caught it, and the sweep
+reported ordinary eval failures while real data sat corrupted.
+
+The isolation check missed it because it probed the real tree for fixture
+names only (`api_*.md` and one wiki filename). A worker that acts on a real
+task it was never told about matches no fixture name.
+
+`stage.sh` now writes `.real_tasks_manifest`, a sorted path inventory of the
+real `tasks/` tree, and `grade.sh` fails when that inventory changes. Paths
+rather than mtimes, so a concurrent session editing a real task in place stays
+legitimate while an appearing, vanishing or moved path does not. Verified
+against the observed shape: archiving a real task turns the check red.
+
+Treat a red there as a stop-everything signal, not a flaky eval. Restore the
+moved file before running anything else, and check `created` as well as
+`status`, since the close-out rewrote both.
+
+## Two runner gaps that produce misleading verdicts
+
+Both pre-date the per-eval timeouts and neither is fixed here. Recognise them
+before treating a red as a regression.
+
+- **A kill can overrun its own deadline.** `subprocess.run(timeout=...)` kills
+  the worker but then drains its pipes, and the helper agents are grandchild
+  processes holding those pipes open. One observed run reported 3330s against
+  an 1800s ceiling.
+- **A helper-failure stop grades as a completed run.** A worker that stops per
+  `<agent_failure_policy>`, reports the failure and asks the user exits rc 0
+  with real output, so `worker_completed()` passes it through and `grade.sh`
+  scores an untouched fixture. The transcript ends in a question; the diff is
+  empty. Check both before believing the failed checks.

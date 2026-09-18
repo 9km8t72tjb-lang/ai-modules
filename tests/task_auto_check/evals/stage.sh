@@ -16,6 +16,7 @@
 #   verifier_failure_user_stop  guard_rebaseline_after_gate
 #   interaction_scan_surfaces  interaction_scan_no_false_alarm
 #   immediate_ready_citations_survive  immediate_ready_citations_overturn
+#   regroup_via_reviewer  regroup_immediate_ready
 
 set -euo pipefail
 
@@ -125,6 +126,14 @@ case "$eval_id" in
     "$HERE/fixtures/immediate_ready_citations_overturn/setup.sh" "$target" >/dev/null
     prompt="Run task_auto_check on tasks/wiki_base-skill-output-contract.md."
     ;;
+  regroup_via_reviewer)
+    "$HERE/fixtures/regroup_via_reviewer/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_quota-retry-header.md."
+    ;;
+  regroup_immediate_ready)
+    "$HERE/fixtures/regroup_immediate_ready/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_retry-header.md."
+    ;;
   *)
     echo "unknown eval id: $eval_id" >&2
     exit 2
@@ -136,6 +145,13 @@ skill_name="task_auto_check"
 skill_path="$SKILL_MD"
 
 date +%s > "$target/.eval_started_at"
+# Inventory of the real repo's tasks tree, for grade.sh's escape check. A
+# name-scoped mtime probe misses an escape that moves or closes out a real task
+# the worker never heard of, which is exactly what one observed run did. Paths,
+# not mtimes: a concurrent session editing a real task in place is legitimate
+# and must not false-positive, while an appearing or vanishing path is not.
+(cd "$REPO_ROOT" && find tasks -type f -name '*.md' | sort) > "$target/.real_tasks_manifest"
+
 
 printf 'sandbox_proj=%s\n' "$(printf %q "$sandbox_proj")"
 printf 'skill_name=%s\n' "$(printf %q "$skill_name")"

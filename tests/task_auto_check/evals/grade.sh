@@ -95,6 +95,46 @@ status_is() {
   [[ "$(fm_field "$file" status)" == "$want" ]]
 }
 
+# no_repeated_link_finding <task file> -> the target carries no repeated-link
+# warn after the run. The base protocol makes the gathered account, not the
+# surviving link count, the measure of a resolved finding — but in these
+# fixtures neither repeat earns its link, so a genuine regroup necessarily
+# leaves one link and clears the warn. Grading the linter's own verdict keeps
+# the check off any particular sentence the regroup happened to write.
+no_repeated_link_finding() {
+  local file="$1"
+  ! python3 "$LINT" "$TASKS" --file "$file" 2>/dev/null | grep -q 'repeated-link'
+}
+
+# body_mentions_once <file> <needle> -> the account sits in one section. Counts
+# the H2 sections whose text names the needle, so a one-clause plain pointer at
+# the other site would still fail this and is not what these fixtures stage.
+sections_naming() {
+  local file="$1" needle="$2"
+  body_text "$file" | awk -v n="$needle" '
+    /^## / { sec=$0 }
+    index($0, n) > 0 && sec != "" { seen[sec]=1 }
+    END { c=0; for (k in seen) c++; print c }'
+}
+
+# Response helpers. RESPONSE is absent for an operator-staged run, so a check
+# that needs it fails loudly rather than passing vacuously.
+response_has() { [[ -s "$RESPONSE" ]] && grep -qiE -- "$1" "$RESPONSE"; }
+response_readable() { [[ -s "$RESPONSE" ]]; }
+
+# disposition_blocks -> one line per `repeated-link:` lead-in, with that line's
+# own wrapping collapsed. A report hard-wraps a disposition line across several
+# physical lines, often inside a fenced block, so a line-based grep misses a
+# perfectly well-formed line. Splitting on the lead-in keeps one finding's
+# fields from bleeding into the next finding's, and the 400-character cap stops
+# the last block from swallowing whatever prose follows it.
+disposition_blocks() {
+  response_readable || return 1
+  tr '\n' ' ' < "$RESPONSE" | tr -s ' ' \
+    | sed 's/repeated-link:/\n&/g' \
+    | awk 'NR>1 { print substr($0, 1, 400) }'
+}
+
 status_is_one_of() {
   local file="$1"
   shift
@@ -106,7 +146,17 @@ status_is_one_of() {
   return 1
 }
 
+# no_real_tasks_moved -> the real repo's tasks tree holds exactly the paths it
+# held at stage time. Catches an escape that archives, creates, renames or
+# deletes a real task, which the fixture-name probe above cannot see.
+no_real_tasks_moved() {
+  local manifest="$target/.real_tasks_manifest"
+  [[ -s "$manifest" ]] || return 0
+  diff -q "$manifest" <(cd "$REPO_ROOT" && find tasks -type f -name '*.md' | sort) >/dev/null
+}
+
 check "isolation: no writes to the real repo's tasks/ tree" no_real_repo_writes
+check "isolation: the real repo's tasks/ tree is unmoved" no_real_tasks_moved
 
 case "$eval_id" in
   mechanical_lint_ready)
@@ -613,6 +663,107 @@ case "$eval_id" in
     check "task lints clean" task_lints
     note_agent_attest "the Interaction scan lens runs and raises no contradiction or unattended-interaction finding for this touch-point-disjoint task"
     note_agent_attest "response reports one gate call and no interaction-driven repair"
+    ;;
+
+  regroup_via_reviewer)
+    f="$TASKS/api_quota-retry-header.md"
+    sibling="$TASKS/api_quota-reset-config.md"
+    warn_cleared() { no_repeated_link_finding "$f"; }
+    account_in_one_section() {
+      [[ "$(sections_naming "$f" "api_quota-reset-config")" == "1" ]]
+    }
+    handoff_survives() { grep -qiE 'service config|config' "$f"; }
+    goal_preserved() {
+      grep -Fq 'Retry-After' "$f" && grep -Fq '402' "$f" \
+        && grep -Fq 'QUOTA_RESET_SECONDS' "$f"
+    }
+    sibling_untouched() {
+      git -C "$proj" show HEAD:tasks/api_quota-reset-config.md >"$target/.sibling.md" \
+        && cmp -s "$target/.sibling.md" "$sibling"
+    }
+    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
+    disposition_line_regrouped() { disposition_blocks | grep -qiE 'repeated-link:.*regrouped'; }
+    not_surfaced_unfixed() {
+      ! { disposition_blocks | grep -qiE 'surfaced-but-not-fixed'; } \
+        && ! response_has 'surfaced-but-not-fixed[^\r\n]*repeated-link'
+    }
+    check "the repeated-link warn is cleared on the target" warn_cleared
+    check "the target's account of the sibling sits in one section" account_in_one_section
+    check "the handoff account survives the regroup" handoff_survives
+    check "Goal and the Acceptance contract keep their subject matter" goal_preserved
+    check "the sibling task file is byte-identical" sibling_untouched
+    check "updated timestamp changes for the edit group" updated_changed
+    check "the response carries the finding's disposition line as regrouped" disposition_line_regrouped
+    check "no repeated-link finding is reported surfaced-but-not-fixed" not_surfaced_unfixed
+    check "tasks tree lints clean after the run" task_lints
+    note_agent_attest "the regroup rode one verifier-approved edit group alongside the gate's own issue repair"
+    note_agent_attest "the response names the Grouping advocate stance and the verifier decision behind the regroup"
+    ;;
+
+  regroup_immediate_ready)
+    f="$TASKS/api_retry-header.md"
+    sibling="$TASKS/api_throttle-window-config.md"
+    status_ready() { status_is "$f" ready; }
+    warn_cleared() { no_repeated_link_finding "$f"; }
+    account_in_one_section() {
+      [[ "$(sections_naming "$f" "api_throttle-window-config")" == "1" ]]
+    }
+    handoff_survives() { grep -qiE 'service config|config' "$f"; }
+    goal_preserved() {
+      grep -Fq 'Retry-After' "$f" && grep -Fq '429' "$f" \
+        && grep -Fq 'THROTTLE_WINDOW_SECONDS' "$f"
+    }
+    sibling_untouched() {
+      git -C "$proj" show HEAD:tasks/api_throttle-window-config.md >"$target/.sibling.md" \
+        && cmp -s "$target/.sibling.md" "$sibling"
+    }
+    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
+    target_untouched() {
+      git -C "$proj" show HEAD:tasks/api_retry-header.md >"$target/.target.md" \
+        && cmp -s "$target/.target.md" "$f"
+    }
+    # This fixture's Approach names throttle.py as the edit site and the sibling
+    # task only as the dependency behind it, which sits on the contested edge of
+    # the grouping rule's "an edit site named in Approach that Context introduced
+    # as background" carve-out. Competent readers split on whether that earns the
+    # second link, so this eval grades the routing the immediate-ready path owns,
+    # not which side of the carve-out the Grouping advocate lands on. It requires
+    # a disposition line and then holds the file state to whichever disposition
+    # the run reported, so neither answer passes on a body that contradicts it.
+    disposition_reported() {
+      disposition_blocks | grep -qiE 'repeated-link:.*(regrouped|kept|surfaced)'
+    }
+    disposition_matches_body() {
+      if disposition_blocks | grep -qiE 'repeated-link:.*regrouped'; then
+        warn_cleared && account_in_one_section && updated_changed
+      else
+        target_untouched
+      fi
+    }
+    no_link_stripped_to_plain_text() {
+      [[ "$(grep -c 'api_throttle-window-config.md' "$f")" -ge 1 ]]
+    }
+    # A regrouped or kept finding carries its own disposition line and leaves
+    # the surfaced-but-not-fixed channel empty; a surfaced one belongs there,
+    # so the filter is asserted only for the two dispositioned outcomes.
+    disposition_filter_holds() {
+      if disposition_blocks | grep -qiE 'repeated-link:.*surfaced'; then
+        return 0
+      fi
+      ! { disposition_blocks | grep -qiE 'surfaced-but-not-fixed'; } \
+        && ! response_has 'surfaced-but-not-fixed[^\r\n]*repeated-link'
+    }
+    check "task ends status: ready, written only by task_check" status_ready
+    check "the ready path reports a disposition for the repeated-link finding" disposition_reported
+    check "the reported disposition matches the file state it claims" disposition_matches_body
+    check "no surviving mention lost its link to plain text" no_link_stripped_to_plain_text
+    check "the handoff account survives the round" handoff_survives
+    check "Goal and the Acceptance contract keep their subject matter" goal_preserved
+    check "the sibling task file is byte-identical" sibling_untouched
+    check "a dispositioned finding stays out of surfaced-but-not-fixed" disposition_filter_holds
+    check "tasks tree lints clean after the run" task_lints
+    note_agent_attest "one repair round ran for the repeated-link finding before mechanical lint finalization, on a first-call ready verdict"
+    note_agent_attest "response points to task_implement as the next step"
     ;;
 
   *)

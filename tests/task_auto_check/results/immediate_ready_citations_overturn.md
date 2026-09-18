@@ -73,3 +73,16 @@ an incomplete worker is inconclusive:
 - `run-20260823-004416-23632` — `API Error: Connection closed mid-response`
   after 3848s (`claude_rc: 1`), with the transcript ending just past the
   drift check. Environmental, not behavioral.
+
+Three further runs on 2026-09-17/18, during the repeated-link regroup-owners
+work, reproduced the same shape: two timeouts at 1800s and one at the raised
+3600s, each with `grade.sh` reporting that the content checks would have
+passed. They are excluded on the same rule.
+
+Those runs carry no signal about that change. The eval's own fixture lints
+clean, with no `repeated-link` finding, so the repair round the reworded
+`<gate>` routes before finalization is skipped here by its own empty-set
+rule and adds this eval no work. The 3600s budget the first entry above
+describes as "raised for every later run" was being passed ad hoc on the
+command line and never reached `evals.json`; it is now a per-eval `timeout`
+there, so the raise survives a plain `run.py` invocation.

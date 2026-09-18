@@ -324,6 +324,7 @@
     {
       "id": "immediate_ready_citations_overturn",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/wiki_base-skill-output-contract.md.",
       "expected_output": "The task is a frozen snapshot of a historical false first-call approval body carrying five planted readiness gaps, staged beside frozen copies of every artifact it cites so all existence checks pass and only the comparative reading surfaces the gaps. Two routes are valid per run. Either the first gate call reads deeply enough to surface issues, and the run takes the ordinary repair path with no refutation trigger; or the first gate call approves with zero issues, the trigger fires, auto_verifier_task refutes citations that rest on existence facts or misread spans, the loop re-invokes the gate with the refuted-citation set, the gate surfaces each entry as a readiness issue, and repair proceeds from task_check's own re-assessment. The defective route is a ready reached from a first-call zero-issue verdict whose citations were never challenged. This eval runs three times sequentially, and the operator records per run whether a first-call zero-issue verdict occurred, whether its citations were refuted, and whether the run reached ready, into the harness results location.",
       "files": ["evals/fixtures/immediate_ready_citations_overturn/setup.sh"],
@@ -347,6 +348,45 @@
         "The Interaction scan lens runs and raises no contradiction or unattended-interaction finding for this touch-point-disjoint task.",
         "No new task file is created.",
         "The task lints clean."
+      ]
+    },
+    {
+      "id": "regroup_via_reviewer",
+      "skill": "task_auto_check",
+      "timeout": 3600,
+      "prompt": "Run task_auto_check on tasks/api_quota-retry-header.md.",
+      "expected_output": "The freeze step records the repeated-link finding on api_quota-reset-config.md, plan_repairs maps it to the Grouping advocate beside the gate's own issues, and the verifier-approved regroup lands in the same edit group: the body's account of that handoff ends up in one section with one link, the other site left a plain pointer or nothing. The report carries the finding's disposition line as regrouped and lists no repeated-link finding as surfaced-but-not-fixed.",
+      "files": ["evals/fixtures/regroup_via_reviewer/setup.sh"],
+      "expectations": [
+        "The linter reports no repeated-link finding on the target after the run.",
+        "The body still carries the handoff account: the sibling task is moving the reset constant into the service config.",
+        "The account sits in one section rather than being narrated twice.",
+        "The Goal and the Acceptance contract keep their meaning.",
+        "The sibling task api_quota-reset-config.md is byte-identical.",
+        "The updated timestamp changes because the edit group changed the file.",
+        "The response carries the finding's disposition line in the shared shape with disposition regrouped.",
+        "The response lists no repeated-link finding as surfaced-but-not-fixed and routes none to the stuck channel.",
+        "The response names the reviewer stance and the verifier decision behind the regroup."
+      ]
+    },
+    {
+      "id": "regroup_immediate_ready",
+      "skill": "task_auto_check",
+      "timeout": 2700,
+      "prompt": "Run task_auto_check on tasks/api_retry-header.md.",
+      "expected_output": "task_check reports ready on the first gate call, since a repeated-link warn is a lint finding rather than a readiness issue. The ready verdict stands and the run still runs one repair round for the freeze-recorded repeated-link findings before finalization, because every path from a ready verdict to finalization runs that round first. The report carries the finding's disposition line in the shared shape. This fixture's Approach names throttle.py as the edit site and the sibling task only as the dependency behind it, which sits on the contested edge of the grouping rule's edit-site carve-out, so the eval grades the routing rather than which side of that carve-out the Grouping advocate lands on.",
+      "files": ["evals/fixtures/regroup_immediate_ready/setup.sh"],
+      "expectations": [
+        "The task ends status: ready, written only by task_check.",
+        "One repair round runs for the repeated-link finding despite the ready verdict.",
+        "The response carries the finding's disposition line in the shared shape, reading regrouped, kept, or surfaced.",
+        "The file state matches the disposition the response reported: a regrouped finding clears the warn, leaves the account in one section, and bumps updated, while a kept or surfaced one leaves the body byte-identical.",
+        "No surviving mention of the sibling lost its link to plain text.",
+        "The body still carries the handoff account: the sibling task is moving the window constant into the service config.",
+        "The Goal and the Acceptance contract keep their meaning.",
+        "The sibling task api_throttle-window-config.md is byte-identical.",
+        "A regrouped or kept finding stays out of the surfaced-but-not-fixed line and the stuck channel.",
+        "The response points to task_implement as the next step."
       ]
     }
   ]

@@ -216,7 +216,8 @@ s8_mechanical_lint_finalization() {
   assert_contains "broken local link fix named" "$base" "**Local markdown links**" || ok=false
   assert_contains "wikilink and footnote conversion named" "$base" "**Standard-markdown conversion**" || ok=false
   assert_contains "task_auto_check finalization tag" "$SKILL" "<finalize_mechanical_lint>" || ok=false
-  assert_contains "immediate ready path finalizes lint" "$SKILL" "When every citation survives, the \`ready\` stamp stands and the run proceeds to \`<finalize_mechanical_lint>\` as on any other \`ready\` verdict." || ok=false
+  assert_contains "immediate ready path routes the repeated-link round before finalize" "$SKILL" "When every citation survives, the \`ready\` stamp stands, the run runs the repeated-link repair round, and it then proceeds to \`<finalize_mechanical_lint>\`." || ok=false
+  assert_not_contains_re "superseded ready-to-finalize wording is gone" "$SKILL" "as on any other .ready. verdict" || ok=false
   assert_contains "mechanical path skips reviewer verifier agents" "$SKILL" "do not spawn \`auto_reviewer_task\` or \`auto_verifier_task\` for mechanical lint findings" || ok=false
   assert_contains "mechanical path does not re-gate readiness" "$SKILL" "do not re-run \`task_check\` after applying them" || ok=false
   assert_contains "output reports mechanical fixes and surfaced findings" "$SKILL" "the base \`<lint>\` findings applied, the target-file findings surfaced-but-not-fixed" || ok=false
@@ -276,6 +277,37 @@ s10_failure_policy_and_rebaseline() {
   $ok
 }
 
+s11_repeated_link_repair_path() {
+  local ok=true base="$REPO_ROOT/plugins/ai_dev/skills/task/SKILL.md" fix="$REPO_ROOT/plugins/ai_dev/skills/task_fix/SKILL.md"
+  local reviewer="$AGENTS_DIR/auto_reviewer_task.md" verifier="$AGENTS_DIR/auto_verifier_task.md" shaper="$AGENTS_DIR/auto_shaper_task.md"
+  assert_contains "base names the four writing owners" "$base" "Four surfaces own the regroup and apply it in their own edit round" || ok=false
+  assert_contains "base names the reporting surfaces" "$base" "report the finding with the sections that link the target and leave the regroup to those four" || ok=false
+  assert_not_contains_re "base drops the unnamed writing surface" "$base" "A (writing|read-only) surface (applies|reports)" || ok=false
+  assert_not_contains_re "base drops the two-site decision test" "$base" "name a distinct role each time" || ok=false
+  assert_contains "base owns the shared disposition line shape" "$base" "**Repeated-link disposition line.**" || ok=false
+  assert_contains "Goal move needs background, not just a surviving deliverable" "$base" "does not license dropping an outcome or requirement only Goal carried" || ok=false
+  assert_contains "the disposition set is closed at three" "$base" "there is no fourth: regrouped, kept, or surfaced" || ok=false
+  assert_contains "a link downgrade is not a disposition" "$base" "Converting a link to plain text is none of them" || ok=false
+  assert_contains "a link travels with its clause and only with it" "$base" "A link travels with the clause that carried it and only with that clause" || ok=false
+  assert_contains "a Goal plus Acceptance pair surfaces rather than gathers" "$base" "neither section can absorb the other's copy, so surface the finding instead of gathering it" || ok=false
+  assert_contains "plain-text naming is bounded to one paragraph" "$base" "never licenses stripping the link from another section" || ok=false
+  assert_contains "freeze records the repeated-link findings" "$SKILL" "record its \`repeated-link\` findings, each with the sections that link the counted target" || ok=false
+  assert_contains "plan_repairs maps findings to the Grouping advocate" "$SKILL" "Map each \`repeated-link\` finding \`<freeze>\` recorded to the Grouping advocate" || ok=false
+  assert_contains "gate defines the repeated-link repair round" "$SKILL" "**Repeated-link repair round.**" || ok=false
+  assert_contains "disposition filter rule is stated" "$SKILL" "**Repeated-link disposition filter.**" || ok=false
+  assert_contains "report requires the shared shape" "$SKILL" "shared per-finding disposition line shape is mandatory on every dispositioning path" || ok=false
+  assert_contains "verification standard admits the lint class" "$SKILL" "a lint-originated \`repeated-link\` finding \`<freeze>\` recorded" || ok=false
+  assert_contains "reviewer carries the Grouping advocate" "$reviewer" "Grouping advocate cites the base \`<markdown_policy>\` grouping rule" || ok=false
+  assert_contains "verifier approves four writer-executed kinds" "$verifier" "those four kinds and no others" || ok=false
+  assert_not_contains_re "verifier drops the three-kind list" "$verifier" "those three kinds and no others" || ok=false
+  assert_contains "shaper resolves five defect kinds" "$shaper" "Resolve these five defect kinds and no others" || ok=false
+  assert_not_contains_re "shaper drops the four-kind list" "$shaper" "these four defect kinds" || ok=false
+  assert_contains "shaper executes the regroup" "$shaper" "For a repeated-link regroup, apply the base \`task\` skill's **Repeated-link react protocol**" || ok=false
+  assert_contains "task_fix applies the regroup inline" "$fix" "apply the meaning-preserving regroup from the base \`<lint>\` **Repeated-link react protocol**" || ok=false
+  assert_not_contains_re "task_fix drops the human-owned escalated carve-out" "$fix" "human-owned on the escalated path as well, because deciding whether to gather" || ok=false
+  $ok
+}
+
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "task_check remains the single readiness gate" s2_gate_is_task_check
 scenario s3 "reviewer/verifier roles are separated and intent-safe" s3_reviewer_and_verifier_boundaries
@@ -286,6 +318,7 @@ scenario s7 "new pseudo-XML artefacts lint" s7_pseudo_xml_lints
 scenario s8 "mechanical lint finalization is single-sourced and wired" s8_mechanical_lint_finalization
 scenario s9 "freeze-time intent drift is read-only and human-routed" s9_intent_drift_boundary
 scenario s10 "agent failure policy, unassessable states, and guard re-baseline are pinned" s10_failure_policy_and_rebaseline
+scenario s11 "repeated-link findings route through the repair path with named owners" s11_repeated_link_repair_path
 
 log ""
 log "================================================================"
