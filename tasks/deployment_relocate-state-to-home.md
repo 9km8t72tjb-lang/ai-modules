@@ -2,7 +2,7 @@
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
 created: 2026-06-02T18:58:04
-updated: 2026-09-05T21:26:04
+updated: 2026-09-18T19:09:33
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -18,7 +18,7 @@ reported-by: Andreas Hoffmann
 
 This script is bundled into several repos. Two problems follow:
 
-1. **The conf is committed and machine-specific edits dirty the repo.** `deployment.conf` is git-tracked; a user's local tweaks show up as a permanent `M deployment/deployment.conf` (exactly the current working-tree state).
+1. **The conf is committed and machine-specific edits dirty the repo.** `deployment.conf` is git-tracked; a user's local tweaks show up as a permanent `M deployment/deployment.conf`.
 2. **The log is per-script-copy state.** Each bundled copy writes its own `deployed_artefacts.log` next to itself, so `--uninstall` run from repo A is blind to artifacts deployed from repo B, even though both deployed into the same global config dirs.
 
 Deliver a change where **per-machine state lives in `$HOME`** (consistent with backups, which already land in `$HOME`, per the `Backups land in $HOME` behavior in `deployment.sh`) and the repo carries only a committed `.template` of shared defaults. Outcome: a clean repo working tree, a single machine-wide uninstall manifest, and a fresh checkout that still deploys with sane defaults.
@@ -33,19 +33,21 @@ Relevant code in `deployment/deployment.sh`:
 - `uninstall_logged_artifacts`; the only reader of the log. Already filters by active target and type.
 - The `Config:` banner line that echoes the conf path.
 
-Current conf (`deployment/deployment.conf`) is **not purely user-specific**. It mixes shared architectural policy with personal overrides:
+The sibling task [bash 3.2 floor](deployment_bash-32-floor.md) rewrites the two associative arrays `parse_deployment_conf` fills into indexed arrays, so whichever of the two lands second builds on the other's shape rather than the one quoted here.
 
-- `#claude` / `disallow:**`: "Claude is served via the marketplace, not these symlinks." This applies to *everyone* using the repo.
-- `*legacy*` excludes under each tool, a shared default.
+Current conf (`deployment/deployment.conf`) is **not purely machine state**. It carries shared defaults every checkout needs:
 
-So the conf is really **shared defaults + a thin user-override layer**. Moving it wholesale to `$HOME` as the only source would lose those defaults on a fresh checkout. The committed `.template` is what carries them.
+- `disallow:*legacy*` under each tool section, a shared default.
+- `style:<name>` under `#claude`, naming the active output style the Claude deploy merges into that tool's settings.
+
+So the conf is really **shared defaults plus whatever override layer a machine adds**. Moving it wholesale to `$HOME` as the only source would lose those defaults on a fresh checkout. The committed `.template` is what carries them.
 
 Other references that hardcode the old paths and must move in lockstep:
 
 - `deployment/README.md` names `deployment/deployed_artefacts.log` and `deployment.conf`.
-- Root `README.md` lists `deployment.conf` in the layout tree.
+- Root `README.md` lists `deployment.conf` in the layout tree, and names it again as the file that carries the active style.
 - `.gitignore` ignores `deployment/deployed_artefacts.log` (becomes obsolete once the log leaves the tree).
-- `CLAUDE.md` references `make uninstall` relying on the deployment log.
+- Every standing repo instruction file describes `make uninstall` as removing deployed artefacts via the deployment log.
 
 Prior-art scan (Tier 1) found only incidental hits: other tasks invoke `deployment.sh --global --dry-run` as an acceptance check, but none addresses conf/log relocation. This work is novel.
 
@@ -75,11 +77,12 @@ Ship `deployment/ai_asset_deploy.conf.template` (the `.template` suffix is an un
 ```text
 # ai_asset_deploy config — per-tool deployment configuration
 #
-#   #tool                  Section heading — tool identifier (vscode, cursor, claude, codex, gemini, antigravity)
+#   #tool                  Section heading — tool identifier (vscode, cursor, claude, codex, antigravity, opencode)
 #   disallow:path          Local repo path relative to repo root (e.g. agents/check_spec_codex.md)
 #                         Glob patterns supported (* matches within a segment, ** matches across segments)
-#   replace:path VAR=value Force copied deployment for matching assets and replace $VAR$
-#                         inside the deployed copy only. A trailing slash applies to a whole subtree.
+#   replace:path VAR=value Replace $VAR$ inside matching deployed copies. A trailing slash
+#                         applies to a whole subtree.
+#   style:<name>           Active output-style name for that tool (merged into the tool's settings)
 #
 # Assets not listed under a tool section are deployed to that tool.
 # Assets listed under disallow: are skipped for that tool.
@@ -97,24 +100,24 @@ disallow:*legacy*
 #codex
 disallow:*legacy*
 
-#gemini
+#antigravity
 disallow:*legacy*
 
-#antigravity
+#opencode
 disallow:*legacy*
 ```
 
-The template is the generic starting point. The `#claude disallow:**` rule (marketplace-served, skip symlinks) is **this user's local customization**, not a shared default, so it belongs in the home conf, not the template.
+The template is the generic starting point. Any per-tool rule a machine adds beyond these defaults is **that machine's local customization**, not a shared default, so it belongs in the home conf and not the template.
 
 ### One-time migration of the current setup (required)
 
 The point of this task is that the current working setup is **retained**, not reset. On the relocation:
 
-1. **Copy the current live log into home.** `deployment/deployed_artefacts.log` (~16 KB of real entries on this machine) must be **copied to `~/.ai_asset_deploy/deployed.log`** so every already-deployed artifact stays uninstallable. Do this before removing it from the repo.
-2. **Seed the home conf from the current live conf, not the template.** `~/.ai_asset_deploy/config` must be created from the *current* `deployment/deployment.conf`, which includes the `#claude disallow:**` rule as it stands today, so the user's actual behavior carries over unchanged. (The template, by contrast, ships without that rule.)
+1. **Copy the current live log into home.** `deployment/deployed_artefacts.log`, carrying this machine's real entries, must be **copied to `~/.ai_asset_deploy/deployed.log`** so every already-deployed artifact stays uninstallable. Do this before removing it from the repo.
+2. **Seed the home conf from the current live conf, not the template.** `~/.ai_asset_deploy/config` must be created from `deployment/deployment.conf` exactly as it stands at migration time, so the machine's actual behaviour carries over unchanged, including any rule the generic template does not ship.
 3. **Stop tracking the in-repo files.** `git rm` the tracked `deployment.conf`, remove the in-repo `deployed_artefacts.log`, commit the `.template`, and drop the now-obsolete `.gitignore` entry for the log (nothing left in the tree to ignore).
 
-The script may automate the seeding on first run (if no home conf/log exists but the in-repo ones do, copy them up), or it can be a documented one-time manual step, but the end state for this machine is: home conf with the Claude rule present, home log carrying all current entries.
+The script may automate the seeding on first run (if no home conf/log exists but the in-repo ones do, copy them up), or it can be a documented one-time manual step, but the end state for this machine is: home conf carrying the live conf's content unchanged, home log carrying all current entries.
 
 ### Guardrails
 
@@ -137,7 +140,7 @@ Considered and set aside for this task; revisit only if asked:
 - Conf and log resolve to `~/.ai_asset_deploy/config` and `~/.ai_asset_deploy/deployed.log`, with documented precedence (home → template fallback for conf only; log always home).
 - `deployment.conf` and `deployed_artefacts.log` are no longer in the repo; a committed `deployment/ai_asset_deploy.conf.template` carries the generic defaults: every tool section with `disallow:*legacy*` and **no** Claude-specific rule.
 - The current live log is **copied** to `~/.ai_asset_deploy/deployed.log` so the setup is retained: verify the pre-relocation entries are present and that `--uninstall` cleanly removes a previously-deployed artifact afterward.
-- `~/.ai_asset_deploy/config` on this machine retains the `#claude disallow:**` rule exactly as the current `deployment.conf` has it; confirm a `--dry-run` still excludes Claude after relocation.
+- `~/.ai_asset_deploy/config` on this machine reproduces the live `deployment.conf` byte-for-byte at migration time; confirm a `--dry-run` produces the same per-tool exclusions and the same active style after relocation as before it.
 - A fresh checkout with no home conf falls back to the template and deploys with the generic defaults (`*legacy*` skipped for every tool, Claude **not** excluded); confirm via `./deployment/deployment.sh --global --dry-run`.
 - `deployment/README.md`, root `README.md`, and `.gitignore` updated to the new paths; no stale references to `deployment/deployed_artefacts.log` or in-repo `deployment.conf` remain.
 - `./deployment/deployment.sh --global --dry-run` runs without error and shows the resolved `~/.ai_asset_deploy/` conf/log paths in its banner.
