@@ -2,9 +2,11 @@
 description: Give the wiki hub an output contract stating what each core operation returns, since all three front ends carry one and the hub states its report only per operation.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-09-05T21:26:04
-status: ready
+updated: 2026-10-01T18:31:01
+status: finished
+design-extended: false
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Give the wiki hub an output contract

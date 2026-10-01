@@ -16,6 +16,7 @@ LINT="$WIKI_SKILL/scripts/lint.py"
 SHA256="$WIKI_SKILL/scripts/compute_sha256.py"
 AGENT_CONTRACT="$SCRIPT_DIR/agent_contract.py"
 FILE_ACCESS_CONTRACT="$SCRIPT_DIR/file_access_contract.py"
+HUB_OUTPUT_CONTRACT="$SCRIPT_DIR/hub_output_contract.py"
 
 SCRATCH="$SCRIPT_DIR/scratch"
 FIXTURES="$SCRIPT_DIR/fixtures"
@@ -3404,6 +3405,10 @@ a2_wiki_file_access_contract() {
     python3 "$FILE_ACCESS_CONTRACT"
 }
 
+a3_wiki_hub_output_contract() {
+    python3 "$HUB_OUTPUT_CONTRACT"
+}
+
 ###############################################################################
 # Run all scenarios
 ###############################################################################
@@ -3538,6 +3543,7 @@ scenario l72 "lint declared per-slot isolation"          l72_lint_declared_per_s
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract
+scenario a3  "wiki hub output contract"                    a3_wiki_hub_output_contract
 
 scenario s1  "compute_sha256 inserts missing sha line"        s1_sha256_insert_missing
 scenario s2  "compute_sha256 unchanged when correct"          s2_sha256_unchanged_when_correct

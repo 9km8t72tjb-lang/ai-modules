@@ -55,8 +55,10 @@ scenario with its id and description. The prefixes group by surface:
   frontmatter / link / portability cases to the info-level `size`,
   `stale`, `log`, `log-heading`, and `log-scope` findings and the
   three `Accepted finding:` grammars.
-- `a*` cover the `auto_shaper_wiki` contract assertions that a script
-  can check, and `s*` cover `compute_sha256.py`.
+- `a*` cover the prose-contract assertions a script can check in the
+  `auto_shaper_wiki` agent and the hub `SKILL.md`, such as the hub's
+  file-access guidance and its `<output_contract>`. `s*` cover
+  `compute_sha256.py`.
 
 The runner exits non-zero on any failure. Add a new scenario by
 appending a `scenario` invocation in `run.sh` plus a body function next

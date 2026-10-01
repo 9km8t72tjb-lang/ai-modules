@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; whenever the user mentions their wiki, knowledge base, or research notes in any way, including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.24.4
+version: 1.24.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -1047,5 +1047,55 @@ Quick-scan reminders. See the named section for full guidance.
 </contradictions_are_explicit>
 
 </pitfalls>
+
+<output_contract>
+Return to the user the report each entry below names. Each operation in
+`<core_operations>` has one entry, and an ambiguous discovery has one. Where a
+step already promises part of a report, the entry cites that step by its tag or
+bold lead-in. The cited step stays the one statement of that promise.
+
+<ingest_report>
+**`<ingest>`**: return the files the ingest created or updated, in the form
+that `<report_what_changed>` sets. After a re-ingest that finds drift, add the
+drift report that the **Re-ingest compares before it writes** rule in
+`<capture_raw_source>` calls for.
+</ingest_report>
+
+<capture_procedure_report>
+**`<capture_procedure>`**: return the path of the procedure page created or
+updated, and the `index.md` navigation updates applied under
+`<update_navigation_for_procedure>`.
+</capture_procedure_report>
+
+<query_report>
+**`<query>`**: return the answer that **Synthesize an answer** builds, with its
+citations. Close it with the one-line filing decision that
+**Report the filing decision in one line** defines. That line names the filed
+page's path or the skip reason in the trigger's terms.
+</query_report>
+
+<archive_report>
+**`<archive>`**: return the archived page's new path under `_archive/`, the
+`index.md` removal and inbound-link rewrites made for it, and the outcome of
+the post-archive lint run.
+</archive_report>
+
+<lint_and_audit_report>
+**`<lint_and_audit>`**: return the report of the path that ran. For the narrow
+inline path, return the final finding counts by severity, logged to `log.md`
+as `<inline_iteration_loop>` directs. For the broad path that `<broad_audits>`
+delegates, return the `auto_shaper_wiki` agent's per-file change list and the
+audit-complete line that the agent's `<final_line>` sets.
+</lint_and_audit_report>
+
+<ambiguous_discovery_report>
+**Ambiguous discovery**: when `discover_wiki.sh` exits 2, return every
+`AVAILABLE:` and `EXISTING:` candidate in walk order, as `<present_candidates>`
+lays them out. Then return the path the user chose. When
+`<adopt_when_user_named_the_path>` applies, return that block's one-line
+adoption report, which names the adopted path.
+</ambiguous_discovery_report>
+
+</output_contract>
 
 </wiki>
