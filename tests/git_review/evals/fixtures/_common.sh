@@ -24,6 +24,7 @@ _COMMON_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #   payload_dir holds the JSON the stub serves, named by the gh surface:
 #     pr.json comments.json reviews.json statusCheckRollup.json
 #     review_threads_page1.json review_threads_page2.json rulesets.json
+#     review_thread_comments_page2.json
 install_gh_stub() {
     local root=$1 payloads=$2
     mkdir -p "$root/bin"
@@ -95,6 +96,11 @@ case "${1:-}" in
         printf 'gh: expected a GraphQL mutation via -f query=\n' >&2
         exit 1
       fi
+    elif [[ "$*" == *"PullRequestReviewThread"* ]]; then
+      # A later page of one thread's own comments, asked for through the
+      # thread's node id. This sits ahead of the thread-list branch below,
+      # whose "query=" match would otherwise answer it with thread JSON.
+      serve review_thread_comments_page2.json
     elif [[ "$*" == *"reviewThreads"* || "$*" == *"query="* ]]; then
       # Match the cursor ARGUMENT, not the word "cursor" inside the query text:
       # the query declares $cursor and passes it to after:, so a loose match

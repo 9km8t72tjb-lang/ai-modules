@@ -1,7 +1,7 @@
 ---
 title: Isolating VS Code from foreign harness config
 created: 2026-08-09
-updated: 2026-08-09
+updated: 2026-10-01
 type: procedure
 tags: [copilot, claude, codex, discovery, portability, hook]
 sources: []
@@ -89,7 +89,9 @@ location is switched off.
 - [GitHub Copilot in VS Code](../entities/github-copilot-vs-code.md) for the
   instruction roots and the adoption paths these switches scope.
 - [Hook surface portability](../concepts/hook-surface-portability.md) for the
-  two-harness hook consequence and how this repository delivers around it.
+  two-harness hook consequence, and
+  [hook delivery design](../concepts/hook-delivery-design.md) for how this
+  repository delivers around it.
 - [Isolating OpenCode from foreign harness config](isolating-opencode-from-foreign-config.md)
   and [Isolating Cursor from foreign harness config](isolating-cursor-from-foreign-config.md)
   for the sibling harnesses.

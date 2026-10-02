@@ -227,7 +227,8 @@
         "The report accounts for all three inline review threads.",
         "The resolved thread about renaming the helper is accounted for rather than omitted.",
         "The outdated thread about the moved import is accounted for rather than omitted.",
-        "The report shows the run read past the first page of threads."
+        "The report shows the run read past the first page of threads.",
+        "The run reads the second page of comments inside the resolved thread, where the author's reply sits."
       ]
     },
     {
@@ -253,7 +254,8 @@
       "expectations": [
         "The report does not list cache eviction under 'Decisions the implementer must make before fixing'.",
         "The report treats the eviction question as settled and cites docs/decisions.md.",
-        "The report does not re-argue the decision."
+        "The report does not re-argue the decision.",
+        "Findings headings without a finding or decision are left out of the report rather than filled with a placeholder line."
       ]
     },
     {
@@ -265,7 +267,8 @@
       ],
       "expectations": [
         "The report names the divide-by-zero in summarize() at the end of src/helpers.py.",
-        "The report does not claim the change is approvable while leaving that defect unnamed."
+        "The report does not claim the change is approvable while leaving that defect unnamed.",
+        "The closing answer is yes from the clean test merge and the counts, while the verified defect stays with the approvability verdict in the lead."
       ]
     },
     {
@@ -360,7 +363,8 @@
         "The report names the gates it ran locally.",
         "The report names the gate the .github/workflows/ci.yml definition runs.",
         "The report separates the two rather than conflating them.",
-        "The local run of the project's own test entry point is reported with its result."
+        "The local run of the project's own test entry point is reported with its result.",
+        "Findings headings without a finding or decision are left out of the report rather than filled with a placeholder line."
       ]
     },
     {

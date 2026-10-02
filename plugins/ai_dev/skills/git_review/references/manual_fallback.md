@@ -182,6 +182,24 @@ query($owner:String!,$repo:String!,$number:Int!,$cursor:String){
 }'
 ```
 
+A thread whose `comments.pageInfo.hasNextPage` is true carries more replies than
+its first page. Page those through the thread's node id, passing each
+`endCursor` until `hasNextPage` turns false:
+
+```bash
+gh api graphql -f id='<thread-id>' -f cursor='<endCursor>' -f query='
+query($id:ID!,$cursor:String){
+  node(id:$id){
+    ... on PullRequestReviewThread{
+      comments(first:100, after:$cursor){
+        pageInfo{ hasNextPage endCursor }
+        nodes{ author{ login } body createdAt }
+      }
+    }
+  }
+}'
+```
+
 Report each surface with its count, so an empty discussion is proven rather than
 assumed.
 

@@ -30,8 +30,9 @@ The load-bearing ones:
   deleted file, which is the evidence the retirement heading rests on.
 - **s12** asserts the collector leaves a dirty tree exactly as it found it, with
   no stash, no reset, and no extra worktree.
-- **s14** drives a stub `gh` through two pages of review threads and asserts the
-  resolved and outdated threads survive into the collected set.
+- **s14** drives a stub `gh` through two pages of review threads and a second
+  page of one thread's comments, and asserts the resolved and outdated threads
+  survive into the collected set with that later comment page folded in.
 - **s16** through **s19** cover the heading-range helper: inclusive of both named
   headings, the run-to-end form, the error exits, and the same-heading-twice
   case.

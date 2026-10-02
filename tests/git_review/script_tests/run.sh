@@ -508,6 +508,16 @@ s14_forge_layer_pages_threads_and_counts_them() {
     assert_eq "both pages read" "$pages" "2" || ok=false
     assert_contains "resolved thread kept" "$threads" "T_resolved_naming" || ok=false
     assert_contains "outdated thread kept" "$threads" "T_outdated_import" || ok=false
+
+    # The resolved thread's comments run onto a second page, which only a
+    # request through the thread's own node id reaches.
+    local comment_pages
+    comment_pages=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["comment_pages"])' \
+        "$ev/forge/review_threads.json" 2>/dev/null)
+    assert_contains "comment page requested by thread id" \
+        "$(cat "$root/gh_calls.log" 2>/dev/null)" "id=T_resolved_naming" || ok=false
+    assert_contains "second comment page folded into its thread" "$threads" "second-page reply" || ok=false
+    assert_eq "one comment page followed" "$comment_pages" "1" || ok=false
     $ok
 }
 
@@ -651,7 +661,8 @@ case "${1:-}" in
     fi
     ;;
   api)
-    if [[ "$*" == *"-F cursor="* ]]; then serve threads2.json
+    if [[ "$*" == *"PullRequestReviewThread"* ]]; then serve thread_comments2.json
+    elif [[ "$*" == *"-F cursor="* ]]; then serve threads2.json
     elif [[ "$*" == *"query="* ]]; then serve threads1.json
     else printf '[]\n'
     fi
@@ -676,9 +687,15 @@ JSON
 {"data": {"repository": {"pullRequest": {"reviewThreads": {
   "pageInfo": {"hasNextPage": false, "endCursor": null},
   "nodes": [{"id": "T_resolved_naming", "isResolved": true, "isOutdated": false,
-             "comments": {"nodes": [{"body": "resolved thread"}]}},
+             "comments": {"pageInfo": {"hasNextPage": true, "endCursor": "CPAGE2"},
+                          "nodes": [{"body": "resolved thread"}]}},
             {"id": "T_outdated_import", "isResolved": false, "isOutdated": true,
              "comments": {"nodes": [{"body": "outdated thread"}]}}]}}}}}
+JSON
+    cat > "$payloads/thread_comments2.json" <<'JSON'
+{"data": {"node": {"comments": {
+  "pageInfo": {"hasNextPage": false, "endCursor": null},
+  "nodes": [{"body": "second-page reply"}]}}}}
 JSON
 }
 
@@ -712,7 +729,7 @@ scenario s10 "size profile counts binary and generated files"         s10_size_p
 scenario s11 "uncommitted mode reports both lanes"                    s11_uncommitted_mode_reports_both_lanes
 scenario s12 "collection reads only and leaves the tree alone"        s12_reads_only_and_leaves_the_tree_alone
 scenario s13 "an absent forge layer is recorded, not assumed"         s13_forge_layer_absent_is_recorded
-scenario s14 "forge layer pages threads and keeps resolved/outdated"  s14_forge_layer_pages_threads_and_counts_them
+scenario s14 "forge layer pages threads and their comments, keeps resolved/outdated" s14_forge_layer_pages_threads_and_counts_them
 scenario s15 "flags: help, missing, unknown, and outside a repo"      s15_usage_and_argument_handling
 scenario s16 "heading range is inclusive of both named headings"      s16_inclusive_heading_range
 scenario s17 "a single heading runs to the end of the file"           s17_range_to_end_of_file

@@ -672,3 +672,102 @@ another repository has to travel with the artefact.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` and
 both size infos are pre-existing; this update introduced none of them.
+
+## [2026-10-01 22:26] update | Claude output styles re-checked against the docs, the changelog, and build 2.1.284
+
+A question about whether Claude Code still supports custom output styles was
+checked against the docs page, the full changelog, and the running build.
+Support is current and still being extended. Two recorded claims did not
+survive. The `/output-style` command is back since v2.1.269, and the loader
+ignores an unknown frontmatter key instead of rejecting it. Two design pages
+cited the second claim as a reason, so their premise was corrected while the
+decisions keep their remaining reasons.
+
+- concepts/claude-output-styles.md now lists Concise among the built-ins, adds
+  the restored command and the VS Code menu as routes that write local scope,
+  records next-message switching since v2.1.251, and replaces the fifth-key
+  rejection with the shadow-only validation, all stamped 1 October 2026.
+- entities/anthropic-claude-code.md renames its retired-surfaces section to
+  cover the restored command, marks the v2.1.91 removal as unverified, records
+  the documented desktop route, and narrows the verification gap to two open
+  questions.
+- concepts/output-style-delivery-design.md keeps the deploy-configuration
+  placement and drops the loader-breakage reason it no longer has.
+- concepts/deployment-model.md now points at the delivery design page for its
+  reasons instead of restating the stale one.
+- index.md widens two summaries and bumps the last-updated stamp.
+
+## [2026-10-01 22:27] lint | 0 blocking, 1 warn, 3 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` and the
+size infos on `entities/anthropic-claude-code.md` and `entities/openai-codex.md`
+are pre-existing. The size info on `concepts/claude-output-styles.md` is new,
+because this update carried the page from 185 to 211 lines. The split is left
+for a human to weigh.
+
+## [2026-10-01 22:45] update | Oversized pages split along their natural seams
+
+Three pages had grown past the size threshold and a fourth sat exactly on it.
+Each held a sub-topic an operator would look up on its own, so each was split
+along that seam. The moved prose is verbatim apart from links and the sentences
+that join it to its new page. Each new page carries a `checked:` date for the
+oldest claim it holds.
+
+- concepts/skill-load-paths.md is new and holds the Claude Code and Codex skill
+  load paths from the two entity pages, with the unverified Codex filename-case
+  question as its open question.
+- concepts/claude-output-style-selection.md is new and merges the selection
+  material the output-style concept page and the Claude entity page each held
+  part of: the key, the routes and the scope they write, switching, the command
+  history, and the desktop route.
+- concepts/hook-delivery-design.md is new and holds the hook layout, the
+  per-target deploy routing, the Copilot deposit finding, and the decision to
+  deliver Copilot natively.
+- entities/anthropic-claude-code.md now points at the two new Claude pages in
+  place of its skill-loading and style-route sections, keeps the `claude config`
+  closure, and drops the derivation bullets that moved with their facts.
+- entities/openai-codex.md keeps the bundled-binary location under a renamed
+  skill section that points at the skill load paths page.
+- concepts/claude-output-styles.md keeps the file locations and points at the
+  selection page for everything a route writes.
+- concepts/hook-surface-portability.md keeps the harness contracts and points at
+  the delivery page for the layout, the routing, and the Copilot decision.
+- concepts/deployment-model.md links the delivery and selection pages, and now
+  says every interactive route writes the winning file, since three routes exist.
+- concepts/skill-family-architecture.md and
+  procedures/isolating-vs-code-from-foreign-config.md now link the new pages
+  their references moved to.
+- index.md lists the three new pages, narrows four summaries, and counts 32
+  pages.
+
+## [2026-10-01 22:46] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-split lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing. The split cleared all three size infos, and no page now runs past
+200 lines.
+
+## [2026-10-02 12:54] update | What a headless Claude Code worker loads, probed on build 2.1.226
+
+Marker styles and marker instruction files in throwaway sandboxes showed which
+styles, settings, and instruction files reach a `claude -p` worker.
+
+- entities/anthropic-claude-code.md records that `--setting-sources
+  project,local` keeps the user-level settings and their style out of a worker,
+  that print mode drops a malformed settings file silently, and that the
+  `CLAUDE.md` search runs past the repository root and reaches the user-level
+  file from any working directory under the home directory.
+- concepts/claude-output-style-selection.md records that a headless worker
+  honours a project selection, nested in another repository and under the
+  narrowed setting sources alike.
+- concepts/claude-output-styles.md records that `--append-system-prompt-file`
+  loads a style body beside the style layer rather than in it.
+- concepts/verification-surfaces.md adds what an eval worker inherits from its
+  host and the two moves that isolate it, with the unmeasured effect on the
+  prose harness's recorded results as an open question.
+- index.md refreshes those four one-liners.
+
+## [2026-10-02 12:55] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0 after concepts/verification-surfaces.md was
+tightened back to the size threshold. The `boilerplate` warn on `log.md` is
+pre-existing.

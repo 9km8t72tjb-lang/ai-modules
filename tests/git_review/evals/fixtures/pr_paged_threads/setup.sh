@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # The pull request's inline review threads span two pages and include one
 # resolved thread and one outdated thread, so a run that stops after the first
-# page or filters those two away is visibly incomplete.
+# page or filters those two away is visibly incomplete. The resolved thread's
+# own comments span two pages as well, and the author's reply sits on the
+# second one, so a run that reads only each thread's first comment page misses
+# the reply that resolved it.
 
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -73,10 +76,9 @@ cat > "$payloads/review_threads_page2.json" <<'JSON'
               "path": "src/convert.py",
               "line": 4,
               "comments": {
-                "pageInfo": {"hasNextPage": false, "endCursor": null},
+                "pageInfo": {"hasNextPage": true, "endCursor": "COMMENTS_PAGE_2"},
                 "nodes": [
-                  {"author": {"login": "peer"}, "body": "Rename the helper to write_rows.", "createdAt": "2026-08-30T10:02:00Z"},
-                  {"author": {"login": "author"}, "body": "Resolved: renamed.", "createdAt": "2026-08-30T10:20:00Z"}
+                  {"author": {"login": "peer"}, "body": "Rename the helper to write_rows.", "createdAt": "2026-08-30T10:02:00Z"}
                 ]
               }
             },
@@ -95,6 +97,21 @@ cat > "$payloads/review_threads_page2.json" <<'JSON'
             }
           ]
         }
+      }
+    }
+  }
+}
+JSON
+
+cat > "$payloads/review_thread_comments_page2.json" <<'JSON'
+{
+  "data": {
+    "node": {
+      "comments": {
+        "pageInfo": {"hasNextPage": false, "endCursor": null},
+        "nodes": [
+          {"author": {"login": "author"}, "body": "Resolved: renamed.", "createdAt": "2026-08-30T10:20:00Z"}
+        ]
       }
     }
   }

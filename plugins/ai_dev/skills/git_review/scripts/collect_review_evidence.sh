@@ -626,7 +626,109 @@ collect_review_threads() {
     done
 
     merge_thread_pages "$pages_dir" "$OUT/forge/review_threads.json"
-    record "forge/review_threads.json" "the inline review threads across every page, resolved and outdated ones kept"
+    page_thread_comments "$OUT/forge/review_threads.json"
+    record "forge/review_threads.json" "the inline review threads across every page, each thread's comments across every page, resolved and outdated ones kept"
+}
+
+# The thread id and comment endCursor of every thread whose comments run past
+# the page the thread connection returned, one tab-separated pair per line.
+threads_with_more_comments() {
+    python3 - "$1" <<'PY' 2>/dev/null
+import json, sys
+try:
+    threads = json.load(open(sys.argv[1])).get("threads", [])
+except Exception:
+    sys.exit(0)
+for t in threads:
+    info = (t.get("comments") or {}).get("pageInfo") or {}
+    if t.get("id") and info.get("hasNextPage") and info.get("endCursor"):
+        print(f"{t['id']}\t{info['endCursor']}")
+PY
+}
+
+# The endCursor of a thread-comments page that has a next one, and the empty
+# string otherwise.
+comment_page_cursor() {
+    python3 - "$1" <<'PY' 2>/dev/null
+import json, sys
+try:
+    info = json.load(open(sys.argv[1]))["data"]["node"]["comments"]["pageInfo"]
+    print(info["endCursor"] if info.get("hasNextPage") else "")
+except Exception:
+    print("")
+PY
+}
+
+# Fold every fetched comment page into its thread, in fetch order, and carry
+# the last page's pageInfo so the merged thread shows where its comments end.
+fold_comment_pages() {
+    python3 - "$1" "$2" <<'PY' 2>/dev/null
+import json, pathlib, sys
+merged = pathlib.Path(sys.argv[1])
+index = pathlib.Path(sys.argv[2]) / "index.tsv"
+if not index.exists():
+    sys.exit(0)
+data = json.loads(merged.read_text())
+threads = {t.get("id"): t for t in data.get("threads", [])}
+followed = 0
+for line in index.read_text().splitlines():
+    thread_id, page_file = line.split("\t", 1)
+    try:
+        conn = json.loads(pathlib.Path(page_file).read_text())["data"]["node"]["comments"]
+    except Exception:
+        continue
+    thread = threads.get(thread_id)
+    if thread is None:
+        continue
+    comments = thread.setdefault("comments", {})
+    comments.setdefault("nodes", []).extend(conn.get("nodes") or [])
+    comments["pageInfo"] = conn.get("pageInfo") or {}
+    followed += 1
+data["comment_pages"] = followed
+merged.write_text(json.dumps(data, indent=2))
+PY
+}
+
+# A thread's comments page on their own connection, so a long thread read from
+# its first page alone drops the later replies that settle or reopen it. Follow
+# each thread's comment cursor through the thread's node id and fold the later
+# pages into that thread.
+page_thread_comments() {
+    local merged="$1" dir="$OUT/forge/.comment_pages" thread cursor n=0 pages
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    : > "$dir/index.tsv"
+
+    # The dollar signs below are GraphQL variables and stay literal.
+    # shellcheck disable=SC2016
+    local query='query($id:ID!,$cursor:String){
+  node(id:$id){
+    ... on PullRequestReviewThread{
+      comments(first:100, after:$cursor){
+        pageInfo{ hasNextPage endCursor }
+        nodes{ author{ login } body createdAt }
+      }
+    }
+  }
+}'
+
+    while IFS=$'\t' read -r thread cursor; do
+        [[ -n "$thread" && -n "$cursor" ]] || continue
+        pages=0
+        while [[ -n "$cursor" ]] && ((pages < 20)); do
+            pages=$((pages + 1))
+            n=$((n + 1))
+            if ! gh api graphql -f "id=$thread" -f "cursor=$cursor" -f "query=$query" \
+                    > "$dir/page_$n.json" 2>/dev/null; then
+                rm -f "$dir/page_$n.json"
+                break
+            fi
+            printf '%s\t%s\n' "$thread" "$dir/page_$n.json" >> "$dir/index.tsv"
+            cursor="$(comment_page_cursor "$dir/page_$n.json")"
+        done
+    done < <(threads_with_more_comments "$merged")
+
+    fold_comment_pages "$merged" "$dir"
 }
 
 main() {

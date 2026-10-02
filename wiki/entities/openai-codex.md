@@ -1,7 +1,7 @@
 ---
 title: OpenAI Codex
 created: 2026-08-08
-updated: 2026-09-05
+updated: 2026-10-01
 type: entity
 tags: [codex, skill, agent, hook, plugin, system-prompt, frontmatter, discovery, verification-gap]
 sources: []
@@ -24,8 +24,9 @@ and against the `openai/codex` repository on `main`. On that date no local Codex
 build had been located, so the configuration claims rest on documentation and
 source rather than on observation. On 13 August 2026 an installed CLI was found
 and read directly: `codex-cli 0.147.0-alpha.6.5`, shipped inside the ChatGPT
-desktop application bundle rather than on `PATH`. The skill-loading facts
-below carry that stamp. The configuration claims were not re-checked against it.
+desktop application bundle rather than on `PATH`. The skill-loading facts read
+from it are on [skill load paths](../concepts/skill-load-paths.md). The
+configuration claims were not re-checked against it.
 Re-verify before relying on any of them.
 
 ## Key facts and dates
@@ -49,44 +50,15 @@ project, and the skip is silent rather than reported. A relative path inside a
 project configuration resolves against the `.codex/` directory holding that
 `config.toml`.
 
-### Skill loading
+### Skill loading and the bundled binary
 
-Read on 13 August 2026 out of the installed CLI binary, `codex-cli
-0.147.0-alpha.6.5`. Finding the binary is itself the first fact: it ships inside
-the ChatGPT desktop application at a fixed bundle path
-(`ChatGPT.app/Contents/Resources/codex` on macOS), so a `PATH` lookup, a package
-manager listing, and a shell `which` all miss an installed Codex, which the
-instructions-slot section below already warns about for `codex debug models`.
-
-Codex splits skill validation from skill loading, and the two enforce different
-things. The skill-creation and install tooling requires `name` and `description`
-in `SKILL.md` frontmatter and validates every key against a closed allowlist of
-`name`, `description`, `license`, `allowed-tools`, and `metadata`, rejecting
-anything else with an `Unexpected key(s) in SKILL.md frontmatter` error. The
-runtime loader is tolerant of what that allowlist rejects: skill files placed
-under `skills/` by direct copy carrying keys outside the allowlist (`version`,
-`author`) load and run. A skill's `version:` is therefore not merely unread here,
-it is outside the tooling's allowlist entirely, while still tolerated at load
-time. The skill's name comes from frontmatter, with the tooling offering a name
-override that "defaults to SKILL.md frontmatter"; no equality between the name
-and its directory is enforced.
-
-At the listing layer the runtime truncates skill metadata to fit a skills
-context budget, omits a skill whose metadata is too large to list, and caps the
-`/skills` scan at a traversal limit. Each is visible in the binary's own strings
-(`truncated skill metadata to fit skills context budget`, `Some skills were
-omitted because their metadata is too large.`, `/skills scan reached its
-traversal limit`).
-
-One negative is worth recording because a task in this repository asserted the
-opposite: the per-file loader messages the Claude Code build emits appear nowhere
-in the Codex binary. Those messages are `Skipping plugin skill <path>: not a
-regular file or exceeds <N> byte limit`, `Multiple skill files found`, and
-`Failed to load skill from`. That message family, and the one-mebibyte plugin-skill byte limit it
-names, belong to
-[Anthropic Claude Code](anthropic-claude-code.md)'s skill load path. Codex's
-tooling resolves the exact uppercase `SKILL.md` spelling; whether its runtime
-matches the filename case-insensitively is unverified.
+The skill load path read out of the installed CLI on 13 August 2026 is on
+[skill load paths](../concepts/skill-load-paths.md) beside Claude's. Finding the
+binary is itself the first fact: it ships inside the ChatGPT desktop application
+at a fixed bundle path (`ChatGPT.app/Contents/Resources/codex` on macOS), so a
+`PATH` lookup, a package manager listing, and a shell `which` all miss an
+installed Codex, which the instructions-slot section below already warns about
+for `codex debug models`.
 
 ### Agent roles
 
@@ -203,6 +175,6 @@ alone can reuse stale cached files.
 - `github.com/openai/codex` on `main`, `codex-rs/protocol/src/models.rs` and
   `codex-rs/core`.
 - The `codex-cli 0.147.0-alpha.6.5` binary bundled in the ChatGPT desktop
-  application, read on 13 August 2026, for the skill-loading facts.
+  application, read on 13 August 2026, for where the binary ships.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

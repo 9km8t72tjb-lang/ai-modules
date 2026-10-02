@@ -2,7 +2,7 @@
 description: Give the git_checkout and git_refresh harnesses the same sonnet-pinned eval runner the other Pattern A harnesses ship, so an eval sweep reaches their eleven behavioral evals.
 scope: "local test harnesses"
 created: 2026-09-05T02:10:57
-updated: 2026-09-05T02:10:57
+updated: 2026-10-01T22:16:21
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -44,7 +44,7 @@ behavioral harness ran from a command; these two could not, and their evals went
 unexercised in a run that was meant to cover the repo.
 
 Two skill tasks built these harnesses:
-[the git_checkout skill task](ai-dev_git-checkout-skill.md) and
+[the git_checkout skill task](archive/ai-dev_git-checkout-skill.md) and
 [the archived git_refresh skill task](archive/ai-dev_git-refresh-skill.md).
 Each accepted the harness on the evals being *defined*, not on their being
 runnable, so neither owns this work.

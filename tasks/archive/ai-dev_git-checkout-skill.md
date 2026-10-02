@@ -2,8 +2,8 @@
 description: Add a git_checkout skill to ai_dev that switches the repo onto an existing branch wherever it lives, creating a tracking branch from the sole remote carrying the name and holding on ambiguity.
 scope: plugins/ai_dev/skills
 created: 2026-09-02T18:13:37
-updated: 2026-09-02T19:52:26
-status: audited
+updated: 2026-10-01T22:16:12
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -25,7 +25,7 @@ Four cases carry the value. The remote-tracking ref has to exist locally before 
 
 The skill takes the `git_checkout` name for family coherence with `git_commit` and `git_refresh`, and because "checkout" is the word users type. The name is broader than the behaviour, since `git checkout` also restores paths over uncommitted work, so the `description:` and the skill body carry the boundary explicitly rather than leaving the router to infer it from the name.
 
-[git_refresh](../plugins/ai_dev/skills/git_refresh/SKILL.md) is the structural and behavioural model to follow: a pseudo-XML skill body, the git work bundled under `scripts/`, a `references/` manual-fallback note, and the conservative dirty-worktree stance that surfaces blocked state rather than stashing it. Both existing siblings also put the explicit-request guard in the `description:` prose rather than in a frontmatter flag, and `git_checkout` follows that same convention. The standing repo rules own skill authoring, registration, versioning, and the both-audiences `description:` contract; this task supplies only the `git_checkout`-specific behaviour.
+[git_refresh](../../plugins/ai_dev/skills/git_refresh/SKILL.md) is the structural and behavioural model to follow: a pseudo-XML skill body, the git work bundled under `scripts/`, a `references/` manual-fallback note, and the conservative dirty-worktree stance that surfaces blocked state rather than stashing it. Both existing siblings also put the explicit-request guard in the `description:` prose rather than in a frontmatter flag, and `git_checkout` follows that same convention. The standing repo rules own skill authoring, registration, versioning, and the both-audiences `description:` contract; this task supplies only the `git_checkout`-specific behaviour.
 
 ## Approach
 
@@ -50,7 +50,7 @@ The run resolves the branch name the user gave, then switches, in this order:
 - Checking out a bare commit or tag into detached `HEAD`, since every path this skill takes ends on a named local branch.
 - Pruning remote-tracking refs and deleting local branches, which the `git_refresh` sibling owns.
 
-Bundle the git logic under `scripts/` per the repo's helper-script rule, and apply the [harness_portability](../plugins/ai_dev/skills/harness_portability/SKILL.md) skill so the script runs under both OpenAI Codex and Anthropic Claude and across macOS and Linux, where BSD-versus-GNU differences in git porcelain parsing, `sed`, and `grep` are the usual breakage. Write the `description:` for both audiences per the standing rule: a compact statement of what the skill does, the trigger phrases a router needs, and the boundary that keeps file-restore and branch-creation requests away. Mirror the `tests/git_commit/` skill-creator-aligned harness pattern for the new test surface.
+Bundle the git logic under `scripts/` per the repo's helper-script rule, and apply the [harness_portability](../../plugins/ai_dev/skills/harness_portability/SKILL.md) skill so the script runs under both OpenAI Codex and Anthropic Claude and across macOS and Linux, where BSD-versus-GNU differences in git porcelain parsing, `sed`, and `grep` are the usual breakage. Write the `description:` for both audiences per the standing rule: a compact statement of what the skill does, the trigger phrases a router needs, and the boundary that keeps file-restore and branch-creation requests away. Mirror the `tests/git_commit/` skill-creator-aligned harness pattern for the new test surface.
 
 This adds shipped content under `plugins/ai_dev/`, so registration and versioning for the landing commit follow the standing repo rules, which own the plugin version-lockstep procedure.
 

@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-09-05
+updated: 2026-10-01
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -62,9 +62,8 @@ disallows any path matching `*legacy*`, which keeps a legacy artefact in the
 repository while ensuring it reaches nobody, and Claude carries
 `style:natural-language`.
 
-The style directive lives here rather than in the style file because Claude's
-output-style frontmatter rejects a fifth key outright, so an in-file marker would
-break the loader that has to read it.
+The style directive lives here rather than in the style file, and
+[output style delivery design](output-style-delivery-design.md) records why.
 
 ### Copying is not the only transform
 
@@ -77,8 +76,7 @@ fan-out rather than one write, because its
 rather than replacing it, which is what the script's key-merge function exists
 for; Codex and Antigravity are the two targets a shipped hook file actually
 reaches that way today, and
-[hook surface portability](hook-surface-portability.md) has the per-target
-routing.
+[hook delivery design](hook-delivery-design.md) has the per-target routing.
 
 The reasons behind each transform are per-harness facts and live on the harness
 pages, starting with
@@ -98,10 +96,10 @@ That override is a silent-failure surface as much as it is a feature. The deploy
 merges its key, logs the merge, and reports the run as successful, and nothing in
 that report separates a style that took effect from one a project-local key
 already shadows. The operator reads a clean summary and then meets a session that
-ignores the style. On Claude the confusion compounds, because the only interactive
+ignores the style. On Claude the confusion compounds, because every interactive
 route writes the file that wins, recorded on
-[Claude output styles](claude-output-styles.md), so a style picked by hand sticks
-while the deployed one looks broken.
+[Claude output style selection](claude-output-style-selection.md), so a style
+picked by hand sticks while the deployed one looks broken.
 
 What the deploy can honestly say about this is bounded by what it can read. It
 resolves its own repository root by walking up from the script's own location to

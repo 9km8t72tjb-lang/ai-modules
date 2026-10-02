@@ -14,10 +14,34 @@ repo="$(init_remote_repo "$target" main)"
 cd "$repo"
 mkdir -p src tests
 printf 'def add(a, b):\n    return a + b\n' > src/calc.py
+# The runner honours its flags: --fast runs the one test, and --strict also
+# enforces the --coverage-min floor over the public functions in src/calc.py.
+# Base and branch both pass --fast, while --strict passes on the base and fails
+# on the branch, whose new divide() has no test.
 cat > tests/run_tests.sh <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
+strict=no
+floor=0
+while (($# > 0)); do
+    case "$1" in
+        --strict) strict=yes ;;
+        --coverage-min) floor="$2"; shift ;;
+    esac
+    shift
+done
+root="$(cd "$(dirname "$0")/.." && pwd)"
 echo "calc tests: 1 passed"
+if [[ "$strict" == yes ]]; then
+    public=$(grep -c '^def ' "$root/src/calc.py")
+    tested=1
+    coverage=$((tested * 100 / public))
+    echo "coverage: ${coverage}% of ${public} public functions (floor ${floor}%)"
+    if ((coverage < floor)); then
+        echo "coverage below the floor"
+        exit 1
+    fi
+fi
 SH
 chmod +x tests/run_tests.sh
 # The documented entry point runs the fast subset.

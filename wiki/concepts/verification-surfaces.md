@@ -1,9 +1,9 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-08-30
+updated: 2026-10-02
 type: concept
-tags: [skill, repo-structure, authoring, verification-gap]
+tags: [skill, repo-structure, authoring, claude, verification-gap]
 sources: []
 confidence: medium
 ---
@@ -79,6 +79,23 @@ This practice is recorded in `tests/CLAUDE.md` and encoded in each runner's
 default model. Both are committed now, so any clone can check the claim rather
 than take it on one machine's reading.
 
+### A worker inherits the host's instructions unless it is isolated
+
+A behavioural eval runs its subject as a `claude -p` worker, and that worker
+reads more than the harness hands it: the user-level settings, a deployed output
+style among them, and every `CLAUDE.md` its ancestor walk reaches, which takes
+in the user-level file when the working directory sits under the home directory
+([Anthropic Claude Code](../entities/anthropic-claude-code.md)). A sandbox staged
+inside this repository therefore runs its worker under the repository's and the
+user's standing instructions and under the user's style, which confounds any eval
+whose subject is prose. A sandbox outside the home directory and any repository,
+with the worker started under `--setting-sources project,local`, keeps those out
+while a style staged in the sandbox still loads
+([Claude output style selection](claude-output-style-selection.md)). A malformed
+sandbox settings file fails silently, so a run that depends on a staged style
+proves the style loaded before it measures anything. The backlog carries the
+work to isolate the existing prose harness and to build a style harness this way.
+
 ### Trigger coverage is a third question, asked separately
 
 Whether a skill fires at all on a realistic user message is a property of its
@@ -153,6 +170,9 @@ reading a distribution behind a single conjoined bit is the wrong measurement, s
 a verdict has to be read per behaviour across runs, but how many passing runs
 make one behaviour's verdict stays unrecorded.
 
+How far the host's instructions and style moved the results the prose harness
+has already recorded is unmeasured.
+
 ## Related concepts
 
 - [Skill family architecture](skill-family-architecture.md), for the description
@@ -176,3 +196,5 @@ make one behaviour's verdict stays unrecorded.
   committed versus regenerated.
 - The `tests/` tree, read 10 August 2026 for the two patterns and the model
   policy, and committed since 30 August 2026 so a clone can re-read it.
+- Marker probes of Claude Code build 2.1.226 on one machine on 2 October 2026,
+  for what a headless worker inherits from its host.

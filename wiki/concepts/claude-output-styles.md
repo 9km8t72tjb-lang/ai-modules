@@ -1,7 +1,7 @@
 ---
 title: Claude output styles
 created: 2026-08-08
-updated: 2026-09-05
+updated: 2026-10-02
 type: concept
 tags: [claude, output-style, system-prompt, frontmatter, deployment]
 sources: []
@@ -25,17 +25,21 @@ system prompt as two layers.
 Facts below were verified on 7 August 2026 against
 `code.claude.com/docs/en/output-styles` and `/docs/en/plugins-reference`, plus
 the Claude Code build installed on that date and the desktop application bundle,
-unless a passage names its own later date. The selection facts under
-`### Locations and activation` were re-verified on 10 August 2026 against build
-2.1.226. Re-verify before relying on them.
+unless a passage names its own later date. The built-in roster and the
+frontmatter handling were re-checked on 1 October 2026 against the docs page,
+the Claude Code changelog, and build 2.1.284, and each of those passages names
+that date. The selection facts carry their own dates on
+[Claude output style selection](claude-output-style-selection.md). Re-verify
+before relying on them.
 
 ## Current state of knowledge
 
 ### The two layers
 
 A style layer holds exactly one occupant. The built-in Default fills it unless a
-style is selected, and Proactive, Explanatory, and Learning are the other
-built-in occupants a user switches between.
+style is selected, and Proactive, Concise, Explanatory, and Learning are the
+other built-in occupants a user switches between. Concise arrived in v2.1.237,
+which the changelog and the docs page both stated on 1 October 2026.
 
 An engineering layer holds the built-in software-engineering instructions
 covering how to scope changes, write comments, and verify work.
@@ -52,6 +56,13 @@ default style guidance it has no way to remove, which is why user-authored style
 rules placed there land weakly and inconsistently. Claude reinforces the
 difference at runtime by issuing reminders to adhere to the active style during
 the conversation, which no rules file receives.
+
+A style body handed to a headless worker with `--append-system-prompt-file`
+arrives the same way. On 2 October 2026 against build 2.1.226, a marker style
+body passed with that flag reached the worker, and the CLI's help describes the
+append flags as adding to the default system prompt, so the body sits beside
+whatever holds the style layer rather than in its place. That build's option
+list leaves the flag out and names it only inside the `--bare` description.
 
 ### Two scope limits
 
@@ -87,7 +98,7 @@ The two modes need different placements, different activation instructions, and
 different removal steps, so a style written for one does nothing when dropped
 into the other's channel.
 
-### Locations and activation
+### Locations
 
 A style file lives at user level in `~/.claude/output-styles/`, at project level
 in `.claude/output-styles/`, or in the managed-settings directory, and the
@@ -96,30 +107,10 @@ styles load from every `.claude/output-styles/` between the working directory an
 the repository root, and since v2.1.178 the directory nearest the working
 directory wins a collision.
 
-Selection is the `outputStyle` settings key, and project and local settings
-outrank the user-level key that the global mode sets, on the three-file order
-recorded under `### Configuration roots` on
-[Anthropic Claude Code](../entities/anthropic-claude-code.md). Running `/config`
-and choosing Output style writes the pick to `.claude/settings.local.json` at
-local project scope, so an operator who selects a style that way has bound one
-project rather than the machine. The picker offers no scope choice at all, which
-sets it apart from the permission-rules editor in the same dialog, where a rule
-can be filed at user, project, or local scope. Both facts were re-verified on
-10 August 2026 against build 2.1.226, from the picker's own write target and from
-observed behaviour where a project-local value beat a user-level one.
-
-The consequence for deployment is that a machine-wide style has no interactive
-route. Since neither the picker nor any CLI subcommand writes the user-level
-key, writing the user-level settings file is the only way to set it, and a
-project holding its own local `outputStyle` keeps overriding that value until
-the key is removed there. The retired surfaces are on
-[Anthropic Claude Code](../entities/anthropic-claude-code.md).
-
-The style is read into the system prompt once at session start, so an edit to
-either half takes effect after `/clear` or in a new session.
-
-Two documented activation routes are gone and are recorded on
-[Anthropic Claude Code](../entities/anthropic-claude-code.md).
+A style takes effect once the `outputStyle` settings key names it. Which file
+each route writes, why a machine-wide style has no interactive route, when a
+switch applies, and the history of the `/output-style` command are on
+[Claude output style selection](claude-output-style-selection.md).
 
 ### Plugin-bundled styles
 
@@ -145,17 +136,29 @@ mode.
 
 ### Frontmatter
 
-The schema accepts exactly four keys: `name`, `description`,
-`keep-coding-instructions`, and `force-for-plugin`. It rejects a fifth key
-outright rather than ignoring it, which is the opposite of Claude's tolerant
-agent frontmatter. So the union-of-native-fields pattern has no equivalent here,
-and a style file stays single-harness in its metadata as well as its effect.
+The schema declares four keys: `name`, `description`,
+`keep-coding-instructions`, and `force-for-plugin`. Build 2.1.284, read on
+1 October 2026, checks a style's frontmatter against that strict schema only as
+a shadow validation. An unknown key or a wrong value type is reported to
+telemetry, and the style loads regardless. The docs page agrees that a misspelled
+field is ignored without an error. It adds that frontmatter which fails to parse
+still loads the style under its file name with no fields set.
+
+The 7 August pass recorded that a fifth key was rejected outright. Build 2.1.226
+already carried the same shadow-check telemetry, and no earlier build was
+re-read, so it is unknown whether any build ever rejected one.
+
+A fifth key is therefore harmless to the loader, and it is still pointless,
+because Claude ignores it and no other harness reads a style file. The
+union-of-native-fields pattern that agent frontmatter needs has nothing to unite
+here, so a style file stays single-harness in its metadata as well as its effect.
 
 Claude strips the frontmatter and injects the body alone, so a port to another
 harness carries the body and drops the block rather than shipping the file whole.
 
 `force-for-plugin` is meaningful only on a plugin-bundled style. Set on a
-user-level file it is ignored and logged as a warning on every load.
+user-level file it is ignored and logged as a warning on every load. Build
+2.1.284 still carried that warning on 1 October 2026.
 
 ## Open questions
 
@@ -168,6 +171,8 @@ native home, stays open.
 
 ## Related concepts
 
+- [Claude output style selection](claude-output-style-selection.md) for the
+  routes that set the `outputStyle` key and the scope each one writes.
 - [System prompt substitution across harnesses](../comparisons/system-prompt-substitution-across-harnesses.md)
   for what carries the same intent on the other five targets.
 - [Output style delivery design](output-style-delivery-design.md) for what this
@@ -180,5 +185,11 @@ native home, stays open.
 
 - `code.claude.com/docs/en/output-styles` and `/docs/en/plugins-reference`.
 - The Claude Code build and desktop bundle installed on 7 August 2026.
+- The raw Markdown of `code.claude.com/docs/en/output-styles` and the full Claude
+  Code changelog, read on 1 October 2026.
+- Claude Code builds 2.1.284 and 2.1.226, read on 1 October 2026 for the
+  shadow-only frontmatter validation and the `force-for-plugin` warning.
+- Claude Code build 2.1.226 on one machine, probed on 2 October 2026 with a
+  marker style body, for `--append-system-prompt-file`.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

@@ -78,7 +78,7 @@ don't bring up new harnesses under Pattern B.
   plugin-meta lockstep checks): the ordered evidence collection, the two
   commit walks, the base-side versions of deleted files, the test merge, the
   head-against-its-upstream relationship the fast-forward decision rests on,
-  the stub-`gh` thread pagination, and the heading-range helper. `evals/` holds 48
+  the stub-`gh` thread and thread-comment pagination, and the heading-range helper. `evals/` holds 48
   behavioral evals over 36 fixtures, run through a sonnet-pinned
   `evals/run.py` with a deterministic `grade.sh`. Forge fixtures put a stub
   `gh` on `PATH` that serves fixture JSON and logs every call, so a run that

@@ -153,8 +153,14 @@ gh_count_is()      { [[ "$(grep -cF -- "$1" "$gh_log" 2>/dev/null || echo 0)" ==
 # substring match on the first also matches the second and reports a read as a
 # post. Anchor the subcommand between word boundaries, and give the absence
 # checks their own names so a `check` line reads as the behavior it asserts.
-gh_posted_review()     { [[ -s "$gh_log" ]] && grep -qE '(^|[[:space:]])pr review([[:space:]]|$)' "$gh_log"; }
-gh_posted_comment()    { [[ -s "$gh_log" ]] && grep -qE '(^|[[:space:]])pr comment([[:space:]]|$)' "$gh_log"; }
+# A `--help` or `-h` call only prints usage, so it neither posts nor edits.
+gh_subcommand_calls() {
+    [[ -s "$gh_log" ]] || return 1
+    grep -E "(^|[[:space:]])pr $1([[:space:]]|\$)" "$gh_log" |
+        grep -vE -- '(^|[[:space:]])(--help|-h)([[:space:]]|$)'
+}
+gh_posted_review()     { gh_subcommand_calls review | grep -q .; }
+gh_posted_comment()    { gh_subcommand_calls comment | grep -q .; }
 gh_no_review_posted()  { ! gh_posted_review; }
 gh_no_comment_posted() { ! gh_posted_comment; }
 
@@ -162,7 +168,7 @@ gh_no_comment_posted() { ! gh_posted_comment; }
 # invocations reads two attempts at one edit as two comments. A creation is the
 # call that carries no `--edit-last`, which is the property the abstention
 # assertions actually mean.
-gh_created_comment()    { [[ -s "$gh_log" ]] && grep -E '(^|[[:space:]])pr comment([[:space:]]|$)' "$gh_log" | grep -qvE -- '--edit-last'; }
+gh_created_comment()    { gh_subcommand_calls comment | grep -qvE -- '--edit-last'; }
 gh_no_comment_created() { ! gh_created_comment; }
 
 # Editing a comment already posted has three correct routes, and the check
@@ -270,6 +276,70 @@ reviewed_commit_named() {
 # prove, since the base comparison uses the same words.
 says_staged_head() { reviewed_commit_named; }
 
+# The first line under the closing heading, lowercased, with quote, emphasis,
+# and code marks stripped, so "> **Yes.**" and "Yes." read the same. Fenced
+# code is skipped, so a heading quoted inside evidence cannot stand in for the
+# report's own closing section.
+closing_answer() {
+    have_response || return 1
+    awk '
+        /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
+        fence { next }
+        /^#+[[:space:]]+Can (it be structurally merged as it is|they be committed onto the default branch as they are)/ { found = 1; next }
+        found && /^#+[[:space:]]/ { exit }
+        found && NF {
+            line = tolower($0)
+            sub(/^[[:space:]>*_`]+/, "", line)
+            print line
+            exit
+        }
+    ' "$response"
+}
+
+# The closing answer opens with the given word, so "none" never passes as "no".
+closing_answer_is() {
+    local answer pattern="^$1([^a-z]|\$)"
+    answer="$(closing_answer)"
+    [[ "$answer" =~ $pattern ]]
+}
+
+# A finding's bold title line, quoted or not, matching every pattern given, so a
+# check can ask whether one finding owns its own entry.
+finding_title_matches() {
+    have_response || return 1
+    local titles pattern
+    titles="$(grep -E '^[[:space:]]*(>[[:space:]]*)?\*\*' "$response")" || return 1
+    for pattern in "$@"; do
+        titles="$(printf '%s\n' "$titles" | grep -iE -- "$pattern")" || return 1
+    done
+}
+
+# A first review writes a findings heading only when a finding or decision sits
+# under it, so a heading holding nothing but a placeholder line such as "No
+# findings." is the shape the report rule replaces. A bold title line is a
+# finding, whatever its first word.
+no_placeholder_findings_section() {
+    have_response || return 1
+    awk '
+        function flush() {
+            if (section && filler > 0 && filler == lines) bad = 1
+            section = 0; lines = 0; filler = 0
+        }
+        /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
+        fence { next }
+        /^## / { flush() }
+        /^## (What is critical|Bugs it may introduce|What should be fixed though it is not a clear bug|Decisions the implementer must make before fixing)[[:space:]]*$/ { section = 1; next }
+        section && NF {
+            lines++
+            if ($0 ~ /^[[:space:]]*(>[[:space:]]*)?\*\*/) next
+            text = tolower($0)
+            sub(/^[[:space:]>*_]+/, "", text)
+            if (text ~ /^(no |none|nothing)/ || text ~ /no (critical |open )?(findings|decisions|bugs)/) filler++
+        }
+        END { flush(); exit bad }
+    ' "$response"
+}
+
 if $form_only; then
     echo "grading eval $eval_id report form in $response"
 else
@@ -287,7 +357,8 @@ case "$eval_id" in
         check "the changed gate target is named" says_regex "Makefile|make test"
         check "findings carry a non-blocking label" says "non-blocking"
         attest "every finding gives location, evidence, consequence, and Fix; a judgement-call fix points to its decision, whose options, suggested default, and owner appear only in the decisions section"
-        attest "the closing answer is yes, drawn from the test merge and the counts"
+        check "the closing answer is yes" closing_answer_is yes
+        attest "the closing answer draws on the test merge and the counts"
     fi
     check "no Location field label" says_not "**Location:**"
     check "no Label field label" says_not "**Label:**"
@@ -314,7 +385,7 @@ case "$eval_id" in
   3)
     check "the conflicting file is named" says "config.ini"
     check "the report names the conflict" says_regex "conflict"
-    attest "the closing answer is no"
+    check "the closing answer is no" closing_answer_is no
     ;;
   4)
     check "the base resolves to trunk" says "trunk"
@@ -371,7 +442,8 @@ case "$eval_id" in
     check "the checks were read" gh_called "statusCheckRollup"
     check "the required review is named" \
         says_regex "REVIEW_REQUIRED|required (review|approval)|review required|requires .*approval"
-    attest "the closing answer is yes with the required review as context"
+    check "the closing answer is yes" closing_answer_is yes
+    attest "the required review appears as context beside the closing answer"
     ;;
   14)
     check "the forge head SHA is named" says "$(cat "$target/.forge_head" | cut -c1-7)"
@@ -384,6 +456,7 @@ case "$eval_id" in
     check "the second page of threads was requested" gh_called "-F cursor="
     check "the resolved thread is accounted for" says_regex "resolved"
     check "the outdated thread is accounted for" says_regex "outdated"
+    check "the second page of a thread's comments was requested" gh_called "PullRequestReviewThread"
     ;;
   16)
     check "the stale version claim is named" says "3.1.0"
@@ -393,10 +466,12 @@ case "$eval_id" in
   17)
     check "the decisions log is cited" says "decisions.md"
     check "the decision is treated as settled" says_regex "settled|already decided|decided"
+    check "no findings heading holds only a placeholder" no_placeholder_findings_section
     ;;
   18)
     check "the tail-of-file defect is named" says_regex "summarize"
     check "the divide-by-zero is named" says_regex "zero|empty"
+    check "the closing answer is yes" closing_answer_is yes
     ;;
   19)
     check "the unreadable path is named" says "src/locked.py"
@@ -432,12 +507,16 @@ case "$eval_id" in
   25)
     check "the workflow gate is named" says_regex "ci\.yml|workflow"
     check "the local gate is named" says_regex "make test|run_tests\.sh"
+    check "no findings heading holds only a placeholder" no_placeholder_findings_section
     attest "the report separates gates it ran locally from gates the workflow runs"
     ;;
   26)
     check "the documented command is named" says "--fast"
     check "the workflow command is named" says "--strict"
     check "the disagreement is reported" says_regex "disagree|differ|mismatch"
+    check "the disagreement is a finding of its own" \
+        finding_title_matches 'disagree|differ|mismatch|diverg|inconsisten|out of sync' \
+        'make|workflow|ci\.yml|--fast|--strict|gate|CI|local'
     ;;
   27)
     check "the local gate is named" says_regex "make test|run_tests\.sh"

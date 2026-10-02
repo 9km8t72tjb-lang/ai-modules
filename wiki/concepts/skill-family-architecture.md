@@ -1,7 +1,7 @@
 ---
 title: Skill family architecture
 created: 2026-08-08
-updated: 2026-09-05
+updated: 2026-10-01
 type: concept
 tags: [skill, agent, authoring, repo-structure, portability, discovery]
 sources: []
@@ -111,7 +111,7 @@ The second is where it draws its severity lines, and the answer is that the
 harness draws them rather than the house style. A finding **blocks** only where
 the harness fails to load the skill or cannot route it, each case read out of the
 harness's own load path recorded on
-[Anthropic Claude Code](../entities/anthropic-claude-code.md): frontmatter that is
+[skill load paths](skill-load-paths.md): frontmatter that is
 absent or unparseable, an absent `name` or `description`, a parser-hostile
 character, a skill file the loader skips as non-regular or over its byte limit,
 more than one skill file in one directory, and a purpose summary byte-identical to

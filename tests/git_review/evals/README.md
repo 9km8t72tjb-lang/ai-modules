@@ -42,7 +42,8 @@ worker's `PATH` at it through `<target>/gh_env`. The stub serves the JSON in
 `<target>/payloads/` and appends every invocation to `<target>/gh_calls.log`.
 It answers `auth status` as authenticated, serves the pull request body, the
 issue comments, the review bodies, the check rollup, the branch rulesets, and
-two pages of review threads, and returns a comment URL for a post.
+two pages of review threads, a second page of one thread's own comments, and
+returns a comment URL for a post.
 
 The cursor test in the stub matches the `-F cursor=` **argument** rather than the
 word `cursor`, because the GraphQL query text itself declares `$cursor`. Matching
@@ -61,7 +62,7 @@ loosely would serve page two on the very first call and hide a pagination bug.
 | `default_branch_uncommitted` | 5 | On the default branch with staged, unstaged, and untracked changes plus one commit ahead of the upstream. |
 | `delta_rereview` | 32 | A prior review by this reviewer, newer author replies, and a tree carrying one instance of every delta tag. |
 | `existing_post` | 42 | A comment already on the pull request from this reviewer. |
-| `gate_disagreement` | 26 | The workflow and the documented make target run different commands for the same gate. |
+| `gate_disagreement` | 26 | The workflow and the documented make target run different commands for the same gate; on the branch the documented command passes and the workflow's strict command fails its coverage floor. |
 | `gates_workflow_and_runner` | 25 | A test suite plus a workflow whose gate command matches the documented one. |
 | `guardrails_absent` | 29 | The same shape of change with none of those documents present. |
 | `guardrails_present` | 28 | All four root guardrail documents, a precedent commit on the same charter constraint, and a branch that crosses it. |
@@ -69,7 +70,7 @@ loosely would serve page two on the very first call and hide a pagination bug.
 | `lint_baseline` | 23 | Three sibling modules already carry the lint hit, and the linter the project names is absent from PATH. |
 | `posting` | 36, 37, 38, 39, 40 | An ordinary pull request with the stub gh, used by the publishing evals. |
 | `pr_head_mismatch` | 14 | The forge head runs one commit ahead of the checked-out HEAD. |
-| `pr_paged_threads` | 15 | Review threads across two pages, including one resolved and one outdated thread. |
+| `pr_paged_threads` | 15 | Review threads across two pages, including one resolved and one outdated thread, with the resolved thread's own comments across two pages. |
 | `pr_required_review` | 13 | A pull request blocked only by a required review, with two issue comments, one review body, and one inline thread. |
 | `pr_stale_claims` | 16 | A pull request body claiming a version and a test count the branch does not carry. |
 | `push_approval` | 41 | One approval on the pull request and a ruleset that dismisses stale reviews on push. |
@@ -194,7 +195,7 @@ The forge's head SHA differs from the checked-out HEAD, so the lead names the mi
 
 > Assess pull request 7.
 
-The review threads span two pages and include one resolved and one outdated thread; the run reads every page and accounts for both.
+The review threads span two pages and include one resolved and one outdated thread, and the resolved thread's own comments span two pages, with the author's reply on the second. The run reads every page of both and accounts for the resolved and the outdated thread.
 
 ### 16: `pr_stale_claims`
 
@@ -206,13 +207,13 @@ The pull request body claims a version and a test count the branch does not carr
 
 > Review this branch. The eviction question is settled; see docs/decisions.md.
 
-The decision the owner already made is treated as settled rather than listed as open.
+The decision the owner already made is treated as settled rather than listed as open, and a findings heading with nothing under it is left out rather than filled with a placeholder line.
 
 ### 18: `deep_file_defect`
 
 > Review this branch.
 
-The only defect sits at the end of a 4800-line file, so finding it proves the whole file was read.
+The only defect sits at the end of a 4800-line file, so finding it proves the whole file was read. The closing answer stays yes, because the defect belongs to the approvability verdict in the lead.
 
 ### 19: `unreadable_path`
 
@@ -254,13 +255,13 @@ The renamed schema field leaves a consumer on the old name, and the report names
 
 > Review this branch.
 
-The report states which gates ran locally and which the workflow runs for the same commit.
+The report states which gates ran locally and which the workflow runs for the same commit, and a findings heading with nothing under it is left out rather than filled with a placeholder line.
 
 ### 26: `gate_disagreement`
 
 > Review this branch.
 
-The documented make target and the workflow run different commands for the same gate, and the disagreement is its own finding.
+The documented make target and the workflow run different commands for the same gate, and the disagreement is its own finding. On the branch the documented command passes and the workflow's command fails, so the finding states a consequence the run can reproduce.
 
 ### 27: `runner_no_workflow`
 

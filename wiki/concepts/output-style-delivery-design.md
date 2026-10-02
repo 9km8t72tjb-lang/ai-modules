@@ -1,7 +1,7 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-08-10
+updated: 2026-10-01
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
 sources: []
@@ -116,12 +116,14 @@ the work should be scoped as such.
 ### Selecting the active style lives in the deploy configuration
 
 If the deploy always merges the `outputStyle` key, the arm has to know which
-style is the default when the source directory holds more than one file. Claude's
-frontmatter schema is strict at four keys and rejects a fifth outright, so a
-`default:` marker cannot live in the style file without breaking the loader. The
-marker goes into the deploy configuration instead, as a per-tool line naming the
-active style, which reuses a file the script already parses and keeps the style
-files portable.
+style is the default when the source directory holds more than one file. The
+marker goes into the deploy configuration, as a per-tool line naming the active
+style, which reuses a file the script already parses and keeps the style files
+portable. The decision first rested on a third reason as well, that a `default:`
+key in the style file would break Claude's loader. A read of build 2.1.284 on
+1 October 2026 found that the loader ignores an unknown key instead, as
+[Claude output styles](claude-output-styles.md) records. The placement now rests
+on the two reasons above.
 
 ### Both scopes come free, and two targets reject one of them
 

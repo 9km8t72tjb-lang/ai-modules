@@ -1,7 +1,7 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-09-05
+updated: 2026-10-02
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
 sources: []
@@ -48,6 +48,15 @@ a user-level one for the same key. Output styles layer their own discovery and
 collision rules on top of it, recorded on
 [Claude output styles](../concepts/claude-output-styles.md).
 
+A headless `claude -p` worker started with `--setting-sources project,local`
+reads only the project and local settings files, so the user-level
+`settings.json`, and any `outputStyle` it carries, stays out of that worker. In
+print mode a settings file that fails validation is dropped without an error: a
+project `settings.json` with a trailing comma left its `outputStyle` unapplied
+and printed nothing, which the CLI's own help also states for print mode. Both
+were observed on 2 October 2026 against build 2.1.226 on one machine, with a
+marker style whose reply token showed whether the style had loaded.
+
 ### Standing instruction files
 
 Two filenames carry project standing instructions to the model, `CLAUDE.md` and
@@ -71,43 +80,24 @@ obligation a worker will see, which is what
 [verification surfaces](../concepts/verification-surfaces.md) depends on for any
 eval that stages standing instructions.
 
+The search for those files runs past the repository root. Observed on 2 October
+2026 against build 2.1.226: marker instructions planted in one ancestor
+directory's `CLAUDE.md`, and in another ancestor's `.claude/CLAUDE.md`, both
+above the worker's git root, each reached a `claude -p` worker even under
+`--setting-sources project,local`. A worker whose working directory sits under
+the home directory therefore reaches `<home>/.claude/CLAUDE.md`, the user-level
+file, through that walk whatever the setting sources say. A worker inside this
+repository named the user-level file among its instructions under the flag,
+while a sandbox outside the home directory named none; that pair rests on the
+worker's report of its own context rather than on a marker. A worker that must
+run free of every host instruction file therefore needs both the flag and a
+working directory outside the home directory and outside any repository.
+
 ### Skill loading
 
-Five mechanics govern whether a skill file is found, loaded, and routable. All
-five were read on 13 August 2026 out of the installed Claude Code build 2.1.226
-and its desktop counterpart 2.1.227, which agree, and they are the load path's
-own code rather than documentation about it.
-
-The skill filename is matched **case-insensitively** against the pattern
-`skill.md` over the file's basename, so `SKILL.md`, `skill.md`, and `Skill.md`
-all load. When one directory holds more than one file matching that pattern, the
-loader takes the first and logs `Multiple skill files found in <dir>, using
-<name>`, which makes the file it loads a matter of directory order rather than
-of authorial intent.
-
-A plugin skill is read through a guard that stats the path and requires a
-**regular file no larger than 1048576 bytes**, one mebibyte. Failing either
-condition the loader skips the skill entirely and warns `Skipping plugin skill
-<path>: not a regular file or exceeds <N> byte limit`, interpolating the limit
-from its own constant. The stat follows symbolic links, so a symlink resolving to
-a regular file loads normally and only a broken link, a link to a directory, or a
-non-regular file trips the guard. A frontmatter the parser cannot destructure
-fails separately with `Failed to load skill from <path>: <error>`.
-
-The name a skill is **registered and routed under** is its frontmatter `name:`
-when that field is a non-empty string, falling back to the containing
-directory's basename only otherwise. The result is sanitised by replacing every
-character outside `[a-zA-Z0-9_-]` with a hyphen, then namespaced as
-`<plugin>:<skill>`. A `name:` disagreeing with its directory therefore loads,
-lists, and routes without complaint. The alignment this repository requires is
-its own convention rather than a harness constraint, which is why
-[skill family architecture](../concepts/skill-family-architecture.md) records the
-auditor reporting the mismatch below its blocking tier.
-
-A skill's `version:` is read by no field that gates loading or routing. The
-frontmatter key is recognised, and every schema that accepts it marks it
-optional, so a skill with no `version:` loads and activates normally. Any
-requirement for the field is a repository convention.
+What makes a skill file load and route here was read out of the installed
+build's own load path, and it is on
+[skill load paths](../concepts/skill-load-paths.md) beside the Codex equivalent.
 
 ### Agent definitions
 
@@ -158,28 +148,14 @@ style behaviour.
 
 ### Retired surfaces
 
-Two documented activation routes are gone, and instructions naming either will
-fail for whoever follows them. The standalone `/output-style` command was
-deprecated in v2.1.73 and removed in v2.1.91; those two version boundaries rest
-on the 7 August 2026 pass and were not re-checked, while build 2.1.226 was
-confirmed on 10 August 2026 to carry no such command, holding
-`.claude/output-styles/` only as a path string. `claude config` is no longer a CLI
-subcommand at all, re-verified on 10 August 2026 against that build by reading its
-own subcommand list, which contains no `config` entry.
+`claude config` is gone, and instructions naming it will fail for whoever follows
+them. It is no longer a CLI subcommand at all. That was re-verified on 10 August
+2026 against build 2.1.226 by reading the build's own subcommand list, which
+contains no `config` entry.
 
-Both closures land on one consequence worth stating outright: no interactive and
-no CLI surface writes the user-level `outputStyle`, so editing the user-level
-settings file is the only route to a machine-wide style. The `/config` picker is
-not that route, because it writes project-local scope, as recorded on
-[Claude output styles](../concepts/claude-output-styles.md).
-
-`/config` is an interactive terminal dialog, so a desktop-application session
-cannot reach the picker. On the desktop build inspected on 7 August 2026 the
-settings file was the only route. This is the page's weakest claim and the reason
-it carries the `verification-gap` tag: it was not re-checked on 10 August 2026,
-and the only support added since is an operator report that the style cannot be
-changed from the desktop application, which observes the symptom rather than the
-mechanism. Treat the desktop route as owed verification rather than settled.
+The `/output-style` command was retired as well, and v2.1.269 restored it. Its
+history, and the settings file each remaining style route writes, are on
+[Claude output style selection](../concepts/claude-output-style-selection.md).
 
 ## Relationships to other entities
 
@@ -197,13 +173,15 @@ mechanism. Treat the desktop route as owed verification rather than settled.
 
 - `code.claude.com/docs/en/output-styles` and `/docs/en/plugins-reference`.
 - The Claude Code build and desktop bundle installed on 7 August 2026.
-- The skill load path read out of installed builds 2.1.226 and 2.1.227 on
-  13 August 2026, for the skill-loading facts above.
 - The Claude Code build 2.1.226 inspected on 29 August 2026, for the file-edit
   read-state guard and its exact error.
 - The Claude Code build 2.1.226 inspected on 1 September 2026, for the hardcoded
   `CLAUDE.md` / `AGENTS.md` discovery, read out of its Codex-import warning
   table, together with two observed worker runs that honoured an `AGENTS.md`
   standing rule in a directory holding no `CLAUDE.md`.
+- Claude Code build 2.1.226 on one machine, probed on 2 October 2026 with marker
+  styles and marker instruction files in throwaway sandboxes, for the setting
+  sources a headless worker reads, the silently dropped settings file, and the
+  `CLAUDE.md` walk past the repository root.
 - The `harness_portability` skill in this repository, before its August 2026
   split.
