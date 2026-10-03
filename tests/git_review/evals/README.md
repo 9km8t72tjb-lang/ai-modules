@@ -58,7 +58,7 @@ loosely would serve page two on the very first call and hide a pagination bug.
 | `binary_and_generated` | 21 | One binary asset, one generated Go file, and one vendored file. |
 | `clean_change` | 2 | A docstring correction whose test already exists, so no heading has a finding. |
 | `conflicting_branch` | 3 | The base rewrote the same file after the branch left it, so the test merge conflicts on config.ini. |
-| `deep_file_defect` | 18 | A 4800-line file whose only defect sits at the very end. |
+| `deep_file_defect` | 18 | A whole-file diff spanning several thousand lines whose only defect sits in the final hunk. |
 | `default_branch_uncommitted` | 5 | On the default branch with staged, unstaged, and untracked changes plus one commit ahead of the upstream. |
 | `delta_rereview` | 32 | A prior review plus follow-up whose evidence homes map onto closed, open, open and not acknowledged, settled by a decision, declined-and-left-out, regressed, and new, with no tag named in the tree. |
 | `existing_post` | 42 | A comment already on the pull request from this reviewer. |
@@ -213,7 +213,7 @@ The decision the owner already made is treated as settled rather than listed as 
 
 > Review this branch.
 
-The only defect sits at the end of a 4800-line file, so finding it proves the whole file was read. The closing answer stays yes, because the defect belongs to the approvability verdict in the lead.
+The only defect sits in the final hunk of a whole-file diff spanning several thousand lines, with no comment naming it, so finding it proves a whole-file read of that unannounced tail defect. The closing answer stays yes, because the defect belongs to the approvability verdict in the lead.
 
 ### 19: `unreadable_path`
 

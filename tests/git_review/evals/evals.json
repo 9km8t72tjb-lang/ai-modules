@@ -261,7 +261,7 @@
     {
       "id": 18,
       "prompt": "Review this branch.",
-      "expected_output": "The only defect sits at the end of a 4800-line file, so finding it proves the whole file was read.",
+      "expected_output": "The only defect sits in the final hunk of a whole-file diff spanning several thousand lines, with no comment naming it, so finding it proves the whole file was read.",
       "files": [
         "evals/fixtures/deep_file_defect/setup.sh"
       ],

@@ -68,9 +68,10 @@ model, the eval id, and the prompt. Change any of those and the eval re-runs.
 ## Timeouts
 
 `--timeout` defaults to 600s, longer than the `git_commit` harness. A review
-reads every changed file, and the `deep_file_defect` fixture is a 4800-line file
-by design. If a run shows a transient single-eval timeout that recovers on
-retry, raise the timeout rather than chasing the symptom.
+reads every changed file, and the `deep_file_defect` fixture is a whole-file
+diff spanning several thousand lines by design; a fresh Cursor run of eval 18
+measured about 52 seconds. If a run shows a transient single-eval timeout that
+recovers on retry, raise the timeout rather than chasing the symptom.
 
 Run these sequentially. Two review workers on one machine contend for the model
 and both slow past the timeout; `run.py` already runs them in order.

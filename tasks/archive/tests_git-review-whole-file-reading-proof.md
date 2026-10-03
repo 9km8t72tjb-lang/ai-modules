@@ -2,9 +2,11 @@
 description: Restage the git_review deep_file_defect fixture as a whole-file diff with an unannounced tail defect, so eval 18 passes only for a run that reads the entire changed file.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-03T13:53:55
-status: ready
+updated: 2026-10-03T18:45:09
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make the git_review long-file eval prove a whole-file read
