@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-02 | Total pages: 32
+> Last updated: 2026-10-03 | Total pages: 33
 
 ## Entities
 
@@ -28,6 +28,7 @@
 - [Hook delivery design](concepts/hook-delivery-design.md): the shared-script layout, the uneven per-target deploy routing, the foreign hook files Copilot parses, and the decision to deliver Copilot natively.
 - [Hook surface portability](concepts/hook-surface-portability.md): four configuration schemas plus one that is code, four signalling contracts, additive layers, and guarantees that vary with the interception point.
 - [Instruction-defect classes](concepts/instruction-defect-classes.md): three ways an AI-consumed instruction passes review and fails at runtime (reach, disposition, intra-file contradiction), why review misses each, why measurement found them, and the measured limit where instruction repair ends and a mechanism must carry the property.
+- [Interpreter and tool-path portability](concepts/interpreter-and-tool-path-portability.md): stock macOS bash 3.2 as the bundled-script floor, the licence reason it stays, the login-shell PATH trap, and the constructs verified to fail on that build.
 - [Output style delivery design](concepts/output-style-delivery-design.md): the decision record behind the `styles/` source, the per-target delivery matrix, the marked-block write, and the scope rejections.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md): why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md): naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.

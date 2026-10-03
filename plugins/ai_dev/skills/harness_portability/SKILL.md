@@ -1,7 +1,7 @@
 ---
 name: harness_portability
 description: Cross-agent-harness and cross-OS portability review for runtime artefacts bundled inside skills and plugins. Use when creating, editing, reviewing, or troubleshooting shell scripts, Python or Node helpers, hooks and hook configuration, MCP servers, command wrappers, setup and install flows, plugin wiring, agent and subagent definitions, agent frontmatter, tool allowlists, read-only agent enforcement, output styles and their per-harness rules-file and instructions-file counterparts, skill wording, execution and initialization instructions, path handling, environment variables, permissions, or provider-specific OpenAI Codex, Anthropic Claude, Cursor, Google Antigravity, SST OpenCode, and GitHub Copilot in VS Code behaviour that must work across agent harnesses, macOS, and Linux.
-version: 1.0.14
+version: 1.0.15
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -54,7 +54,26 @@ license: MIT
     <rule>Confirm a target harness loads plugin-bundled hooks at runtime before shipping a blocking or lifecycle hook inside a plugin, and document the trust, enablement, reload, or cache-refresh step that makes the hook active.</rule>
     <rule>Reserve a project-level hook configuration for a repository that intentionally owns its own hook policy, for repository-local activation without a plugin install, or for a quick experiment before packaging. Keep one out of a plugin's own source repository when the normal goal is to install the plugin, because the installed plugin already contributes the hook and a committed project hook usually creates a second active source.</rule>
     <rule>Size a hook's guarantee by its actual interception point. Where a harness leaves a delegation path or a tool class uncovered, state the weaker guarantee rather than presenting the guard as equivalent to the same guard elsewhere.</rule>
-    <rule>Use POSIX shell features for shell scripts unless the script declares and checks for a stronger shell requirement such as Bash. Use Python standard-library APIs for path, JSON, subprocess, temporary-file, and filesystem operations when they are more portable than shell pipelines.</rule>
+    <rule>
+      Target bash 3.2 as the interpreter floor for bundled runtime shell scripts, because later bash releases carry a licence the vendor does not ship on macOS. Write those scripts with POSIX shell features at that floor. When a script genuinely needs a stronger shell, declare the required version and detect it at startup, failing with a message that names the required version and the interpreter actually running. Prefer these portable substitutes for constructs that sit above the floor:
+      - associative array (`declare -A`): indexed array of delimited entries with an exact-match scan
+      - case modification (`${var^^}`, `${var,,}`): bracket-class glob or `tr`
+      - `mapfile` / `readarray`: `while IFS= read -r` loop
+      - `&>> file`: `>>file 2>&1`
+      - `;;&` (case fallthrough): shared function called from each matching arm, or duplicated arm bodies
+      - `coproc`: background job (`command &`) with a FIFO (`mkfifo`) or temp files for the two streams
+      - `[[ -v var ]]`: `[ -n "${var+set}" ]`
+      - `declare -n` (nameref): `${!name}` for indirect expansion, or pass the value via arguments/stdout
+      - `wait -n`: `wait` on an explicit PID, or poll with `kill -0` until a chosen child exits
+      - `read -N`: `dd bs=1 count=N 2>/dev/null` (or `head -c N`) into a variable
+      - `shopt -s globstar`: `find` for recursive path walks
+      - `${var@Q}`: `printf %q "$var"`
+      - negative array index: compute a non-negative index from `${#arr[@]}` before subscripting
+      - `EPOCHSECONDS`: `date +%s`
+      - `printf '%(fmt)T'`: `date +fmt` with the matching format string
+      Use Python standard-library APIs for path, JSON, subprocess, temporary-file, and filesystem operations when they are more portable than shell pipelines.
+    </rule>
+    <rule>Treat a package-manager PATH entry that a login-shell profile contributes as unavailable in a non-login shell. Agent harnesses commonly spawn non-login shells, so an interpreter or tool assumption that holds in a developer's login terminal fails in harness-driven runs of the same command. Prefer what the operating system ships, and detect anything else with a clear failure when it is required.</rule>
     <rule>Resolve paths relative to the script, skill, plugin, or explicit user-provided root. Use environment variables and documented harness inputs for configuration; keep user-specific absolute paths out of published artefacts.</rule>
     <rule>Handle spaces, quotes, newlines, and special characters in file paths and user-provided values. Quote shell expansions, pass subprocess arguments as arrays where the language supports it, and keep data separate from command strings.</rule>
     <rule>Use feature detection for external commands, optional tools, shells, package managers, and OS-specific utilities, including a binary that may sit off the executable path inside an application bundle. Provide a clear error message or documented fallback when a required dependency is unavailable.</rule>
@@ -100,7 +119,7 @@ license: MIT
 
   <review_checklist>
     <paths_and_locations>Paths resolve from documented roots and support spaces or special characters.</paths_and_locations>
-    <shell_portability>Shell syntax, utilities, and flags work on macOS and Linux or are guarded with fallbacks.</shell_portability>
+    <shell_portability>Shell syntax, utilities, and flags work on macOS and Linux or are guarded with fallbacks. The interpreter version the script assumes sits at or above the bash 3.2 floor, and a stronger requirement is declared and detected.</shell_portability>
     <language_runtime>Python, Node.js, or other runtime code uses portable standard APIs for filesystem, process, encoding, and temporary-file behavior.</language_runtime>
     <harness_wiring>Skill and plugin prose explains execution and configuration through documented harness behavior rather than current-session implementation details.</harness_wiring>
     <fact_provenance>Every harness-specific claim the change depends on names the documentation, loader source, or installed build it was verified against, with its date, and every unconfirmed claim is carried as a stated gap rather than resolved by assumption.</fact_provenance>

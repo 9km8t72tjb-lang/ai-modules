@@ -1,7 +1,7 @@
 ---
 title: Deciding where knowledge belongs
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-10-03
 type: procedure
 tags: [authoring, skill, repo-structure]
 sources: []
@@ -80,3 +80,6 @@ or that a routine step completed, is noise the next reader has to filter.
   this rule governs.
 - [Skill family architecture](../concepts/skill-family-architecture.md) for why a
   skill body's size is a running cost.
+- [Interpreter and tool-path portability](../concepts/interpreter-and-tool-path-portability.md)
+  for a worked case that keeps the floor in the skill and the dated verification
+  here.

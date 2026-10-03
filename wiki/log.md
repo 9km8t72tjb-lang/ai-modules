@@ -782,3 +782,15 @@ local eval runners.
   surfaces reject `--vendor cursor`.
 - tests/AGENTS.md (new) and tests/CLAUDE.md / tests/README.md carry the operator
   matrix, auth, and skill/agent staging rules beside the sandbox.
+
+## [2026-10-03] create | Interpreter and tool-path portability
+
+Recorded the dated evidence behind the bash 3.2 floor now carried by the
+`harness_portability` skill.
+
+- concepts/interpreter-and-tool-path-portability.md: stock `/bin/bash` 3.2.57,
+  licence why, login-shell PATH trap, and per-construct diagnostics verified by
+  execution under that build on 3 October 2026.
+- procedures/deciding-where-knowledge-belongs.md: See Also link to the new page
+  as the worked skill-versus-wiki split.
+- index.md: Concepts entry for the new page; page count to 33.

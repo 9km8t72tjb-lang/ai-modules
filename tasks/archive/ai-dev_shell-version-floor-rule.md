@@ -2,9 +2,11 @@
 description: Give harness_portability a concrete shell interpreter floor plus wiki evidence: bash 3.2 why, bash 4+ constructs with substitutes, non-login PATH trap, and dated wiki verification.
 scope: plugins/ai_dev/skills/harness_portability
 created: 2026-09-18T19:48:56
-updated: 2026-10-03T15:30:51
-status: ready
+updated: 2026-10-03T16:02:59
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Give harness_portability a concrete shell interpreter floor and wiki evidence page
@@ -65,7 +67,7 @@ Record the dated, sourced evidence in the repository's wiki as the concept of in
 
 **Out of scope:**
 
-- Rewriting `deployment/deployment.sh` onto the floor, which the sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) owns.
+- Rewriting `deployment/deployment.sh` onto the floor, which the sibling task [bash 3.2 floor](deployment_bash-32-floor.md) owns.
 - Renaming this skill, which an archived deferred task already weighed and parked.
 - Auditing the other bundled scripts for conformance. Each already passes a bash 3.2 syntax check and uses no construct above the floor, so this task adds the rule rather than a migration.
 
