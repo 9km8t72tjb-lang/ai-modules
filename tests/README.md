@@ -11,6 +11,14 @@ targets prune exactly those regenerated subtrees, so `make lint` covers
 the committed harness and nothing else. Keep the two prune lists in
 step whenever either changes.
 
+## Vendor switch
+
+Behavioral runners share `tests/lib/vendor.py` and accept `--vendor {claude,cursor}`
+(default `claude`). Claude workers use the latest `sonnet` alias; Cursor workers
+use `auto` via `agent -p`. See `tests/CLAUDE.md` and `tests/AGENTS.md` for the
+full matrix, auth, Claude-only rejects (`trigger_evals`, output-style deploy),
+and skill/agent staging rules.
+
 ## Convention
 
 One subdirectory per skill under test. Two patterns are in use:

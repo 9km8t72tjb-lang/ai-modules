@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Multi-pass runner for the language_humanizer behavioral evals.
+"""Vendor-aware multi-pass runner for the language_humanizer behavioral evals.
 
 Each of the three scenarios runs over a **fixed denominator** of passes
 (default 5) and the recorded per-scenario pass rate over that denominator is
@@ -22,20 +22,24 @@ eventually as timeouts, not as wrong verdicts.
 Per scenario × pass the runner:
 
 1. Stages a fresh sandbox via `stage.sh <id> <target>`.
-2. Spawns one pinned-sonnet `claude -p` worker with the sandbox as its cwd,
-   telling it to load the skill and carry out the staged prompt, then to save
-   the delivered document verbatim to `delivered.md`.
+2. Stages the skill into the sandbox's vendor discovery tree, then spawns one
+   vendor-resolved print-mode worker with the sandbox as its cwd, telling it
+   to load the staged skill and carry out the staged prompt, then to save the
+   delivered document verbatim to `delivered.md`.
 3. Grades the sandbox deterministically with `grade.py` (word counts, ledger
    items, bullet shape, harness integrity).
-4. Grades the qualitative assertions with `judge.py` (one pinned-sonnet call).
+4. Grades the qualitative assertions with `judge.py` using the vendor-resolved
+   judge policy: on Claude the default judge model inherits (`''`), while on
+   Cursor it defaults to `auto`.
 5. Writes `response.txt` / `stderr.txt` / `timing.json` / `verdict.json` under
    `workspace/run-<ts>/<scenario>/pass-<n>/`.
 
 Usage:
     python3 tests/language_humanizer/evals/run.py [scenario ...]
-      [--passes 5] [--workers 5] [--model claude-sonnet-4-6] [--timeout 600]
-      [--judge-model claude-sonnet-4-6] [--judge-timeout 300]
-      [--claude-bin claude] [--skip-judge]
+      [--passes 5] [--workers 5] [--vendor claude|cursor]
+      [--model sonnet|auto|''] [--timeout 600]
+      [--judge-model ''|auto|<override>] [--judge-timeout 300]
+      [--worker-bin <bin>] [--skip-judge]
 """
 
 from __future__ import annotations
@@ -59,7 +63,7 @@ WORKSPACE = HARNESS / "workspace"
 RESULTS = HARNESS / "results"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
-from worker_auth import preflight_auth, worker_env  # noqa: E402  (shared; tests/ gitignored)
+import vendor  # noqa: E402  (shared vendor helper; tests/ gitignored)
 from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 import judge as judge_mod  # noqa: E402  (sibling module in this harness)
@@ -119,26 +123,50 @@ def stage(scenario: str, target: pathlib.Path) -> dict:
             "skill_name": skill_name, "skill_path": skill_path, "prompt": prompt}
 
 
-def run_pass(scenario: str, n: int, run_dir: pathlib.Path, args) -> dict:
+def run_pass(scenario: str, n: int, run_dir: pathlib.Path,
+             args, resolved: vendor.Resolved) -> dict:
     pass_dir = run_dir / scenario / f"pass-{n}"
     target = pass_dir / "sandbox"
     target.mkdir(parents=True, exist_ok=True)
     staged = stage(scenario, target)
     workdir = staged["sandbox_proj"]
+    skill_src = pathlib.Path(staged["skill_path"])
+    # The skill ships on the ai_editorial branch and is absent from main; fail
+    # fast with that fact rather than letting stage_skill_tree raise mid-pass.
+    if not skill_src.is_file():
+        raise FileNotFoundError(
+            f"language_humanizer SKILL.md missing at {skill_src} — "
+            "this harness needs the ai_editorial plugin checkout"
+        )
+    staged_skill = vendor.stage_skill_tree(
+        pass_dir / "artefacts",
+        skill_src.parent,
+        resolved.vendor,
+    )
+    worker_model_label = resolved.worker_model or "<inherit>"
 
-    prompt = WORKER_PROMPT.format(skill_path=staged["skill_path"], workdir=workdir,
+    prompt = WORKER_PROMPT.format(skill_path=staged_skill, workdir=workdir,
                                   prompt=staged["prompt"])
-    cmd = [args.claude_bin, "-p", "--permission-mode", "bypassPermissions"]
-    if args.model:
-        cmd += ["--model", args.model]
-    cmd.append(prompt)
+    cmd = vendor.build_print_cmd(
+        vendor=resolved.vendor,
+        bin=resolved.bin,
+        model=resolved.worker_model,
+        prompt=prompt,
+        workspace=str(workdir),
+    )
 
-    emit(f"  [{scenario} pass-{n}] running claude -p "
-         f"(model={args.model or '<cli-default>'}) ...")
+    emit(f"  [{scenario} pass-{n}] running {resolved.config.label} "
+         f"(model={worker_model_label}) ...")
     start = time.time()
     try:
-        res = subprocess.run(cmd, cwd=workdir, env=worker_env(), capture_output=True,
-                             text=True, timeout=args.timeout)
+        res = subprocess.run(
+            cmd,
+            cwd=workdir,
+            env=vendor.worker_env(resolved.vendor),
+            capture_output=True,
+            text=True,
+            timeout=args.timeout,
+        )
         rc, stdout, stderr = res.returncode, res.stdout, res.stderr
     except subprocess.TimeoutExpired as e:
         rc, stdout = -1, as_text(e.stdout)
@@ -150,8 +178,16 @@ def run_pass(scenario: str, n: int, run_dir: pathlib.Path, args) -> dict:
     (pass_dir / "response.txt").write_text(stdout)
     (pass_dir / "stderr.txt").write_text(stderr)
     (pass_dir / "timing.json").write_text(json.dumps(
-        {"scenario": scenario, "pass": n, "duration_s": duration, "claude_rc": rc,
-         "model": args.model or "<cli-default>"}, indent=2))
+        {
+            "scenario": scenario,
+            "pass": n,
+            "duration_s": duration,
+            "worker_rc": rc,
+            "claude_rc": rc,
+            "model": worker_model_label,
+        },
+        indent=2,
+    ))
 
     completed = rc == 0 and bool(stdout.strip())
 
@@ -172,7 +208,9 @@ def run_pass(scenario: str, n: int, run_dir: pathlib.Path, args) -> dict:
         qual = judge_mod.judge(
             scenario, pristine.read_text() if pristine.exists() else "",
             delivered_file.read_text() if delivered_file.exists() else "",
-            stdout, args.claude_bin, args.judge_model, args.judge_timeout)
+            stdout, resolved.vendor, resolved.bin, resolved.judge_model or "",
+            args.judge_timeout,
+        )
 
     assertions = {
         **{k: v["passed"] for k, v in mech.get("mechanical", {}).items()},
@@ -289,17 +327,19 @@ def main() -> int:
                     help="Passes run concurrently, up to this many (default 5). "
                          "Each pass owns its own sandbox; the shared model "
                          "endpoint is what caps useful concurrency.")
-    ap.add_argument("--model", default="claude-sonnet-4-6",
-                    help="Worker model for the skill under test.")
+    vendor.add_vendor_arguments(ap, with_judge=True)
     ap.add_argument("--timeout", type=int, default=600)
-    ap.add_argument("--judge-model", default="claude-sonnet-4-6")
     ap.add_argument("--judge-timeout", type=int, default=300)
-    ap.add_argument("--claude-bin", default="claude")
     ap.add_argument("--skip-judge", action="store_true",
                     help="Mechanical checks only — leaves the qualitative "
                          "assertions ungraded, so the run is diagnostic, not a "
                          "measurement of the bar.")
     args = ap.parse_args()
+    resolved = vendor.resolve(args, with_judge=True)
+    worker_model_label = resolved.worker_model or "<inherit>"
+    judge_model_label = (
+        "off" if args.skip_judge else (resolved.judge_model or "<inherit>")
+    )
 
     scenarios = args.scenarios or SCENARIOS
     for s in scenarios:
@@ -310,11 +350,13 @@ def main() -> int:
     run_dir = WORKSPACE / f"run-{ts}"
     run_dir.mkdir(parents=True)
     print(f"Run dir: {run_dir}")
-    print(f"Worker model: {args.model or '<cli-default>'}; "
-          f"judge: {'off' if args.skip_judge else args.judge_model}")
+    print(
+        f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
+        f"worker model: {worker_model_label}; judge: {judge_model_label}"
+    )
     print(f"Scenarios: {scenarios}; passes per scenario: {args.passes}\n")
 
-    preflight_auth(args.claude_bin, args.model)
+    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     jobs = [(s, n) for s in scenarios for n in range(1, args.passes + 1)]
     workers = max(1, min(args.workers, len(jobs)))
@@ -323,7 +365,10 @@ def main() -> int:
     wall_start = time.time()
     verdicts: dict[tuple[str, int], dict] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(run_pass, s, n, run_dir, args): (s, n) for s, n in jobs}
+        futures = {
+            pool.submit(run_pass, s, n, run_dir, args, resolved): (s, n)
+            for s, n in jobs
+        }
         for fut in concurrent.futures.as_completed(futures):
             scenario, n = futures[fut]
             try:

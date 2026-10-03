@@ -89,7 +89,7 @@ DRIVES_TOWARD='drive-toward|drives? toward|driving toward|(move|moving|moves) th
 # ("offers no softening of the target"). Drop negated lines before deciding, so
 # only a surviving line counts as the move the audit actually made. Same shape
 # as raises_no_missing_doc_error below, generalised over a pattern.
-NEGATED='(^|[^a-z])(no|not|never|nor|neither)([^a-z]|$)|without|rather than|instead of|refus|declin|avoid|n'"'"'t|do(es)? not|cannot'
+NEGATED='(^|[^a-z])(no|not|never|nor|neither)([^a-z]|$)|without|rather than|instead of|refus|declin|avoid|n'"'"'t|do(es)? not|cannot|out of scope|not a reconcile'
 
 # One sentence per line, hard wraps collapsed. A wrap falling mid-phrase makes
 # a line-based match miss text that is present, and a negation sitting on the

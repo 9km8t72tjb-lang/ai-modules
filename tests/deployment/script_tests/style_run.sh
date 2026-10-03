@@ -3,6 +3,12 @@
 # deploy, and merge_json_key prior-value capture/restore.
 set -euo pipefail
 
+if [[ "${TEST_VENDOR:-}" == "cursor" ]] || [[ "${1:-}" == "--vendor" && "${2:-}" == "cursor" ]]; then
+  printf '%s\n' \
+    "style_run.sh is Claude-only; --vendor cursor is unsupported for deployment style tests." >&2
+  exit 2
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 DEPLOY_SCRIPT="${REPO_ROOT}/deployment/deployment.sh"

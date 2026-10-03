@@ -7,13 +7,17 @@ spawns `claude -p <query>` and watches the stream for an actual
 `SKILL.md`. When the skill is NOT deployed yet, falls back to the
 skill-creator runner's UUID-proxy approach.
 
+This harness is Claude-only: it inspects Claude stream-json tool-use evidence.
+Its worker model still resolves through `tests/lib/vendor.py`, so the default
+worker policy is Claude `sonnet` and `--model ''` inherits the CLI default.
+
 Usage:
 
     python3 tests/trigger_evals/run.py \\
       --eval-set tests/trigger_evals/wiki.json \\
       --skill wiki \\
       [--family wiki,wiki_import,wiki_fix,wiki_wrapup] \\
-      [--model claude-sonnet-4-6] \\
+      [--vendor claude] [--model sonnet|''] \\
       [--runs-per-query 3] [--timeout 45] [--workers 10]
 
 Outputs `results.json` and `run.log` under
@@ -64,7 +68,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
-from worker_auth import worker_env  # noqa: E402  (shared; tests/ is gitignored)
+import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SKC_RUN_EVAL = (Path.home() / ".claude" / "plugins" / "marketplaces"
@@ -171,20 +175,24 @@ def normalize_eval_entry(entry: dict, target_skill: str) -> dict:
     raise ValueError(f"eval entry missing expected_skill / should_trigger: {entry}")
 
 
-def run_one_deployed(query: str, timeout: int, model: str | None) -> str | None:
+def run_one_deployed(
+    query: str,
+    timeout: int,
+    resolved: vendor.Resolved,
+) -> str | None:
     """Spawn `claude -p <query>` and return the name of the first skill the
     model loaded — by `Skill(skill="<name>")` or `Read(.../<name>/SKILL.md)`.
     Returns None if the first tool was anything else (or the model never
     invoked a tool)."""
     cmd = [
-        "claude", "-p", query,
+        resolved.bin, "-p", query,
         "--output-format", "stream-json",
         "--verbose",
         "--include-partial-messages",
     ]
-    if model:
-        cmd.extend(["--model", model])
-    env = worker_env()
+    if resolved.worker_model:
+        cmd.extend(["--model", resolved.worker_model])
+    env = vendor.worker_env(resolved.vendor)
 
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env,
@@ -284,8 +292,8 @@ def run_one_deployed(query: str, timeout: int, model: str | None) -> str | None:
 
 
 def _worker(task: tuple) -> tuple:
-    qi, ri, query, timeout, model = task
-    return qi, ri, run_one_deployed(query, timeout, model)
+    qi, ri, query, timeout, resolved = task
+    return qi, ri, run_one_deployed(query, timeout, resolved)
 
 
 def grade_query(triggered_runs: list[str | None], expected_skill: str | None,
@@ -329,12 +337,12 @@ def grade_query(triggered_runs: list[str | None], expected_skill: str | None,
 
 def run_deployed_mode(entries: list[dict], target_skill: str, family: list[str],
                       runs_per_query: int, timeout: int, workers: int,
-                      model: str | None, log) -> dict:
+                      resolved: vendor.Resolved, log) -> dict:
     print(f"Mode: deployed (~/.claude/skills/{target_skill}/)", file=log, flush=True)
     print(f"Family: {family}", file=log, flush=True)
     runs_by_query: list[list[str | None]] = [[None] * runs_per_query for _ in entries]
     tasks = [
-        (qi, ri, e["query"], timeout, model)
+        (qi, ri, e["query"], timeout, resolved)
         for qi, e in enumerate(entries)
         for ri in range(runs_per_query)
     ]
@@ -474,14 +482,7 @@ def main() -> int:
                              "deployed-vs-source drift warning and family "
                              "auto-derivation. Defaults to "
                              "plugins/knowledge_management/skills/<skill>.")
-    parser.add_argument("--model", default="claude-sonnet-4-6",
-                        help="Model the worker `claude -p` subprocess runs as. "
-                             "Defaults to claude-sonnet-4-6: the skill under "
-                             "test is pinned to sonnet for cheap, stable "
-                             "triggering measurement. The meta-level "
-                             "aggregation (precise/family scoring) is pure "
-                             "Python and uses no model. Pass another id (or "
-                             "'' to inherit the CLI default) to override.")
+    vendor.add_vendor_arguments(parser)
     parser.add_argument("--runs-per-query", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=45,
                         help="Per-query timeout in seconds.")
@@ -496,6 +497,8 @@ def main() -> int:
                              "Mostly useful for testing the upstream runner "
                              "in a clean environment.")
     args = parser.parse_args()
+    vendor.require_vendor_allowed(args.vendor, "trigger_evals")
+    resolved = vendor.resolve(args)
 
     eval_set_path = Path(args.eval_set).resolve()
     if not eval_set_path.is_file():
@@ -542,7 +545,9 @@ def main() -> int:
         log.write(f"family:         {family}\n")
         log.write(f"source_path:    {source_skill_path}\n")
         log.write(f"deployed_root:  {deployed_root}\n")
-        log.write(f"model:          {args.model or '<default>'}\n")
+        log.write(f"vendor:         {resolved.vendor}\n")
+        log.write(f"command:        {resolved.config.label}\n")
+        log.write(f"model:          {resolved.worker_model or '<inherit>'}\n")
         log.write(f"runs_per_query: {args.runs_per_query}\n")
         log.write(f"timeout:        {args.timeout}\n")
         log.write(f"workers:        {args.workers}\n")
@@ -555,18 +560,18 @@ def main() -> int:
             if deployed_root:
                 output = run_deployed_mode(
                     entries, args.skill, family, args.runs_per_query,
-                    args.timeout, args.workers, args.model, log,
+                    args.timeout, args.workers, resolved, log,
                 )
             else:
                 if source_skill_path is None:
                     print("ERROR: skill is not deployed and no --skill-path "
                           "was given for uuid fallback.", file=sys.stderr)
                     return 2
-                if shutil.which("claude") is None:
-                    print("ERROR: 'claude' CLI not found on PATH.", file=sys.stderr)
+                if shutil.which(resolved.bin) is None:
+                    print(f"ERROR: '{resolved.bin}' CLI not found on PATH.", file=sys.stderr)
                     return 2
                 output = run_uuid_fallback(
-                    eval_set_path, source_skill_path, args.model,
+                    eval_set_path, source_skill_path, resolved.worker_model,
                     args.runs_per_query, args.timeout, args.workers, log,
                 )
         except Exception as e:

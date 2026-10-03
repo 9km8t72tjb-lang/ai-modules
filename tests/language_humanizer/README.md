@@ -82,8 +82,9 @@ juxtaposition with no connective. Keep new assertions on the right side of
 that line: a regex may ask whether a string is present, never whether meaning
 survived.
 
-Model policy follows the tree-wide convention in `tests/CLAUDE.md`: the skill
-under test runs on `claude-sonnet-4-6`. The judge is pinned to the same model
-so a rubric verdict does not drift with the host session, which is the one
-place this harness extends the convention. The other harnesses keep their
-meta level model-free because their grading is fully deterministic.
+Model policy follows the tree-wide convention in `tests/CLAUDE.md` /
+`tests/AGENTS.md` via `--vendor`: the skill under test runs on latest
+`sonnet` (Claude) or `auto` (Cursor). The judge inherits on Claude and uses
+`auto` on Cursor — it is no longer pinned to the worker model. Other
+harnesses keep their meta level model-free because their grading is fully
+deterministic.

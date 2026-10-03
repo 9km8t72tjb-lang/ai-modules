@@ -771,3 +771,14 @@ styles, settings, and instruction files reach a `claude -p` worker.
 The narrow post-update lint exited 0 after concepts/verification-surfaces.md was
 tightened back to the size threshold. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-03] update | Test harness vendor switch (Claude sonnet alias / Cursor auto)
+
+Probed and recorded the shared `--vendor {claude,cursor}` worker policy for the
+local eval runners.
+
+- concepts/verification-surfaces.md: worker pin is now vendor-scoped (`sonnet`
+  latest alias on Claude, `auto` on Cursor); judges inherit on Claude; Claude-only
+  surfaces reject `--vendor cursor`.
+- tests/AGENTS.md (new) and tests/CLAUDE.md / tests/README.md carry the operator
+  matrix, auth, and skill/agent staging rules beside the sandbox.

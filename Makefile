@@ -22,6 +22,7 @@ EXCLUDE     := -path ./.git -prune -o \
                -name workspace -prune -o \
                -name scratch -prune -o \
                -name .eval_cache -prune -o \
+               -name .vendor_probe -prune -o \
                -name __pycache__ -prune -o \
                -path './tests/wiki/layer2/AS-*' -prune -o \
                -path './tests/wiki/layer2/L2-*' -prune -o \

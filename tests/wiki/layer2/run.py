@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone Layer 2 re-runner — fires `claude -p` per (scenario × pass).
+"""Standalone Layer 2 re-runner — fires one vendor worker per pass.
 
 This is the regression-test entrypoint for the wiki skill. Each invocation:
 
@@ -7,8 +7,10 @@ This is the regression-test entrypoint for the wiki skill. Each invocation:
 2. Submits one worker per scenario to a ThreadPoolExecutor (default 4 workers).
    Inside each worker, passes run sequentially:
      - Build the prompt via build_prompt.py.
-     - Run `claude -p --permission-mode bypassPermissions <prompt>`;
-       capture stdout/stderr/timing into the pass dir.
+     - Stage the relevant knowledge-management skill trees and the
+       `auto_shaper_wiki` agent into the sandbox's vendor discovery tree.
+     - Run the vendor-resolved print-mode worker; capture stdout/stderr/timing
+       into the pass dir.
      - Between passes within the same scenario, restage just that one
        sandbox so pass-2 starts from the same initial state as pass-1.
 3. Runs grade.py and aggregate.py.
@@ -30,7 +32,10 @@ Layout:
 
 Use `--passes N` to override the default from evals.json. Use `--scenario L2-1`
 to run a single scenario (useful when iterating on a specific failure).
-Use `--workers N` to tune parallelism (default 4).
+Use `--workers N` to tune parallelism (default 4). The default worker policy
+comes from `tests/lib/vendor.py`: `--vendor claude` uses `sonnet`,
+`--vendor cursor` uses `auto`, and `--model ''` inherits the vendor CLI
+default.
 """
 
 from __future__ import annotations
@@ -55,9 +60,15 @@ NORMALIZE = THIS / "normalize.py"
 GRADE = THIS / "grade.py"
 AGGREGATE = THIS / "aggregate.py"
 WORKSPACE = THIS / "workspace"
+REPO_ROOT = THIS.parents[2]
+KM_SKILLS = REPO_ROOT / "plugins" / "knowledge_management" / "skills"
+WIKI_SKILL = KM_SKILLS / "wiki"
+WIKI_AGENT_FILES = [
+    REPO_ROOT / "plugins" / "knowledge_management" / "agents" / "auto_shaper_wiki.md"
+]
 
 sys.path.insert(0, str(WIKI_TESTS.parent / "lib"))
-from worker_auth import worker_env  # noqa: E402  (shared; tests/ is gitignored)
+import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
 from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 
@@ -79,10 +90,77 @@ def restage_one(scenario_id: str) -> None:
     )
 
 
+def scenario_workdir(scenario: dict, sandbox_root: pathlib.Path) -> pathlib.Path:
+    return sandbox_root / scenario["cwd_subpath"]
+
+
+def stage_named_agents(
+    workdir: pathlib.Path, vendor_name: str, agent_files: list[pathlib.Path]
+) -> None:
+    vendor_root = workdir / (".cursor" if vendor_name == "cursor" else ".claude")
+    agents_root = vendor_root / "agents"
+    agents_root.mkdir(parents=True, exist_ok=True)
+    for agent_file in agent_files:
+        shutil.copy2(agent_file, agents_root / agent_file.name)
+
+
+def stage_vendor_skills(
+    scenario: dict,
+    workdir: pathlib.Path,
+    artefacts_root: pathlib.Path,
+    resolved: vendor.Resolved,
+) -> tuple[pathlib.Path, pathlib.Path]:
+    skill_name = scenario.get("skill_name", "wiki")
+    primary_skill_dir = KM_SKILLS / skill_name
+    staged_primary = vendor.stage_skill_tree(
+        artefacts_root / skill_name,
+        primary_skill_dir,
+        resolved.vendor,
+    )
+    staged_wiki = staged_primary
+    if primary_skill_dir != WIKI_SKILL:
+        staged_wiki = vendor.stage_skill_tree(
+            artefacts_root / "wiki",
+            WIKI_SKILL,
+            resolved.vendor,
+        )
+    stage_named_agents(workdir, resolved.vendor, WIKI_AGENT_FILES)
+    return staged_primary, staged_wiki
+
+
+def rewrite_prompt_paths(
+    prompt: str,
+    scenario: dict,
+    staged_primary: pathlib.Path,
+    staged_wiki: pathlib.Path,
+) -> str:
+    skill_name = scenario.get("skill_name", "wiki")
+    primary_skill_dir = KM_SKILLS / skill_name
+    replacements = {
+        str(primary_skill_dir / "SKILL.md"): str(staged_primary),
+        str(WIKI_SKILL / "scripts" / "discover_wiki.sh"): str(
+            staged_wiki.parent / "scripts" / "discover_wiki.sh"
+        ),
+        str(WIKI_SKILL / "scripts" / "init_wiki.sh"): str(
+            staged_wiki.parent / "scripts" / "init_wiki.sh"
+        ),
+        str(WIKI_SKILL / "scripts" / "lint.py"): str(
+            staged_wiki.parent / "scripts" / "lint.py"
+        ),
+        str(WIKI_SKILL / "scripts" / "compute_sha256.py"): str(
+            staged_wiki.parent / "scripts" / "compute_sha256.py"
+        ),
+    }
+    for src, dest in replacements.items():
+        prompt = prompt.replace(src, dest)
+    return prompt
+
+
 def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
-             claude_bin: str, timeout: int, model: str | None) -> dict:
+             resolved: vendor.Resolved, timeout: int) -> dict:
     sid = scenario["id"]
     sandbox_root = THIS / scenario["sandbox_path"]
+    workdir = scenario_workdir(scenario, sandbox_root)
     pass_dir = run_dir / sid / f"pass-{pass_num}"
     pass_dir.mkdir(parents=True, exist_ok=True)
 
@@ -99,17 +177,34 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
         ],
         capture_output=True, text=True, check=True,
     ).stdout
+    staged_primary, staged_wiki = stage_vendor_skills(
+        scenario, workdir, pass_dir / "artefacts", resolved
+    )
+    prompt = rewrite_prompt_paths(prompt, scenario, staged_primary, staged_wiki)
     prompt_path.write_text(prompt)
 
-    print(f"  [{sid} pass-{pass_num}] running claude -p ...", flush=True)
-    cmd = [claude_bin, "-p", "--permission-mode", "bypassPermissions"]
-    if model:
-        cmd += ["--model", model]
-    cmd.append(prompt)
+    model_label = resolved.worker_model or "<inherit>"
+    print(
+        f"  [{sid} pass-{pass_num}] running {resolved.config.label} "
+        f"(model={model_label}) ...",
+        flush=True,
+    )
+    cmd = vendor.build_print_cmd(
+        vendor=resolved.vendor,
+        bin=resolved.bin,
+        model=resolved.worker_model,
+        prompt=prompt,
+        workspace=str(workdir),
+    )
     start = time.time()
     try:
         result = subprocess.run(
-            cmd, env=worker_env(), capture_output=True, text=True, timeout=timeout,
+            cmd,
+            cwd=workdir,
+            env=vendor.worker_env(resolved.vendor),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
         rc = result.returncode
         stdout = result.stdout
@@ -131,9 +226,10 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
     timing = {
         "duration_s": duration_s,
         "duration_ms": int(duration_s * 1000),
+        "worker_rc": rc,
         "claude_rc": rc,
         "total_tokens": None,
-        "model": model or "<cli-default>",
+        "model": model_label,
     }
     (pass_dir / "timing.json").write_text(json.dumps(timing, indent=2))
 
@@ -151,7 +247,7 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
 
 
 def run_scenario(s: dict, passes: int, run_dir: pathlib.Path,
-                 claude_bin: str, timeout: int, model: str | None) -> None:
+                 resolved: vendor.Resolved, timeout: int) -> None:
     """Run all passes of a single scenario sequentially. Between passes,
     restage just this scenario's sandbox so pass-2 sees the same initial
     state as pass-1."""
@@ -159,7 +255,7 @@ def run_scenario(s: dict, passes: int, run_dir: pathlib.Path,
     for p in range(1, passes + 1):
         if p > 1:
             restage_one(sid)
-        run_pass(s, p, run_dir, claude_bin, timeout, model)
+        run_pass(s, p, run_dir, resolved, timeout)
 
 
 def main() -> int:
@@ -172,23 +268,19 @@ def main() -> int:
                              "A subset run keeps one run dir and one grading "
                              "pass, so a targeted re-run after a skill change "
                              "still produces a single comparable benchmark.")
-    parser.add_argument("--claude-bin", default="claude",
-                        help="Path to the claude CLI binary (default: claude on PATH)")
-    parser.add_argument("--model", default="claude-sonnet-4-6",
-                        help="Model the worker `claude -p` subprocess runs as "
-                             "(default: claude-sonnet-4-6). The skill under "
-                             "test is pinned to sonnet; the meta-level "
-                             "grade.py / aggregate.py layer is pure Python and "
-                             "uses no model. Pass '' to inherit the CLI default.")
+    vendor.add_vendor_arguments(parser)
     parser.add_argument("--timeout", type=int, default=600,
                         help="Per-pass timeout in seconds (default: 600)")
     parser.add_argument("--workers", type=int, default=4,
                         help="Number of scenarios to run in parallel (default: 4). "
                              "Passes within one scenario stay sequential.")
     args = parser.parse_args()
-
-    if shutil.which(args.claude_bin) is None:
-        print(f"ERROR: '{args.claude_bin}' not found on PATH. Install the Claude CLI or pass --claude-bin.", file=sys.stderr)
+    resolved = vendor.resolve(args)
+    if shutil.which(resolved.bin) is None and not pathlib.Path(resolved.bin).is_file():
+        print(
+            f"ERROR: '{resolved.bin}' not found on PATH. Install the worker CLI or pass --worker-bin.",
+            file=sys.stderr,
+        )
         return 2
 
     evals = json.loads(EVALS_PATH.read_text())
@@ -208,8 +300,12 @@ def main() -> int:
     run_dir = WORKSPACE / f"run-{timestamp}"
     run_dir.mkdir(parents=True)
     print(f"Run dir: {run_dir}")
-    print(f"Worker model: {args.model or '<cli-default>'}")
+    print(
+        f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
+        f"model: {resolved.worker_model or '<inherit>'}"
+    )
     print(f"Scenarios: {[s['id'] for s in scenarios]}, passes per scenario: {passes}")
+    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     # Initial full restage (covers all scenarios). After this, per-scenario
     # restages happen inline between passes inside each scenario worker.
@@ -219,8 +315,7 @@ def main() -> int:
     print(f"Running {len(scenarios)} scenario(s) with {workers} parallel worker(s)")
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(run_scenario, s, passes, run_dir,
-                        args.claude_bin, args.timeout, args.model): s["id"]
+            pool.submit(run_scenario, s, passes, run_dir, resolved, args.timeout): s["id"]
             for s in scenarios
         }
         for fut in concurrent.futures.as_completed(futures):

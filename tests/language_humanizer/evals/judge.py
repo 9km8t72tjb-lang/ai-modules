@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""LLM grader for the language_humanizer assertions no regex can settle.
+"""Vendor-aware LLM grader for the language_humanizer assertions.
 
 grade.py owns everything mechanical (word counts, item presence, bullet shape).
 This module owns the rest of each scenario's named assertions — "reads
 plainly", "all nine items at unchanged strength and scope", "opens with its
 main point", "reads as connected prose", "introduces no filler or
 restatement" — by putting the fixture, the delivered text, and one strict
-rubric in front of a pinned worker and reading back JSON verdicts.
+rubric in front of a vendor-resolved print-mode worker and reading back JSON
+verdicts.
 
 The judge is refute-biased: each rubric line tells it to fail the assertion
 unless the delivered text plainly satisfies it, so a hedged "mostly" reads as
@@ -14,7 +15,8 @@ a fail rather than a pass.
 
 Usage:
     python3 judge.py <eval_id> <fixture_file> <delivered_file> <response_file>
-        [--model claude-sonnet-4-6] [--timeout 300] [--claude-bin claude]
+        [--vendor claude|cursor] [--model sonnet|auto|'']
+        [--timeout 300] [--worker-bin <bin>]
         [--out verdict.json]
 """
 
@@ -28,7 +30,7 @@ import sys
 
 THIS = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
-from worker_auth import worker_env  # noqa: E402  (shared; tests/ is gitignored)
+import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
 
 RUBRICS = {
     "fidelity_padded": {
@@ -178,15 +180,22 @@ def extract_json(text: str) -> dict:
 
 
 def judge(eval_id: str, fixture: str, delivered: str, response: str,
-          claude_bin: str, model: str, timeout: int) -> dict:
+          vendor_name: str, worker_bin: str, model: str, timeout: int) -> dict:
     prompt = build_prompt(eval_id, fixture, delivered, response)
-    cmd = [claude_bin, "-p", "--permission-mode", "bypassPermissions"]
-    if model:
-        cmd += ["--model", model]
-    cmd.append(prompt)
+    cmd = vendor.build_print_cmd(
+        vendor=vendor_name,
+        bin=worker_bin,
+        model=model,
+        prompt=prompt,
+    )
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True,
-                             timeout=timeout, env=worker_env())
+        out = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=vendor.worker_env(vendor_name),
+        )
     except subprocess.TimeoutExpired:
         return {"_judge_error": {"passed": False, "why": f"judge timed out after {timeout}s"}}
     if out.returncode != 0 or not out.stdout.strip():
@@ -217,18 +226,19 @@ def main() -> int:
     ap.add_argument("fixture_file")
     ap.add_argument("delivered_file")
     ap.add_argument("response_file")
-    ap.add_argument("--model", default="claude-sonnet-4-6")
+    vendor.add_vendor_arguments(ap)
     ap.add_argument("--timeout", type=int, default=300)
-    ap.add_argument("--claude-bin", default="claude")
     ap.add_argument("--out")
     args = ap.parse_args()
+    resolved = vendor.resolve(args)
 
     if args.eval_id not in RUBRICS:
         raise SystemExit(f"unknown eval id: {args.eval_id}")
 
     read = lambda p: pathlib.Path(p).read_text() if pathlib.Path(p).exists() else ""  # noqa: E731
     verdicts = judge(args.eval_id, read(args.fixture_file), read(args.delivered_file),
-                     read(args.response_file), args.claude_bin, args.model, args.timeout)
+                     read(args.response_file), resolved.vendor, resolved.bin,
+                     resolved.worker_model, args.timeout)
 
     if args.out:
         pathlib.Path(args.out).write_text(json.dumps(verdicts, indent=2))

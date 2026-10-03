@@ -1,7 +1,24 @@
 ---
 name: agent_spinner
-description: Run helper agents from an orchestrating agent under one quality contract, whatever delegation the host offers. Establishes the capability tier, declares a phase plan, picks an orchestration shape and its width, contains each helper to one path, checks work refute-by-default, classifies helper non-results, keeps the dispatch roster on disk, and merges cited findings into one verdict-first report. Every guarantee holds at the inline floor, so a host exposing no spawn surface runs the same passes in one context and says so. Use when deciding how to run helper agents, sub-agents, or subagents for a job: sizing a fan-out over many files, spawning parallel helpers, splitting a review into lenses, running a judge or verifier pass, cross-checking one agent's work with another, sizing how many helpers to spend, containing concurrent writers, aggregating helper reports, or recovering from a helper that failed, hung, or returned nothing. Use it too when a multi-agent or parallel-agent run needs a plan before the first helper starts. Route a request naming the task backlog to the task_* family and a request naming the wiki to wiki_fix, which are worked instances of this shape that keep their own contracts. Per-harness facts stay with harness_portability.
-version: 1.0.0
+description: >
+  Run helper agents from an orchestrating agent under one quality contract,
+  whatever delegation the host offers. Establishes the capability tier, declares
+  a phase plan, picks an orchestration shape and its width, contains each helper
+  to one path, checks work refute-by-default, classifies helper non-results,
+  keeps the dispatch roster on disk, and merges cited findings into one
+  verdict-first report. Every guarantee holds at the inline floor, so a host
+  exposing no spawn surface runs the same passes in one context and says so. Use
+  when deciding how to run helper agents, sub-agents, or subagents for a job:
+  sizing a fan-out over many files, spawning parallel helpers, splitting a
+  review into lenses, running a judge or verifier pass, cross-checking one
+  agent's work with another, sizing how many helpers to spend, containing
+  concurrent writers, aggregating helper reports, or recovering from a helper
+  that failed, hung, or returned nothing. Use it too when a multi-agent or
+  parallel-agent run needs a plan before the first helper starts. Route a
+  request naming the task backlog to the task_* family and a request naming the
+  wiki to wiki_fix, which are worked instances of this shape that keep their
+  own contracts. Per-harness facts stay with harness_portability.
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -186,13 +203,15 @@ Load a reference when the run needs its detail:
 - `references/variants.md`: information isolation between concurrent helpers, and replicated draws returned unreduced.
 </references>
 
-<family>
-`agent_spinner` states the general shape; the shipped families are its worked instances and keep authority over their own runs:
+<worked_instances>
+`agent_spinner` states the general shape; these shipped skills are worked
+instances of that shape and keep authority over their own runs. They are not a
+`agent_spinner_*` family roster:
 
 - `task_auto_check`: the bounded readiness loop, with its own helper-failure policy and verification standard.
 - `task_fix`: whole-tree repair with one escalated writer.
 - `wiki_fix`: the collapsed form, where one agent assesses, repairs, and verifies.
 - `harness_portability`: every per-harness fact this skill deliberately carries none of.
-</family>
+</worked_instances>
 
 </agent_spinner_skill>

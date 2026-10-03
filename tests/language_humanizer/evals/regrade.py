@@ -16,8 +16,8 @@ correction is auditable rather than a quiet edit of history.
 
 Usage:
     python3 regrade.py <run_dir> [scenario ...]
-      [--judge-model claude-sonnet-4-6] [--judge-timeout 300]
-      [--workers 5] [--claude-bin claude] [--skip-judge]
+      [--vendor claude|cursor] [--judge-model ''|auto|<override>]
+      [--judge-timeout 300] [--workers 5] [--worker-bin <bin>] [--skip-judge]
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ THIS = pathlib.Path(__file__).resolve().parent
 GRADE = THIS / "grade.py"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
+import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
 
 import judge as judge_mod  # noqa: E402  (sibling module in this harness)
 import run as run_mod  # noqa: E402  (reuse SCENARIOS, summarize, render, emit)
@@ -74,7 +75,9 @@ def regrade_pass(pass_dir: pathlib.Path, scenario: str, args) -> dict:
             scenario, pristine.read_text() if pristine.exists() else "",
             delivered.read_text() if delivered.exists() else "",
             response.read_text() if response.exists() else "",
-            args.claude_bin, args.judge_model, args.judge_timeout)
+            args.resolved.vendor, args.resolved.bin,
+            args.resolved.judge_model or "", args.judge_timeout,
+        )
 
     assertions = {
         **{k: v["passed"] for k, v in mech.get("mechanical", {}).items()},
@@ -125,14 +128,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("run_dir")
     ap.add_argument("scenarios", nargs="*", default=None)
-    ap.add_argument("--judge-model", default="claude-sonnet-4-6")
+    vendor.add_vendor_arguments(ap, with_judge=True)
     ap.add_argument("--judge-timeout", type=int, default=300)
     ap.add_argument("--workers", type=int, default=5)
-    ap.add_argument("--claude-bin", default="claude")
     ap.add_argument("--skip-judge", action="store_true",
                     help="Re-run only the deterministic grader and carry the "
                          "original judge verdicts forward unchanged.")
     args = ap.parse_args()
+    args.resolved = vendor.resolve(args, with_judge=True)
 
     run_dir = pathlib.Path(args.run_dir).resolve()
     if not run_dir.is_dir():
@@ -149,8 +152,15 @@ def main() -> int:
     denominator = max(int(p.name.split("-")[1]) for _, p in jobs)
     workers = max(1, min(args.workers, len(jobs)))
     print(f"Re-grading {len(jobs)} captured passes from {run_dir}")
-    print(f"Judge: {'carried forward' if args.skip_judge else args.judge_model}; "
-          f"{workers} concurrent; no worker is re-run\n")
+    judge_model_label = (
+        "carried forward"
+        if args.skip_judge
+        else (args.resolved.judge_model or "<inherit>")
+    )
+    print(
+        f"Judge vendor: {args.resolved.vendor}; command: {args.resolved.config.label}; "
+        f"judge model: {judge_model_label}; {workers} concurrent; no worker is re-run\n"
+    )
 
     verdicts: dict[tuple[str, int], dict] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:

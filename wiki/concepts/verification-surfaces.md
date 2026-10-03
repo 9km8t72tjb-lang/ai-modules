@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-10-02
+updated: 2026-10-03
 type: concept
 tags: [skill, repo-structure, authoring, claude, verification-gap]
 sources: []
@@ -61,23 +61,25 @@ One older harness predates that alignment and keeps a home-grown two-layer shape
 retained until its next significant iteration rather than migrated on principle.
 New harnesses are not brought up on it.
 
-### The model under test is pinned, the meta level is not
+### The model under test is pinned by vendor, the meta level inherits or stays model-free
 
-The harnesses that run a skill as a subprocess pin that worker to one cheap,
-stable model, and let only the level above it run on whatever model the host
-session is using. The orchestrator, the grader, and the aggregation inherit; the
-thing being measured does not.
+The harnesses that run a skill as a subprocess pick a vendor through
+`--vendor claude|cursor` (`tests/lib/vendor.py`). Claude workers use the latest
+`sonnet` alias; Cursor workers use `auto`. Deterministic graders stay model-free.
+When a judge LLM exists, Claude inherits the session/CLI default and Cursor uses
+`auto`. Dated pins such as `claude-sonnet-4-6` are avoided so the harness does
+not drift stale as new Sonnet releases land.
 
-The reason is that a result has to mean the same thing twice. A skill's behavior
-measured on a model that changes between runs produces a number that moves for
-reasons having nothing to do with the skill, and the harness cannot tell those
-reasons apart from a real regression. Pinning the subject makes the measurement
-comparable across runs, and leaving the meta level inherited keeps the grading as
-capable as the session paying for it.
+The reason the worker is pinned at all is that a result has to mean the same
+thing twice. A skill's behavior measured on a model that changes between runs
+produces a number that moves for reasons having nothing to do with the skill,
+and the harness cannot tell those reasons apart from a real regression. The
+vendor defaults keep the subject comparable across runs; leaving the meta level
+inherited (or model-free) keeps grading as capable as the session paying for it.
 
-This practice is recorded in `tests/CLAUDE.md` and encoded in each runner's
-default model. Both are committed now, so any clone can check the claim rather
-than take it on one machine's reading.
+This practice is recorded in `tests/CLAUDE.md` and `tests/AGENTS.md` and encoded
+in `tests/lib/vendor.py`. Claude-only surfaces (`trigger_evals`, output-style
+deploy tests) reject `--vendor cursor` until a Cursor equivalent exists.
 
 ### A worker inherits the host's instructions unless it is isolated
 

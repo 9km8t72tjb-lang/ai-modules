@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Sonnet worker-runner for agent_spinner behavioral evals.
+"""Vendor-aware worker runner for agent_spinner behavioral evals.
 
-Stages a sandbox, runs a pinned-sonnet `claude -p` worker that loads
-agent_spinner, then grades the filesystem, the roster, the briefs, and the
-response markers with grade.sh.
+Stages a sandbox, stages the skill into the sandbox's vendor discovery tree,
+runs one vendor-resolved print-mode worker that loads agent_spinner, then
+grades the filesystem, the roster, the briefs, and the response markers with
+grade.sh. By default `--vendor claude` uses worker model `sonnet`,
+`--vendor cursor` uses `auto`, and `--model ''` inherits the vendor CLI
+default.
 
 Two things here are specific to this harness. A fixture that stages "no
 delegation surface" denies the spawn tool on the worker's command line, so
@@ -11,9 +14,14 @@ the absence is a real harness state rather than a claim in a note. And every
 run is bracketed by a `git status --porcelain` of the host checkout, so an
 escape from the sandbox fails the eval that caused it.
 
+Cursor has no `--disallowedTools` flag, so on that vendor the harness appends
+an explicit environment note to the prompt instead of trying to pass a native
+restriction flag the CLI does not implement.
+
 Usage:
     python3 tests/agent_spinner/evals/run.py [eval_id ...]
-      [--model claude-sonnet-4-6] [--timeout 420] [--claude-bin claude]
+      [--vendor claude|cursor] [--model sonnet|auto|'']
+      [--timeout 420] [--worker-bin <bin>]
       [--force] [--no-cache]
 """
 
@@ -36,7 +44,7 @@ REPO_ROOT = THIS.parents[2]
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402
-from worker_auth import preflight_auth, worker_env  # noqa: E402
+import vendor  # noqa: E402
 from worker_io import as_text  # noqa: E402
 
 WORKER_PROMPT = """\
@@ -108,8 +116,8 @@ def worker_completed(rc: int, stdout: str) -> bool:
     return rc == 0 and bool(stdout.strip())
 
 
-def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path, claude_bin: str,
-            model: str, timeout: int, cache, force: bool):
+def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path,
+            resolved: vendor.Resolved, timeout: int, cache, force: bool):
     eval_dir = run_dir / eval_id
     target = eval_dir / "sandbox"
     target.mkdir(parents=True, exist_ok=True)
@@ -117,12 +125,21 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path, claude_bin: str,
     staged = stage(eval_id, target)
     workdir = staged["sandbox_proj"]
     harness = spec.get("harness", {})
+    staged_skill = vendor.stage_skill_tree(
+        eval_dir / "artefacts",
+        pathlib.Path(staged["skill_path"]).parent,
+        resolved.vendor,
+    )
+    model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
             source_roots=source_roots_for(staged["skill_path"], harness),
-            harness_dir=THIS, model=model, eval_id=eval_id, prompt=staged["prompt"],
+            harness_dir=THIS,
+            model=resolved.worker_model,
+            eval_id=eval_id,
+            prompt=staged["prompt"],
         )
         if not force:
             hit = cache.lookup(eval_id, key)
@@ -131,7 +148,7 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path, claude_bin: str,
                 verdict = "PASS" if hit["passed"] else "FAIL"
                 print(f"  [{eval_id}] CACHED {verdict} "
                       f"(graded {hit.get('graded_at', '?')}, "
-                      f"model={hit.get('model', '?')}) — skipped claude -p; "
+                      f"model={hit.get('model', '?')}) — skipped {resolved.config.label}; "
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
@@ -140,30 +157,39 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path, claude_bin: str,
         for rel in harness.get("extra_reads", [])
     )
     prompt = WORKER_PROMPT.format(
-        skill_path=staged["skill_path"],
+        skill_path=staged_skill,
         extra_reads=extra,
         workdir=workdir,
         prompt=staged["prompt"],
     )
 
-    # The prompt is a positional argument, and --disallowedTools is variadic,
-    # so the prompt goes first: placed after the variadic option it is consumed
-    # as another tool name, and the worker then runs with no prompt at all.
-    cmd = [claude_bin, "-p", prompt, "--permission-mode", "bypassPermissions"]
-    if model:
-        cmd += ["--model", model]
     denied = harness.get("disallowed_tools") or []
-    if denied:
-        cmd += ["--disallowedTools", *denied]
+    extra_args: list[str] = []
+    if denied and resolved.vendor == "claude":
+        extra_args = ["--disallowedTools", *denied]
+    elif denied:
+        prompt += (
+            "\n\nEnvironment note: the following tools are unavailable in this "
+            f"harness run and must not be used: {', '.join(denied)}."
+        )
+    cmd = vendor.build_print_cmd(
+        vendor=resolved.vendor,
+        bin=resolved.bin,
+        model=resolved.worker_model,
+        prompt=prompt,
+        workspace=str(workdir),
+        extra_args=extra_args,
+        prompt_before_flags=bool(extra_args),
+    )
 
     host_before = host_status()
-    print(f"  [{eval_id}] running claude -p "
-          f"(model={model or '<cli-default>'}"
+    print(f"  [{eval_id}] running {resolved.config.label} "
+          f"(model={model_label}"
           f"{', denied=' + ','.join(denied) if denied else ''}) ...", flush=True)
     start = time.time()
     try:
         result = subprocess.run(
-            cmd, cwd=workdir, env=worker_env(), capture_output=True,
+            cmd, cwd=workdir, env=vendor.worker_env(resolved.vendor), capture_output=True,
             text=True, timeout=timeout
         )
         rc, stdout, stderr = result.returncode, result.stdout, result.stderr
@@ -179,8 +205,9 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path, claude_bin: str,
     (eval_dir / "timing.json").write_text(json.dumps({
         "eval_id": eval_id,
         "duration_s": duration_s,
+        "worker_rc": rc,
         "claude_rc": rc,
-        "model": model or "<cli-default>",
+        "model": model_label,
         "disallowed_tools": denied,
     }, indent=2))
 
@@ -211,19 +238,24 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path, claude_bin: str,
               flush=True)
 
     if cache is not None and completed and key is not None:
-        cache.record(eval_id, key, passed=passed, model=model or "<cli-default>",
-                     duration_s=duration_s, worker_rc=rc,
-                     grading_output=grade.stdout + grade.stderr,
-                     response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS])
+        cache.record(
+            eval_id,
+            key,
+            passed=passed,
+            model=model_label,
+            duration_s=duration_s,
+            worker_rc=rc,
+            grading_output=grade.stdout + grade.stderr,
+            response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
+        )
     return passed, False
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("ids", nargs="*", default=None)
-    parser.add_argument("--model", default="claude-sonnet-4-6")
+    vendor.add_vendor_arguments(parser)
     parser.add_argument("--timeout", type=int, default=420)
-    parser.add_argument("--claude-bin", default="claude")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-cache", action="store_true")
     args = parser.parse_args()
@@ -236,18 +268,23 @@ def main() -> int:
         return 2
 
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
-    preflight_auth(args.claude_bin)
+    resolved = vendor.resolve(args)
+    model_label = resolved.worker_model or "<inherit>"
+    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = WORKSPACE / f"run-{ts}"
     run_dir.mkdir(parents=True)
     print(f"Run dir: {run_dir}")
+    print(
+        f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
+        f"model: {model_label}"
+    )
 
     failures = []
     for eval_id in ids:
         ok, _cached = run_one(
-            eval_id, specs[eval_id], run_dir, args.claude_bin, args.model,
-            args.timeout, cache, args.force,
+            eval_id, specs[eval_id], run_dir, resolved, args.timeout, cache, args.force,
         )
         if not ok:
             failures.append(eval_id)

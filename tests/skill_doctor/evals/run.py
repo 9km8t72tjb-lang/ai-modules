@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Sonnet worker-runner for the skill_doctor behavioral evals.
+"""Vendor-aware worker runner for the skill_doctor behavioral evals.
 
-Modeled on tests/git_commit/evals/run.py: one pinned-sonnet `claude -p`
-worker per eval, so the skill under test always runs on the same cheap,
-stable model, while the deterministic `grade.sh` on top uses no model at all.
+Modeled on tests/git_commit/evals/run.py: one vendor-resolved print-mode
+worker runs per eval, so the skill under test uses one explicit worker policy
+each run. By default that means `--vendor claude` with worker model
+`sonnet`, or `--vendor cursor` with worker model `auto`; pass `--model ''`
+to inherit the vendor CLI default. The deterministic `grade.sh` on top uses
+no model at all.
 
 Per eval the runner:
 
 1. Stages a fresh sandbox via `stage.sh <id> <target>` and reads back
    `sandbox_repo`, `skill_path`, `prompt`.
-2. Runs `claude -p --model <sonnet> --permission-mode bypassPermissions`
-   with the sandbox repo as the working directory.
+2. Stages the skill into the sandbox's vendor discovery tree, then runs a
+   vendor-resolved print-mode worker with the sandbox repo as the working
+   directory.
 3. Captures `response.txt` / `stderr.txt` / `timing.json` under
    `workspace/run-<ts>/<id>/`.
 4. Grades with `grade.sh <id> <sandbox_repo> <response.txt>` — the sandbox
@@ -22,8 +26,8 @@ a real response) AND its deterministic grade passed.
 
 Usage:
     python3 tests/skill_doctor/evals/run.py [eval_id ...]
-      [--model claude-sonnet-4-6]   # '' inherits the CLI default
-      [--timeout 420] [--claude-bin claude] [--force] [--no-cache]
+      [--vendor claude|cursor] [--model sonnet|auto|'']
+      [--timeout 420] [--worker-bin <bin>] [--force] [--no-cache]
 """
 
 from __future__ import annotations
@@ -44,7 +48,7 @@ WORKSPACE = THIS.parent / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
-from worker_auth import preflight_auth, worker_env  # noqa: E402  (shared)
+import vendor  # noqa: E402  (shared vendor helper)
 from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 EVALS_JSON = THIS / "evals.json"
@@ -103,20 +107,26 @@ def worker_completed(rc: int, stdout: str) -> bool:
     return rc == 0 and bool(stdout.strip())
 
 
-def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
-            model: str, timeout: int, cache, force: bool):
+def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
+            timeout: int, cache, force: bool):
     eval_dir = run_dir / eval_id
     target = eval_dir / "sandbox"
     target.mkdir(parents=True, exist_ok=True)
 
     staged = stage(eval_id, target)
     workdir = staged["sandbox_repo"]
+    staged_skill = vendor.stage_skill_tree(
+        eval_dir / "artefacts",
+        pathlib.Path(staged["skill_path"]).parent,
+        resolved.vendor,
+    )
+    model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
             source_roots=source_roots_for(staged["skill_path"]),
-            harness_dir=THIS, model=model, eval_id=eval_id,
+            harness_dir=THIS, model=resolved.worker_model, eval_id=eval_id,
             prompt=staged["prompt"],
         )
         if not force:
@@ -126,25 +136,28 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
                 verdict = "PASS" if hit["passed"] else "FAIL"
                 print(f"  [{eval_id}] CACHED {verdict} "
                       f"(graded {hit.get('graded_at', '?')}, "
-                      f"model={hit.get('model', '?')}) — skipped claude -p; "
+                      f"model={hit.get('model', '?')}) — skipped {resolved.config.label}; "
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
     prompt = WORKER_PROMPT.format(
-        skill_path=staged["skill_path"], workdir=workdir, prompt=staged["prompt"]
+        skill_path=staged_skill, workdir=workdir, prompt=staged["prompt"]
     )
 
-    cmd = [claude_bin, "-p", "--permission-mode", "bypassPermissions"]
-    if model:
-        cmd += ["--model", model]
-    cmd.append(prompt)
+    cmd = vendor.build_print_cmd(
+        vendor=resolved.vendor,
+        bin=resolved.bin,
+        model=resolved.worker_model,
+        prompt=prompt,
+        workspace=str(workdir),
+    )
 
-    print(f"  [{eval_id}] running claude -p (model={model or '<cli-default>'}) ...",
+    print(f"  [{eval_id}] running {resolved.config.label} (model={model_label}) ...",
           flush=True)
     start = time.time()
     try:
         result = subprocess.run(
-            cmd, cwd=workdir, env=worker_env(), capture_output=True,
+            cmd, cwd=workdir, env=vendor.worker_env(resolved.vendor), capture_output=True,
             text=True, timeout=timeout,
         )
         rc, stdout, stderr = result.returncode, result.stdout, result.stderr
@@ -160,8 +173,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
     (eval_dir / "timing.json").write_text(json.dumps({
         "eval_id": eval_id,
         "duration_s": duration_s,
+        "worker_rc": rc,
         "claude_rc": rc,
-        "model": model or "<cli-default>",
+        "model": model_label,
     }, indent=2))
 
     grade = subprocess.run(
@@ -189,10 +203,16 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
     # Cache only a conclusive verdict from a completed worker: a timeout or
     # crash is environmental, not a property of the inputs.
     if cache is not None and completed:
-        cache.record(eval_id, key, passed=passed, model=model or "<cli-default>",
-                     duration_s=duration_s, worker_rc=rc,
-                     grading_output=grade.stdout + grade.stderr,
-                     response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS])
+        cache.record(
+            eval_id,
+            key,
+            passed=passed,
+            model=model_label,
+            duration_s=duration_s,
+            worker_rc=rc,
+            grading_output=grade.stdout + grade.stderr,
+            response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
+        )
     return passed, False
 
 
@@ -203,13 +223,9 @@ def main() -> int:
     parser.add_argument("ids", nargs="*", default=None,
                         help="Eval ids to run (default: every id in "
                              f"evals.json — {' '.join(known_ids)})")
-    parser.add_argument("--model", default="claude-sonnet-4-6",
-                        help="Worker model for the skill under test "
-                             "(default: claude-sonnet-4-6). '' inherits the "
-                             "CLI default. Grading stays model-free.")
+    vendor.add_vendor_arguments(parser)
     parser.add_argument("--timeout", type=int, default=420,
                         help="Per-eval worker timeout in seconds (default 420).")
-    parser.add_argument("--claude-bin", default="claude")
     parser.add_argument("--force", action="store_true",
                         help="Ignore cached verdicts and re-run every eval.")
     parser.add_argument("--no-cache", action="store_true",
@@ -224,19 +240,23 @@ def main() -> int:
             f"evals.json defines {' '.join(known_ids)}"
         )
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
+    resolved = vendor.resolve(args)
+    model_label = resolved.worker_model or "<inherit>"
 
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = WORKSPACE / f"run-{ts}"
     run_dir.mkdir(parents=True)
     print(f"Run dir: {run_dir}")
-    print(f"Worker model: {args.model or '<cli-default>'}; evals: {ids}")
+    print(
+        f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
+        f"model: {model_label}; evals: {ids}"
+    )
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")
 
-    preflight_auth(args.claude_bin, args.model)
+    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
-    results = {i: run_one(i, run_dir, args.claude_bin, args.model, args.timeout,
-                          cache, args.force)
+    results = {i: run_one(i, run_dir, resolved, args.timeout, cache, args.force)
                for i in ids}
 
     ok = sum(1 for passed, _ in results.values() if passed)
@@ -248,7 +268,7 @@ def main() -> int:
               f"{' (cached)' if was_cached else ''}")
     summary = {
         "run_dir": str(run_dir),
-        "model": args.model or "<cli-default>",
+        "model": model_label,
         "passed": ok,
         "total": len(results),
         "results": {i: {"passed": p, "cached": c} for i, (p, c) in results.items()},

@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Sonnet worker-runner for the git_review behavioral evals.
+"""Vendor-aware worker runner for the git_review behavioral evals.
 
-One pinned-sonnet `claude -p` worker per eval, so the skill under test always
-runs on the same cheap, stable model. The meta level on top stays on the
-inherited model: the deterministic `grade.sh`, and the operator's reading of
-`response.txt` for the prose-verdict expectations. `grade.sh` uses no model at
-all.
+One vendor-resolved print-mode worker runs per eval, so the skill under test
+uses one explicit worker policy each run: `--vendor claude` defaults to
+`sonnet`, `--vendor cursor` defaults to `auto`, and `--model ''` inherits the
+vendor CLI default. The meta level on top stays model-free: the deterministic
+`grade.sh`, and the operator's reading of `response.txt` for the prose-verdict
+expectations.
 
 Per eval the runner:
 
 1. Stages a fresh sandbox via `stage.sh <id> <target>` and reads back
    `sandbox_repo`, `skill_path`, `prompt`, `target`, `gh_env`.
-2. Runs `claude -p --model <sonnet> --permission-mode bypassPermissions` with
-   the sandbox repo as the working directory. When the eval staged a stub `gh`,
-   its `gh_env` file is folded into the worker environment and its `bin`
-   directory goes first on PATH, so the forge layer is served from fixture JSON
-   and every call is recorded.
+2. Stages the skill into the sandbox's vendor discovery tree, then runs a
+   vendor-resolved print-mode worker with the sandbox repo as the working
+   directory. When the eval staged a stub `gh`, its `gh_env` file is folded
+   into the worker environment and its `bin` directory goes first on PATH, so
+   the forge layer is served from fixture JSON and every call is recorded.
 3. Captures `response.txt` / `stderr.txt` / `timing.json` under
    `workspace/run-<ts>/<id>/`.
 4. Grades the post-run sandbox with `grade.sh <id> <sandbox_repo>
@@ -28,8 +29,8 @@ partially-correct sandbox state an aborted run left.
 
 Usage:
     python3 tests/git_review/evals/run.py [eval_id ...]   # default: all
-      [--model claude-sonnet-4-6]   # '' inherits the CLI default
-      [--timeout 600] [--claude-bin claude] [--force] [--no-cache]
+      [--vendor claude|cursor] [--model sonnet|auto|'']
+      [--timeout 600] [--worker-bin <bin>] [--force] [--no-cache]
 """
 
 from __future__ import annotations
@@ -52,7 +53,7 @@ WORKSPACE = THIS / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; run output is gitignored)
-from worker_auth import preflight_auth, worker_env  # noqa: E402  (shared helper)
+import vendor  # noqa: E402  (shared vendor helper)
 from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 
@@ -132,12 +133,12 @@ def path_without_gh(path_value: str) -> str:
     return os.pathsep.join(kept)
 
 
-def env_for(gh_env: str) -> dict:
+def env_for(vendor_name: str, gh_env: str) -> dict:
     """The worker environment, with the stub gh folded in when the eval staged
     one. The env file holds plain KEY=VALUE lines; GH_STUB_BIN goes first on
     PATH so the stub outranks a real gh on the operator's machine. An eval that
     staged no stub runs with `gh` stripped from PATH entirely."""
-    env = worker_env()
+    env = vendor.worker_env(vendor_name)
     if not gh_env:
         env["PATH"] = path_without_gh(env.get("PATH", ""))
         return env
@@ -160,20 +161,31 @@ def worker_completed(rc: int, stdout: str) -> bool:
     return rc == 0 and bool(stdout.strip())
 
 
-def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
-            model: str, timeout: int, cache, force: bool):
+def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
+            timeout: int, cache, force: bool):
     eval_dir = run_dir / eval_id
     target = eval_dir / "sandbox"
     target.mkdir(parents=True, exist_ok=True)
 
     staged = stage(eval_id, target)
     workdir = staged["sandbox_repo"]
+    # Stage beside the repo under test so review side-effects never see a
+    # copied skill tree as part of the reviewed worktree.
+    skill_path = vendor.stage_skill_tree(
+        eval_dir / "artefacts",
+        pathlib.Path(staged["skill_path"]).parent,
+        resolved.vendor,
+    )
+    model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
             source_roots=source_roots_for(staged["skill_path"]),
-            harness_dir=THIS, model=model, eval_id=eval_id, prompt=staged["prompt"],
+            harness_dir=THIS,
+            model=resolved.worker_model,
+            eval_id=eval_id,
+            prompt=staged["prompt"],
         )
         if not force:
             hit = cache.lookup(eval_id, key)
@@ -182,26 +194,29 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
                 verdict = "PASS" if hit["passed"] else "FAIL"
                 print(f"  [eval-{eval_id}] CACHED {verdict} "
                       f"(graded {hit.get('graded_at', '?')}, "
-                      f"model={hit.get('model', '?')}); skipped claude -p, "
+                      f"model={hit.get('model', '?')}); skipped {resolved.config.label}, "
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
     prompt = WORKER_PROMPT.format(
-        skill_path=staged["skill_path"], workdir=workdir, prompt=staged["prompt"]
+        skill_path=skill_path, workdir=workdir, prompt=staged["prompt"]
     )
 
-    cmd = [claude_bin, "-p", "--permission-mode", "bypassPermissions"]
-    if model:
-        cmd += ["--model", model]
-    cmd.append(prompt)
+    cmd = vendor.build_print_cmd(
+        vendor=resolved.vendor,
+        bin=resolved.bin,
+        model=resolved.worker_model,
+        prompt=prompt,
+        workspace=str(workdir),
+    )
 
     stub = " (stub gh)" if staged["gh_env"] else ""
-    print(f"  [eval-{eval_id}] running claude -p "
-          f"(model={model or '<cli-default>'}){stub} ...", flush=True)
+    print(f"  [eval-{eval_id}] running {resolved.config.label} "
+          f"(model={model_label}){stub} ...", flush=True)
     start = time.time()
     try:
         result = subprocess.run(
-            cmd, cwd=workdir, env=env_for(staged["gh_env"]),
+            cmd, cwd=workdir, env=env_for(resolved.vendor, staged["gh_env"]),
             capture_output=True, text=True, timeout=timeout,
         )
         rc, stdout, stderr = result.returncode, result.stdout, result.stderr
@@ -218,8 +233,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
     (eval_dir / "timing.json").write_text(json.dumps({
         "eval_id": eval_id,
         "duration_s": duration_s,
+        "worker_rc": rc,
         "claude_rc": rc,
-        "model": model or "<cli-default>",
+        "model": model_label,
     }, indent=2))
 
     # Keep the call logs beside the response: they are half the evidence for
@@ -255,10 +271,16 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
     # crash is transient rather than a property of the inputs, so caching it
     # would replay a spurious verdict on a later clean run.
     if cache is not None and completed:
-        cache.record(eval_id, key, passed=passed, model=model or "<cli-default>",
-                     duration_s=duration_s, worker_rc=rc,
-                     grading_output=grade.stdout + grade.stderr,
-                     response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS])
+        cache.record(
+            eval_id,
+            key,
+            passed=passed,
+            model=model_label,
+            duration_s=duration_s,
+            worker_rc=rc,
+            grading_output=grade.stdout + grade.stderr,
+            response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
+        )
     return passed, False
 
 
@@ -266,15 +288,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("ids", nargs="*", default=None,
                         help="Eval ids to run (default: every id in evals.json)")
-    parser.add_argument("--model", default="claude-sonnet-4-6",
-                        help="Worker model for the skill under test "
-                             "(default: claude-sonnet-4-6). '' inherits the CLI "
-                             "default. Grading stays model-free.")
+    vendor.add_vendor_arguments(parser)
     parser.add_argument("--timeout", type=int, default=600,
                         help="Per-eval worker timeout in seconds (default 600). "
                              "A full review reads every changed file, so these "
                              "runs are longer than the git_commit ones.")
-    parser.add_argument("--claude-bin", default="claude")
     parser.add_argument("--force", action="store_true",
                         help="Ignore cached verdicts and re-run every eval, "
                              "refreshing the cache with the new result.")
@@ -284,21 +302,25 @@ def main() -> int:
 
     ids = args.ids if args.ids else default_ids()
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
+    resolved = vendor.resolve(args)
+    model_label = resolved.worker_model or "<inherit>"
 
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = WORKSPACE / f"run-{ts}"
     run_dir.mkdir(parents=True)
     print(f"Run dir: {run_dir}")
-    print(f"Worker model: {args.model or '<cli-default>'}; evals: {ids}")
+    print(
+        f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
+        f"model: {model_label}; evals: {ids}"
+    )
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")
 
-    preflight_auth(args.claude_bin, args.model)
+    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     # Sequential on purpose: two review workers on one machine contend for the
     # model and both slow past the per-eval timeout.
-    results = {i: run_one(i, run_dir, args.claude_bin, args.model, args.timeout,
-                          cache, args.force)
+    results = {i: run_one(i, run_dir, resolved, args.timeout, cache, args.force)
                for i in ids}
 
     ok = sum(1 for passed, _ in results.values() if passed)

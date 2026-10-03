@@ -43,33 +43,35 @@ under Pattern B.
 These are the things that bit me in practice. They apply to every
 harness here regardless of pattern.
 
-### Model policy: pin the skill-under-test to sonnet, keep the meta level inherited
+### Model policy: `--vendor` selects the worker; graders stay inherited or model-free
 
-Every harness that runs a skill as a subprocess pins that worker to
-**`claude-sonnet-4-6`**: the thing under test runs on one cheap, stable
-model so results don't drift with whatever the host session happens to
-be. Only the **meta level on top** (the orchestrator, the grader, the
-aggregation) runs on the inherited session model. Concretely:
+Every harness that runs a skill as a subprocess goes through
+`tests/lib/vendor.py`. Pass `--vendor claude` (default) or `--vendor cursor`.
+Do not pin dated ids such as `claude-sonnet-4-6` — Claude uses the latest
+`sonnet` alias; Cursor uses `auto`.
 
-| Harness | Worker (sonnet-pinned) | Meta level (inherited) |
+| Role | `--vendor claude` | `--vendor cursor` |
 | --- | --- | --- |
-| `trigger_evals/run.py` | `claude -p` per query (`--model` default `claude-sonnet-4-6`) | precise/family scoring (pure Python, no model) |
-| `wiki/layer2/run.py` | `claude -p` per scenario×pass (`--model` default `claude-sonnet-4-6`) | `grade.py` / `aggregate.py` (pure Python, no model) |
-| `git_commit/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
-| `task/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
-| `task_create/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
-| `task_fix/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic, reads `RESPONSE_FILE`) + operator prose-verdict confirmation |
-| `task_auto_check/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
-| `git_review/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
+| Worker binary | `claude -p` | `agent -p` |
+| Worker model | `sonnet` (latest alias) | `auto` |
+| Judge / meta LLM | inherit (omit `--model`) | `auto` |
+| Deterministic graders | model-free | model-free |
 
-Each runner takes `--model` to override, and `--model ''` inherits the
-CLI default. The behavioral eval runners (`git_commit/evals/run.py`,
-`task/evals/run.py`, `task_create/evals/run.py`, `task_fix/evals/run.py`,
-`task_auto_check/evals/run.py`, `git_review/evals/run.py`) automate the old
-operator-driven Phase 2: instead of running the skill yourself in-session
-(which would use the inherited model), let the runner spawn the sonnet
-worker, then read `response.txt` for the prose-verdict expectations
-`grade.sh` can't check.
+`--model` / `--judge-model` override the vendor default; `--model ''`
+inherits the CLI default. `--worker-bin` overrides the binary;
+`--claude-bin` remains a deprecated alias. Claude-only surfaces
+(`trigger_evals/`, `deployment/script_tests/style_run.sh`) reject
+`--vendor cursor` until a Cursor equivalent exists.
+
+The Cursor twin of this file is `tests/AGENTS.md` — keep the vendor
+table and Claude-only list in lockstep when either changes.
+
+The behavioral eval runners automate the old operator-driven Phase 2:
+instead of running the skill yourself in-session, let the runner spawn
+the vendor worker, then read `response.txt` for the prose-verdict
+expectations `grade.sh` can't check. Skills stage under each eval's
+`artefacts/` directory (beside the sandbox); named agents that must be
+spawnable land only in `<sandbox>/.{claude,cursor}/agents/`.
 
 ### Verdict cache: skip re-running an eval whose inputs haven't changed
 
