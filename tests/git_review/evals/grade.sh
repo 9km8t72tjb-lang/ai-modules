@@ -263,6 +263,13 @@ suggested_defaults_in_decisions() {
     '
 }
 
+# Lead text is everything before the first H2, so SHA and gate checks can pin
+# the opening paragraph rather than accepting a hit later in the body.
+lead_text() {
+    have_response || return 1
+    awk '/^## / { exit } { print }' "$response"
+}
+
 reviewed_commit_named() {
     have_response || return 1
     local short
@@ -271,10 +278,41 @@ reviewed_commit_named() {
 }
 
 # The staged commit is what the clone had checked out before the run. Where the
-# reviewed commit is a different one, naming both is the mismatch: two SHAs the
-# report cannot paraphrase, which a bare relation word like "behind" cannot
-# prove, since the base comparison uses the same words.
-says_staged_head() { reviewed_commit_named; }
+# reviewed commit is a different one, naming both in the lead is the mismatch:
+# two SHAs the report cannot paraphrase, which a bare relation word like
+# "behind" cannot prove, since the base comparison uses the same words. Search
+# the lead only so a body commit-list hit does not pass.
+says_staged_head() {
+    have_response || return 1
+    local short
+    short="$(git -C "$repo" rev-parse --short=7 "$staged_head" 2>/dev/null)"
+    [[ -n "$short" ]] || return 1
+    lead_text | grep -qF "$short" || lead_text | grep -qF "$staged_head"
+}
+
+lead_names_forge_head() {
+    have_response || return 1
+    local forge forge_short
+    [[ -s "$target/.forge_head" ]] || return 1
+    forge="$(cat "$target/.forge_head")"
+    forge_short="$(printf '%s' "$forge" | cut -c1-7)"
+    lead_text | grep -qF "$forge_short" || lead_text | grep -qF "$forge"
+}
+
+# Every bold finding title under Bugs / should-fix carries non-blocking, so a
+# single labelled finding cannot mask an unlabelled bug title.
+noncritical_findings_labelled() {
+    have_response || return 1
+    awk '
+        /^## (Bugs it may introduce|What should be fixed though it is not a clear bug)[[:space:]]*$/ {
+            section = 1
+            next
+        }
+        /^## / { section = 0 }
+        section && /^(>[[:space:]]*)?\*\*/ && $0 !~ /non-blocking/ { bad = 1 }
+        END { exit bad }
+    ' "$response"
+}
 
 # The first line under the closing heading, lowercased, with quote, emphasis,
 # and code marks stripped, so "> **Yes.**" and "Yes." read the same. Fenced
@@ -355,7 +393,7 @@ case "$eval_id" in
         check "the report names the charter boundary" says "CHARTER.md"
         check "the retired legacy table is named" says "legacy_table"
         check "the changed gate target is named" says_regex "Makefile|make test"
-        check "findings carry a non-blocking label" says "non-blocking"
+        check "every non-critical finding title carries non-blocking" noncritical_findings_labelled
         attest "every finding gives location, evidence, consequence, and Fix; a judgement-call fix points to its decision, whose options, suggested default, and owner appear only in the decisions section"
         check "the closing answer is yes" closing_answer_is yes
         attest "the closing answer draws on the test merge and the counts"
@@ -441,15 +479,15 @@ case "$eval_id" in
     check "the review threads were read" gh_called "reviewThreads"
     check "the checks were read" gh_called "statusCheckRollup"
     check "the required review is named" \
-        says_regex "REVIEW_REQUIRED|required (review|approval)|review required|requires .*approval"
+        says_regex "REVIEW_REQUIRED|required (review|approval)|review required|requires .*approval|approval is required|approvals? (are|is) required|one approval"
     check "the closing answer is yes" closing_answer_is yes
     attest "the required review appears as context beside the closing answer"
     ;;
   14)
-    check "the forge head SHA is named" says "$(cat "$target/.forge_head" | cut -c1-7)"
-    check "the checked-out head is named beside the forge head" says_staged_head
+    check "the forge head SHA is named in the lead" lead_names_forge_head
+    check "the checked-out head is named in the lead beside the forge head" says_staged_head
     check "the divergence between them is stated" \
-        says_regex "mismatch|differs|diverge|ahead|behind|stale|newer|not.*checked.out"
+        says_regex "mismatch|differs|diverge|ahead|behind|stale|newer|not.*checked.out|fast-forward"
     check "the forge-head content is reviewed" says "sorted"
     ;;
   15)
@@ -479,7 +517,8 @@ case "$eval_id" in
     attest "the report does not call the change approvable while that path is unread"
     ;;
   20)
-    check "the credential-shaped line is named" says "AKIAIOSFODNN7EXAMPLE"
+    check "the credential-shaped line is named" \
+        says_regex "AKIA|ACCESS_KEY|access.key|credential"
     check "the hardcoded home path is named" says "/home/alice"
     ;;
   21)
@@ -520,7 +559,8 @@ case "$eval_id" in
     ;;
   27)
     check "the local gate is named" says_regex "make test|run_tests\.sh"
-    check "the absence of CI is noted" says_regex "no continuous integration|no workflow|no CI"
+    check "the absence of CI is noted" \
+        says_regex "no continuous integration|no (CI )?workflow|no CI|no forge check|CI (is |are )?(absent|unavailable|missing)|without CI|no workflow files?"
     ;;
   28)
     check "the charter is cited by name" says "CHARTER.md"
@@ -547,14 +587,17 @@ case "$eval_id" in
     ;;
   32)
     check "all eight headings present and in order" headings_in_order
-    check "a finding is tagged closed" says "closed"
-    check "a finding is tagged regressed" says "regressed"
+    # Tag on a bold finding title — a descriptive "addressing f1" / "closes"
+    # sentence alone must not satisfy closed.
+    check "a finding is tagged closed" finding_title_matches 'closed'
+    check "a finding is tagged regressed" finding_title_matches 'regressed'
     check "a finding is tagged settled by a decision" says_regex "settled"
     check "the new finding is named" says "flush"
     check "the routed-unanswered item stays open" says_regex "routed|security owner"
     check "the loop-stop question is answered" says_regex "loop"
     attest "the declined-with-reason item (doExport) is left out"
     attest "the relayed outside decision settles the chunk-size item"
+    attest "each prior finding keeps its tag under its original heading even when a descriptive section covers the same change"
     ;;
   33)
     check "minor items are folded into one line" says_regex "minor|nit"

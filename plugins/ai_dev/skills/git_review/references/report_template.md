@@ -12,9 +12,18 @@ with `<the one change that would flip the verdict>` as the shortest path to yes.
 The forge layer is `<available via gh | unavailable because ...>`.
 The diff contains `<n>` changed files, `<a>` added and `<r>` removed lines,
 with `<p>`% binary or generated (`<paths>`).
-`<Gate names>` ran `<locally | on the forge only>`, with `<skipped gates>` skipped.
+`<Gate names>` ran `<locally | on the forge only>`, with `<skipped gates>` skipped
+(or: no CI workflow or forge check source is present).
 The discussion contains `<review, issue-comment, and thread counts>`.
 `<Unread paths or ranges>` remain unread.
+
+When the checked-out head and the reviewed forge head differ, name both in
+the lead before any fast-forward wording:
+
+I found checked-out `HEAD` at `<local-sha>` while the forge head is
+`<forge-sha>` (`<ref>`); the review covers `<forge-sha>`. The tree was
+clean and behind, so the checkout was fast-forwarded before reading the
+diff. …
 
 ## What the changes do and implement
 

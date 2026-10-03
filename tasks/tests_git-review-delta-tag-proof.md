@@ -2,7 +2,7 @@
 description: Rework the git_review delta_rereview fixture and eval 32 so every re-review tag has one unambiguous home, no tree comment states a tag, and the grader checks the full tag set.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-02T10:23:20
+updated: 2026-10-03T11:55:00
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,7 +21,7 @@ The fixture is `tests/git_review/evals/fixtures/delta_rereview/setup.sh`. Eval 3
 - The prior review body in the staged `reviews.json` lists f6 under `## What is critical` as "destination reaches open() without passing paths.sanitize", while the first-round `export()` already calls `open(sanitize(destination), "w")`. That makes "open" as defensible as "regressed" for f6.
 - The decision the user relays in the eval prompt settles the chunk size, which is also f3, the acknowledged-but-unfixed finding. The expectations then say both "The chunk-size finding (f3) is tagged open and acknowledged." and that the relayed decision settles f3. "open and acknowledged" sits outside the closed vocabulary, and no expectation or check covers "open and not acknowledged".
 
-An audit on 2026-10-01 sampled eval 32 twice: one run never tagged f1 closed, and the other tagged f6 "open". Every earlier recorded run had passed.
+An audit on 2026-10-01 sampled eval 32 twice: one run never tagged f1 closed, and the other tagged f6 "open". Every earlier recorded run had passed. A post-fix re-audit on 2026-10-02 still saw f1 covered only as a descriptive "addressing f1" fact under What the changes do and implement, with no `closed` tag under its original heading — the skill's `<descriptive_sections>` pull. The skill's `<tags>` rule now keeps the tag under the original heading even when a descriptive section states the same change; this fixture rewrite remains required so each tag has one unambiguous evidence home and the grader can check the full set.
 
 ## Approach
 

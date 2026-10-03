@@ -211,7 +211,7 @@
         "evals/fixtures/pr_head_mismatch/setup.sh"
       ],
       "expectations": [
-        "The lead names the mismatch between the checked-out HEAD and the pull request's head commit.",
+        "The lead names both the checked-out HEAD SHA (as the run found it before any fast-forward) and the pull request's forge head SHA.",
         "The reviewed commit named in the lead is the forge head SHA, which the fixture stored in .forge_head.",
         "The report covers the sorted(rows) version of export, which only the forge head carries."
       ]
@@ -292,7 +292,7 @@
         "evals/fixtures/secrets_and_home_path/setup.sh"
       ],
       "expectations": [
-        "The report names the AKIAIOSFODNN7EXAMPLE line in src/settings.py as a credential finding.",
+        "The report names the ACCESS_KEY / AKIA-shaped credential in src/settings.py as a credential finding (a redacted quote of the pattern still counts).",
         "The report names the /home/alice/.cache/widget line in src/settings.py as a hardcoded home path.",
         "Both appear as findings rather than as passing remarks."
       ]
