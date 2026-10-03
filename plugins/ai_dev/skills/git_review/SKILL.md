@@ -1,7 +1,7 @@
 ---
 name: git_review
 description: "Review the changes the user names and answer two questions kept apart: could they be approved in general, and can they be structurally merged as they are. The target is a pull request by URL or number, a branch by name or already checked out, or the default branch's uncommitted changes and unpushed commits. The report opens with the reviewed commit, tree state, and approvability verdict, works through fixed headings, and closes with a yes or no on structural mergeability. Use when the user asks to review this branch, assess the pull request, give a full assessment, say whether this can be merged, review my uncommitted changes, re-review the delta since last time, or post the review as a comment on the PR. Publishing to the pull request, resolving a review thread, and editing the branch each wait for an explicit request in the current turn. Checkout, commit, and branch cleanup stay with git_checkout, git_commit, and git_refresh, and approving or merging stays with the PR's owners."
-version: 1.0.4
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -151,13 +151,12 @@ license: MIT
   </publishing>
 
   <reviewer_side_edits>
-    <gate>Fix a flagged defect on the branch only when the user asks in the current turn, and after checking write permission, code ownership, and fork status. The ask and the authority are two separate conditions, and the ask is the one already satisfied whenever this gate runs, so it never carries the decision on its own.</gate>
+    <gate>Fix a flagged defect on the branch only when the user asks in the current turn, and after checking write permission and fork status. The ask and the authority are two separate conditions, and the ask is the one already satisfied whenever this gate runs, so it never carries the decision on its own.</gate>
     <check_authority_before_touching_a_file>
-      Establish all three before the first edit, not after it: whether the remote is a fork, whether the authenticated user can push to it, and whether a `CODEOWNERS` entry assigns the changed path to somebody else. The standing instructions and `CODEOWNERS` in the tree answer this without the forge layer, so an unreadable or absent `gh` leaves the check owed rather than waived.
-      <find_codeowners>Look in every place the file lives before reporting it absent. GitHub honours `CODEOWNERS` at the repository root, under `.github/`, and under `docs/`, so read all three and search the tree for the name beside them. `.github/CODEOWNERS` is the common choice, so a check of the root alone reports "no CODEOWNERS file" over a repository that has one and hands the edit an authority it was never granted.</find_codeowners>
-      <read_the_three_conditions_separately>Each condition blocks on its own, and a clear answer to one leaves the others open. A note that the user pushes to their own fork grants access to that fork and says nothing about the paths `CODEOWNERS` assigns, and `maintainerCanModify` reading false on a cross-repository pull request bars the edit whoever owns the fork. Answer all three and let any one of them decline the edit.</read_the_three_conditions_separately>
+      Establish both before the first edit, not after it: whether the remote is a fork, and whether the authenticated user can push to it. The standing instructions in the tree answer this without the forge layer, so an unreadable or absent `gh` leaves the check owed rather than waived.
+      <read_the_two_conditions_separately>Each condition blocks on its own, and a clear answer to one leaves the other open. A note that the user pushes to their own fork grants access to that fork and says nothing about whether they can push to the reviewed remote, and `maintainerCanModify` reading false on a cross-repository pull request bars the edit whoever owns the fork. Answer both and let either of them decline the edit.</read_the_two_conditions_separately>
     </check_authority_before_touching_a_file>
-    <decline_out_loud>Leave the tree untouched when any of the three blocks the edit, and say plainly that the edit was declined, which condition blocked it, and who can make the change. Report the defect and propose the fix as normal. Naming a fork or a `CODEOWNERS` file elsewhere in the report is not this statement.</decline_out_loud>
+    <decline_out_loud>Leave the tree untouched when either condition blocks the edit, and say plainly that the edit was declined, which condition blocked it, and who can make the change. Report the defect and propose the fix as normal. Naming a fork elsewhere in the report is not this statement.</decline_out_loud>
     <leave_uncommitted>Leave the tree uncommitted until the user asks to commit, and make that commit through the `git_commit` sibling. Say in the report that the change is sitting uncommitted, and name the files it touched, so the user reads what the tree is holding and what committing it would take in.</leave_uncommitted>
     <push_on_instruction>Push only when told, and warn before the push runs when it will dismiss an existing approval, per `<push_warning>`.</push_on_instruction>
     <re_read_after_a_push>

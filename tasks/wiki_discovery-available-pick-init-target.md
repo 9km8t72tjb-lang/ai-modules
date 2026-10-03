@@ -2,8 +2,8 @@
 description: State once in the wiki hub that a chosen AVAILABLE candidate sets $WIKI to <level>/wiki, route every pick, adoption, init, and handoff site through it, and prove it in layer 2.
 scope: plugins/knowledge_management
 created: 2026-10-01T18:28:06
-updated: 2026-10-01T18:30:27
-status: open
+updated: 2026-10-03T15:24:39
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -61,14 +61,14 @@ Scenario L2-4 stages a bare `HOME/proj` through `stage_L2-4` in `tests/wiki/laye
 ## Acceptance
 
 1. `<proceed_with_operation>` in the hub states that an `EXISTING:` pick sets `$WIKI` to the chosen path, and that an `AVAILABLE:` pick sets `$WIKI` to `<chosen path>/wiki`, which `init_wiki.sh` scaffolds.
-2. `<present_candidates>`, `<adopt_when_user_named_the_path>`, `<initializing_a_new_wiki>`, and the chosen-path handoff paragraph in `<discover_wiki>` each cite `<proceed_with_operation>`. Within the hub, the mapping from pick to `$WIKI` is stated only in `<proceed_with_operation>`, apart from the `<level>/wiki` consequence the `AVAILABLE` bullet shows the user.
+2. `<present_candidates>`, `<adopt_when_user_named_the_path>`, `<initializing_a_new_wiki>`, and the chosen-path handoff paragraph in `<discover_wiki>` each cite `<proceed_with_operation>`. The `AVAILABLE` bullet in `<present_candidates>` states that the pick creates the wiki at `<level>/wiki`. Within the hub, the mapping from pick to `$WIKI` is stated only in `<proceed_with_operation>`, apart from that bullet's user-facing `<level>/wiki` consequence. The chosen-path handoff paragraph in `<discover_wiki>` states the hand-back rule **Route the other hub sites through the rule** already names: the caller hands back the `$WIKI` `<proceed_with_operation>` settles, and for an `AVAILABLE:` pick that path exists only after `init_wiki.sh` scaffolds it (a positional call before then exits 1).
 3. The stale wording is gone from the plugin. This search matches today and returns nothing after the rewrites:
 
    ```bash
    rg -n -U 'level included|AVAILABLE: level the user chose|candidate the\s+user picked|creates one\s+there|against the chosen path' plugins/knowledge_management
    ```
 
-4. The header comment's "Chosen-path handoff" paragraph and the matching `--help` paragraph in `discover_wiki.sh` each say that for an `AVAILABLE:` pick the caller hands back the level's `wiki/` child once scaffolded.
+4. The header comment's "Chosen-path handoff" paragraph, the matching `--help` paragraph, and the comment above the positional-mode branch in `discover_wiki.sh` each say that for an `AVAILABLE:` pick the caller hands back the level's `wiki/` child once scaffolded.
 5. The agent's `<discover_wiki>` step cites the hub's `<proceed_with_operation>` for `$WIKI`, still offers `.no_wiki` markers, and still stops on an `AVAILABLE:` pick. This search returns nothing:
 
    ```bash
@@ -76,5 +76,5 @@ Scenario L2-4 stages a bare `HOME/proj` through `stage_L2-4` in `tests/wiki/laye
    ```
 
 6. The `<offer_no_wiki_markers>` block and the `d22_positional_non_wiki_path` function body are byte-identical to their current state, and `grep -n '^scenario d22' tests/wiki/layer1/run.sh` prints a label without `AVAILABLE`.
-7. `tests/wiki/layer2/evals.json` holds the new scenario with the assertions **Add a discriminating layer-2 scenario** lists, and `setup_scenarios.sh` stages it and lists it in `ALL_SCENARIOS`. Its `name`, `user_request`, and `extra_constraints` name no init target, and none of them contains `/wiki`.
+7. `tests/wiki/layer2/evals.json` holds the new scenario with the assertions **Add a discriminating layer-2 scenario** lists, and `setup_scenarios.sh` stages it and lists it in `ALL_SCENARIOS`. Its `user_request` names the working-directory candidate as the pick. Its `name`, `user_request`, and `extra_constraints` name no init target, and none of them contains `/wiki`.
 8. Both sides of the baseline-first measurement are recorded in their runs' `grading_summary.json` and `benchmark.json` under `tests/wiki/layer2/workspace/`, over a fixed five-pass denominator per side. The change counts as working when the rewrite side reaches 5/5. When the rewrite side scores below 5/5, or the baseline side also reaches 5/5 so the scenario shows no discrimination, report both rates with each failing pass's `init_target` and diverging assertions. Leave the disposition to the user rather than re-running for a better draw.

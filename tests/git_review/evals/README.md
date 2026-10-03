@@ -77,7 +77,7 @@ loosely would serve page two on the very first call and hide a pagination bug.
 | `remote_only_dirty` | 12 | The same, with an uncommitted edit the switch would overwrite. |
 | `remote_only_target` | 9, 10, 11 | The target branch exists only on the remote and has been fetched. |
 | `reviewer_edit` | 45, 46, 48 | A clear defect on a repository the user can write to. |
-| `reviewer_edit_blocked` | 47 | The same defect on a fork whose CODEOWNERS assigns the path elsewhere. |
+| `reviewer_edit_blocked` | 47 | The same defect on a fork whose standing rules reserve the path. |
 | `runner_no_workflow` | 27 | A documented task runner and no continuous-integration definition at all. |
 | `schema_consumer_drift` | 24 | A renamed schema field with a consumer still reading the old name. |
 | `secrets_and_home_path` | 20 | An added credential-shaped line and an added hardcoded home path. |
@@ -387,7 +387,7 @@ The fix lands in the working tree and stays uncommitted until the user asks.
 
 > Review this branch, then fix the defect you find.
 
-The fork status and the CODEOWNERS entry over the path both block a reviewer-side edit, so the tree stays unchanged.
+The fork status or the repository's standing rule blocks a reviewer-side edit, so the tree stays unchanged.
 
 ### 48: `reviewer_edit`
 

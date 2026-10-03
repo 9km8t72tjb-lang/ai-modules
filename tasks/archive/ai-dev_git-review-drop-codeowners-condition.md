@@ -2,9 +2,11 @@
 description: Drop the CODEOWNERS condition from git_review's reviewer-side edit gate, leaving fork status and push permission, since code ownership gates review rather than write access.
 scope: plugins/ai_dev/skills
 created: 2026-09-06T14:09:28
-updated: 2026-10-03T13:53:15
-status: ready
+updated: 2026-10-03T15:27:00
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Drop the CODEOWNERS condition from git_review's edit gate
@@ -67,7 +69,7 @@ standing rules is that general form, and hardcoding one forge configuration file
 into an authority gate is a narrow restatement of it.
 
 The task that shipped this skill,
-[ai-dev_git-review-skill.md](ai-dev_git-review-skill.md), is the co-edit
+[ai-dev_git-review-skill.md](../ai-dev_git-review-skill.md), is the co-edit
 candidate here, because its Acceptance carries a reviewer-edit item naming
 `CODEOWNERS`. That task is already `implemented`, and its Acceptance is the
 record of what shipped rather than a live rule governing future work.

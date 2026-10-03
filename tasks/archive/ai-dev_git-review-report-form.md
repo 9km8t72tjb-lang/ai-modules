@@ -2,7 +2,7 @@
 description: Pin git_review's report to a prose form contract in the <report> stage so output reads as clear sectioned prose without field-block leakage, with token-level eval checks that grade the shape.
 scope: plugins/ai_dev/skills
 created: 2026-09-09T10:52:05
-updated: 2026-09-09T23:06:19
+updated: 2026-10-03T15:27:00
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -187,7 +187,7 @@ checks fail, exercised by a compact `script_tests` case named
 artifact rather than a stochastic worker outcome.
 
 **Out of scope:** the reviewer-side edit-gate change, owned by
-[ai-dev_git-review-drop-codeowners-condition.md](../ai-dev_git-review-drop-codeowners-condition.md).
+[ai-dev_git-review-drop-codeowners-condition.md](ai-dev_git-review-drop-codeowners-condition.md).
 The eight headings themselves and the two-verdict structure stay as they are;
 this task changes how each section reads, not which sections exist. The
 evidence-collection and heading-range scripts under `scripts/` stay untouched.

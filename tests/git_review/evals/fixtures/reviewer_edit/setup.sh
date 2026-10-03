@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# A branch with one clear defect, on a repository the user can write to: no
-# fork, and no CODEOWNERS entry over the changed path.
+# A branch with one clear defect, on a writable, non-fork repository.
 
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

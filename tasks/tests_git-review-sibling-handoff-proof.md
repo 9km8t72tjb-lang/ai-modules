@@ -2,8 +2,8 @@
 description: Stage logging copies of git_checkout and git_commit in the git_review eval sandbox and grade evals 10, 12, and 48 on the sibling helper calls instead of attest lines.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-03T14:57:53
-status: checked
+updated: 2026-10-03T15:02:07
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -23,7 +23,7 @@ The cache key in `run.py`, built by `source_roots_for`, already hashes both sibl
 
 ## Approach
 
-Extend `stage_skill_copy` in `stage.sh` so it stages `git_checkout` and `git_commit` beside the `git_review` copy under the eval target, shimming every bundled script in both the same way. Rewrite in place the Layout comment block so it names the sibling skill directories beside `git_review`, and rewrite in place the shim-rationale comment above `stage_skill_copy` so it covers those sibling copies. Rewrite `WORKER_PROMPT` in `run.py` so it names the eval-target sibling `SKILL.md` paths under `$target/skill/` that `stage.sh` produced (the shimmed copies that share `script_calls.log`). Keep `{skill_path}` as the artefacts-rebound `git_review` path; do not derive sibling paths from that rebound path, and do not also `stage_skill_tree` the siblings into `artefacts/`. The skill itself names its siblings by name only, per the standing repo rule on deployment-agnostic cross-references, so the harness supplies the paths.
+Extend `stage_skill_copy` in `stage.sh` so it stages `git_checkout` and `git_commit` beside the `git_review` copy under the eval target, shimming every bundled script in both the same way. Rewrite in place the Layout comment block so it names the sibling skill directories beside `git_review`, and rewrite in place the shim-rationale comment above `stage_skill_copy` so it covers those sibling copies. Rewrite `WORKER_PROMPT` in `run.py` so it names the eval-target sibling `SKILL.md` paths under `$target/skill/` that `stage.sh` produced (the shimmed copies that share `script_calls.log`) and instructs the worker to resolve those named sibling handoffs through the staged `$target/skill/{git_checkout,git_commit}/SKILL.md` paths and their bundled scripts. Keep `{skill_path}` as the artefacts-rebound `git_review` path; do not derive sibling paths from that rebound path, and do not also `stage_skill_tree` the siblings into `artefacts/`. The skill itself names its siblings by name only, per the standing repo rule on deployment-agnostic cross-references, so the harness supplies the paths.
 
 Replace the `git_checkout` attest line in the `10)` case with `script_called "checkout_branch.sh"`, add `script_called "checkout_branch.sh"` to the `12)` case beside its existing checks, and replace the `git_commit` attest line in the `48)` case with `script_called "commit_with_message.sh"`, removing the comment above that attest that says the check stays an attest because subject form and trailer are the real evidence. Rewrite the sibling-handoff expectations for evals 10 and 48 in `evals.json` in place, add a sibling-handoff expectation for eval 12 that names the script-log / `script_called` proof, and rewrite the eval entries in `tests/git_review/evals/README.md` in place. Rewrite in place the `## Stage a fixture by hand to inspect it` section in `tests/git_review/RUNBOOK.md` so it records that staging places shimmed `git_checkout` and `git_commit` copies under the eval target beside `git_review` and that those shims append to the same `script_calls.log`. Leave `## The verdict cache` unchanged.
 
@@ -31,7 +31,8 @@ Replace the `git_checkout` attest line in the `10)` case with `script_called "ch
 
 - A staged eval target carries shimmed copies of `git_checkout` and `git_commit` beside the `git_review` copy, and running a shimmed `checkout_branch.sh --help` appends one line to `script_calls.log` and prints the real script's usage.
 - In `tests/git_review/evals/stage.sh`, the Layout comment block names the staged `git_checkout` and `git_commit` directories beside `git_review`, and the shim-rationale comment above `stage_skill_copy` covers those sibling copies.
-- The worker prompt `run.py` builds for any eval names both eval-target sibling `SKILL.md` paths under the `stage.sh` skill layout (`$target/skill/`), and does not derive those paths from the artefacts-rebound `{skill_path}`.
+- The worker prompt `run.py` builds for any eval names both eval-target sibling `SKILL.md` paths under the `stage.sh` skill layout (`$target/skill/`), instructs the worker to resolve those named sibling handoffs through those staged paths and their bundled scripts, and does not derive those paths from the artefacts-rebound `{skill_path}`.
+- After `run.py` rebinds `{skill_path}` by copying the `git_review` tree into `artefacts/` via `vendor.stage_skill_tree`, shimmed `git_checkout` and `git_commit` copies exist under the `stage.sh` `$target/skill/` layout and are absent from the artefacts skill tree that `{skill_path}` points at.
 - Staging evals 10 and 12 and grading each against an empty `script_calls.log` fails the new `checkout_branch.sh` check, and staging eval 48 and grading it against an empty `script_calls.log` fails the new `commit_with_message.sh` check.
 - In `tests/git_review/evals/evals.json`, the sibling-handoff expectations for evals 10, 12, and 48 name the script-log / `script_called` proof for the helper instead of attest or transcript narration of that handoff.
 - The `tests/git_review/evals/README.md` entries for evals 10, 12, and 48 describe grading from `script_calls.log`.
