@@ -4,9 +4,10 @@
 # Covers collect_review_evidence.sh, which gathers the git layer (and the
 # forge layer through a stub gh) into a scratch directory, and
 # extract_heading_range.sh, which cuts an inclusive heading range out of a
-# drafted report, plus the grader's report-form discrimination and the eval-32
-# delta-tag fail branches. Repository scenarios stage their own sandbox under
-# scratch/<id>/; form checks read fixtures.
+# drafted report, plus the grader's report-form discrimination, the eval-32
+# delta-tag fail branches, and the eval-41 push-order proofs (hook log,
+# TMPDIR-scoped report.md, and grader fail branches). Repository scenarios
+# stage their own sandbox under scratch/<id>/; form checks read fixtures.
 # shellcheck disable=SC2329
 
 set -uo pipefail
@@ -853,6 +854,167 @@ form_discrimination() {
     $ok
 }
 
+s23_push_approval_order_proofs() {
+    local target="$SCRATCH/s23"
+    local grader="$HERE/../evals/grade.sh"
+    local response="$target/response.md"
+    local evidence="$target/tmp/evidence"
+    local out rc ok=true
+    local push_line tmpdir_val ev_path
+
+    rm -rf "$target"
+    mkdir -p "$target"
+    bash "$HERE/../evals/stage.sh" 41 "$target" >/dev/null || return 1
+
+    tmpdir_val="$(grep '^TMPDIR=' "$target/gh_env" | cut -d= -f2-)"
+    assert_contains "TMPDIR points into the eval target" "$tmpdir_val" "$target/" || ok=false
+    [[ -d "$tmpdir_val" ]] || {
+        log "    [TMPDIR directory missing: $tmpdir_val]"
+        ok=false
+    }
+
+    # A collector run that inherits the fixture gh_env must land its evidence
+    # directory under the eval target, not under the host /tmp.
+    ev_path="$(
+        set -a
+        # shellcheck disable=SC1091
+        . "$target/gh_env"
+        set +a
+        cd "$target/repo" || exit 1
+        PATH="${GH_STUB_BIN}:${PATH}" \
+            "$COLLECT" --base main --head HEAD --pr 7 --no-fetch 2>/dev/null | tail -1
+    )"
+    assert_contains "collector evidence directory under eval target" "$ev_path" "$target/" || ok=false
+
+    # Pre-push forge noise, then a real push through the insteadOf rewrite so
+    # the post-receive hook appends after those lines.
+    {
+        printf '%s\n' 'pr view 7 --json number,title,statusCheckRollup,mergeable'
+        printf '%s\n' 'api repos/acme/widget/rulesets'
+    } >> "$target/gh_calls.log"
+    git -C "$target/repo" push --quiet origin HEAD 2>/dev/null || {
+        log "    [push of the unpushed commit failed]"
+        return 1
+    }
+    push_line="$(grep -E '^push refs/heads/feature/export ' "$target/gh_calls.log" | tail -1)"
+    [[ -n "$push_line" ]] || {
+        log "    [missing push refs/heads/feature/export <epoch> line]"
+        ok=false
+    }
+    if ! python3 - "$target/gh_calls.log" <<'PY'
+import sys
+lines = open(sys.argv[1]).read().splitlines()
+push_idx = next(
+    (i for i, line in enumerate(lines) if line.startswith("push refs/heads/feature/export ")),
+    None,
+)
+if push_idx is None:
+    sys.exit(1)
+prefix = "\n".join(lines[:push_idx])
+if "pr view" not in prefix and "rulesets" not in prefix:
+    sys.exit(1)
+parts = lines[push_idx].split()
+float(parts[-1])
+PY
+    then
+        log "    [push line missing a float epoch or landed before forge calls]"
+        ok=false
+    fi
+
+    mkdir -p "$evidence"
+    cat > "$response" <<'MD'
+The push will dismiss peer's approval under the rule that dismisses stale reviews on push.
+Closing answer: yes
+MD
+    cat > "$evidence/report.md" <<'MD'
+Warning: pushing dismisses the existing approval because stale reviews are dismissed on push.
+MD
+
+    # Happy-path sandbox: push logged, post-push re-reads present, report mtime
+    # strictly before the push epoch.
+    cat > "$target/gh_calls.log" <<'LOG'
+pr view 7 --json number,title,statusCheckRollup,mergeable,mergeStateStatus
+api repos/acme/widget/rulesets
+push refs/heads/feature/export 1000.5
+pr view 7 --json statusCheckRollup
+pr view 7 --json mergeable,mergeStateStatus
+LOG
+    python3 - "$evidence/report.md" <<'PY'
+import os, sys
+os.utime(sys.argv[1], (999.0, 999.0))
+PY
+
+    out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
+    assert_eq "complete push-order sandbox grades clean" "$rc" "0" || ok=false
+    assert_contains "complete sandbox logs the push" "$out" "the push was logged" || ok=false
+    assert_contains "complete sandbox re-reads after push" "$out" \
+        "the checks and merge state were re-read after the push" || ok=false
+    assert_contains "complete sandbox warning order" "$out" \
+        "the warning was emitted before the push ran" || ok=false
+
+    # Fail branch: no checks read after the push line.
+    cat > "$target/gh_calls.log" <<'LOG'
+pr view 7 --json number,title,statusCheckRollup,mergeable,mergeStateStatus
+push refs/heads/feature/export 1000.5
+pr view 7 --json mergeable,mergeStateStatus
+LOG
+    python3 - "$evidence/report.md" <<'PY'
+import os, sys
+os.utime(sys.argv[1], (999.0, 999.0))
+PY
+    out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
+    assert_eq "missing post-push checks read fails grading" "$rc" "1" || ok=false
+    assert_contains "missing post-push checks read fails that check" "$out" \
+        "FAIL  the checks and merge state were re-read after the push" || ok=false
+
+    # Fail branch: no merge-state read after the push line.
+    cat > "$target/gh_calls.log" <<'LOG'
+pr view 7 --json number,title,statusCheckRollup,mergeable,mergeStateStatus
+push refs/heads/feature/export 1000.5
+pr view 7 --json statusCheckRollup
+LOG
+    python3 - "$evidence/report.md" <<'PY'
+import os, sys
+os.utime(sys.argv[1], (999.0, 999.0))
+PY
+    out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
+    assert_eq "missing post-push merge-state read fails grading" "$rc" "1" || ok=false
+    assert_contains "missing post-push merge-state read fails that check" "$out" \
+        "FAIL  the checks and merge state were re-read after the push" || ok=false
+
+    # Fail branch: report lacks the dismissal warning.
+    cat > "$target/gh_calls.log" <<'LOG'
+pr view 7 --json number,title,statusCheckRollup,mergeable,mergeStateStatus
+push refs/heads/feature/export 1000.5
+pr view 7 --json statusCheckRollup
+pr view 7 --json mergeable,mergeStateStatus
+LOG
+    printf 'A plain report with no push warning.\n' > "$evidence/report.md"
+    python3 - "$evidence/report.md" <<'PY'
+import os, sys
+os.utime(sys.argv[1], (999.0, 999.0))
+PY
+    out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
+    assert_eq "report without dismissal warning fails grading" "$rc" "1" || ok=false
+    assert_contains "report without dismissal warning fails that check" "$out" \
+        "FAIL  the warning was emitted before the push ran" || ok=false
+
+    # Fail branch: report mtime is not strictly before the push epoch.
+    cat > "$evidence/report.md" <<'MD'
+Warning: pushing dismisses the existing approval because stale reviews are dismissed on push.
+MD
+    python3 - "$evidence/report.md" <<'PY'
+import os, sys
+os.utime(sys.argv[1], (1000.5, 1000.5))
+PY
+    out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
+    assert_eq "report mtime not before push epoch fails grading" "$rc" "1" || ok=false
+    assert_contains "report mtime not before push epoch fails that check" "$out" \
+        "FAIL  the warning was emitted before the push ran" || ok=false
+
+    $ok
+}
+
 # --- run ----------------------------------------------------------------------
 
 scenario s1  "fetch precedes the three-dot diff"                      s1_fetches_before_the_three_dot_diff
@@ -878,6 +1040,8 @@ scenario s20 "head_sync reports the upstream relationship"            s20_head_s
 scenario s21 "delta rereview fixture and tag grader fail branches" s21_delta_rereview_tag_grader
 scenario s22 "unreadable path records unread remainder and keeps readable diffs" \
     s22_unreadable_path_records_unread_remainder
+scenario s23 "push_approval logs the push, scopes TMPDIR, and grades order fail branches" \
+    s23_push_approval_order_proofs
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

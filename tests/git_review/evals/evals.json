@@ -595,9 +595,8 @@
       ],
       "expectations": [
         "The run warns that the push will dismiss the existing approval, naming the ruleset that dismisses stale reviews on push.",
-        "The warning is emitted before the push is executed rather than after it.",
-        "The run re-reads the checks and the merge state after the push.",
-        "The stub gh log shows the post-push reads following the push."
+        "gh_calls.log carries a push line with a time.time() epoch, and a report.md under the eval target carries the dismissal warning with st_mtime strictly before that epoch.",
+        "After the push line, gh_calls.log shows a checks read and a merge-state read (mergeable or mergeStateStatus)."
       ]
     },
     {

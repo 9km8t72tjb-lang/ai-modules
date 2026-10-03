@@ -73,7 +73,7 @@ loosely would serve page two on the very first call and hide a pagination bug.
 | `pr_paged_threads` | 15 | Review threads across two pages, including one resolved and one outdated thread, with the resolved thread's own comments across two pages. |
 | `pr_required_review` | 13 | A pull request blocked only by a required review, with two issue comments, one review body, and one inline thread. |
 | `pr_stale_claims` | 16 | A pull request body claiming a version and a test count the branch does not carry. |
-| `push_approval` | 41 | One approval on the pull request and a ruleset that dismisses stale reviews on push. |
+| `push_approval` | 41 | One approval on the pull request and a ruleset that dismisses stale reviews on push. The bare origin logs each push to `gh_calls.log`, and `TMPDIR` points into the eval target so `report.md` mtime is gradeable. |
 | `remote_only_dirty` | 12 | The same, with an uncommitted edit the switch would overwrite. |
 | `remote_only_target` | 9, 10, 11 | The target branch exists only on the remote and has been fetched. |
 | `reviewer_edit` | 45, 46, 48 | A clear defect on a repository the user can write to. |
@@ -353,7 +353,7 @@ A copy-ready fenced markdown block with plain paths, and nothing posted.
 
 > Review pull request 7, then push the branch.
 
-The at-risk approval and the rule that dismisses it are named in a warning before the push runs, the report carries that warning rather than a bare push note, and the checks and merge state are re-read afterwards.
+The at-risk approval and the rule that dismisses it are named in a warning before the push runs. Grading proves that order from the `gh_calls.log` push line and the `report.md` modification time under the eval target, and proves the post-push checks and merge-state re-reads from the log lines that follow the push.
 
 ### 42: `existing_post`
 

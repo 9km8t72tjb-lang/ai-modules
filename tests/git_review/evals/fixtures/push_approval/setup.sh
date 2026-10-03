@@ -62,4 +62,27 @@ cat > "$payloads/rulesets.json" <<'JSON'
 JSON
 install_gh_stub "$target" "$payloads" >/dev/null
 write_gh_env "$target" "$payloads" reviewer
+
+# Keep the collector's evidence directory (and its report.md draft) inside the
+# eval target for this fixture alone, so grade.sh can find the draft and compare
+# its mtime to the push epoch. Other fixtures leave TMPDIR alone.
+mkdir -p "$target/tmp"
+printf 'TMPDIR=%s\n' "$target/tmp" >> "$target/gh_env"
+
+# Log every push that updates a ref on the bare origin. The hook does not inherit
+# gh_env, so it appends to the fixture-root log beside origin.git. Installed after
+# the fixture's own pushes and after install_gh_stub truncates gh_calls.log, so
+# only the eval's push lands in the log.
+cat > "$target/origin.git/hooks/post-receive" <<'HOOK'
+#!/bin/sh
+# Append one push line per updated ref to the fixture-root gh_calls.log.
+set -eu
+log="$GIT_DIR/../gh_calls.log"
+while read -r _old _new ref; do
+    epoch="$(python3 -c 'import time; print(time.time())')"
+    printf 'push %s %s\n' "$ref" "$epoch" >> "$log"
+done
+HOOK
+chmod +x "$target/origin.git/hooks/post-receive"
+
 printf '%s\n' "$repo"

@@ -196,6 +196,64 @@ gh_called()        { [[ -s "$gh_log" ]] && grep -qF -- "$1" "$gh_log"; }
 gh_not_called()    { [[ ! -s "$gh_log" ]] || ! grep -qF -- "$1" "$gh_log"; }
 gh_count_is()      { [[ "$(grep -cF -- "$1" "$gh_log" 2>/dev/null || echo 0)" == "$2" ]]; }
 
+# Eval 41: the bare-origin post-receive hook appends `push <ref> <epoch>` to
+# gh_calls.log. A checks read and a merge-state read must both follow that line,
+# and report.md under the eval target (TMPDIR for push_approval) must carry the
+# dismissal warning with st_mtime strictly before the push epoch.
+push_logged() {
+    [[ -s "$gh_log" ]] && grep -qE '^push ' "$gh_log"
+}
+
+post_push_rereads() {
+    [[ -s "$gh_log" ]] || return 1
+    python3 - "$gh_log" <<'PY'
+import sys
+lines = open(sys.argv[1]).read().splitlines()
+push_idx = next((i for i, line in enumerate(lines) if line.startswith("push ")), None)
+if push_idx is None:
+    sys.exit(1)
+after = "\n".join(lines[push_idx + 1 :])
+checks = any(token in after for token in ("statusCheckRollup", "pr checks", "check-runs"))
+merge = "mergeable" in after or "mergeStateStatus" in after
+sys.exit(0 if checks and merge else 1)
+PY
+}
+
+warning_before_push() {
+    [[ -s "$gh_log" ]] || return 1
+    python3 - "$gh_log" "$target" <<'PY'
+import pathlib
+import re
+import sys
+
+gh_log = pathlib.Path(sys.argv[1])
+target = pathlib.Path(sys.argv[2])
+reports = sorted(target.rglob("report.md"))
+if not reports:
+    sys.exit(1)
+report = reports[0]
+text = report.read_text(errors="replace")
+if not re.search(r"dismiss|stale", text, re.I):
+    sys.exit(1)
+if not re.search(r"approval|approved", text, re.I):
+    sys.exit(1)
+push_epoch = None
+for line in gh_log.read_text().splitlines():
+    if line.startswith("push "):
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        try:
+            push_epoch = float(parts[-1])
+        except ValueError:
+            continue
+        break
+if push_epoch is None:
+    sys.exit(1)
+sys.exit(0 if report.stat().st_mtime < push_epoch else 1)
+PY
+}
+
 # `gh pr review` submits a review while `gh pr reviews` reads them, so a bare
 # substring match on the first also matches the second and reports a read as a
 # post. Anchor the subcommand between word boundaries, and give the absence
@@ -711,13 +769,13 @@ case "$eval_id" in
   41)
     check "the at-risk approval is named" says_regex "approval|approved"
     check "the dismiss-on-push rule is named" says_regex "dismiss|stale"
-    # The collector reads the checks once before the push, so a second read by
-    # any of the correct mechanisms is the post-push one. `gh pr checks` and the
-    # check-runs API answer the same question as the statusCheckRollup field, so
-    # requiring that one field would mandate a single mechanism among several.
-    check "the checks were re-read after the push" \
-        bash -c '[[ $(grep -cE "statusCheckRollup|pr checks|check-runs" "'"$gh_log"'") -ge 2 ]]'
-    attest "the warning was emitted before the push ran"
+    # Order proofs read the post-receive push line and report.md mtime rather
+    # than counting pre-push collector reads or asking for an agent attest.
+    # `gh pr checks` and the check-runs API answer the same question as the
+    # statusCheckRollup field, so any of those tokens counts as a checks read.
+    check "the push was logged" push_logged
+    check "the checks and merge state were re-read after the push" post_push_rereads
+    check "the warning was emitted before the push ran" warning_before_push
     ;;
   42)
     check "the existing comment was edited" comment_edited_in_place

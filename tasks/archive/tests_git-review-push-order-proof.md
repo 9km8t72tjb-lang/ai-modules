@@ -2,9 +2,11 @@
 description: Log the push in the git_review push_approval fixture and keep the run's report draft in the sandbox, so eval 41 grades warning-before-push and post-push re-reads deterministically.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-03T17:21:37
-status: ready
+updated: 2026-10-03T21:09:02
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Grade the git_review push-warning order from logs
