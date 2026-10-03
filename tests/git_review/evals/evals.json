@@ -154,7 +154,7 @@
         "evals/fixtures/remote_only_target/setup.sh"
       ],
       "expectations": [
-        "The run invokes the git_checkout skill or its bundled checkout_branch.sh helper rather than hand-running a switch.",
+        "script_calls.log records a checkout_branch.sh call (grade.sh script_called), proving the switch went through the staged git_checkout helper rather than a hand-run command.",
         "The sandbox repository ends on a local branch named feature/search.",
         "The upstream of feature/search is origin/feature/search.",
         "The report covers the search.txt change."
@@ -185,7 +185,8 @@
         "core.txt still contains the uncommitted 'core with local uncommitted work' line.",
         "The report names core.txt as the path that blocked the switch.",
         "The report still covers the feature/search change, reviewed from the remote ref.",
-        "The transcript shows no git stash, git reset, or checkout-discard against the sandbox tree."
+        "The transcript shows no git stash, git reset, or checkout-discard against the sandbox tree.",
+        "script_calls.log records a checkout_branch.sh call (grade.sh script_called), proving the blocked switch still went through the staged git_checkout helper."
       ]
     },
     {
@@ -690,7 +691,7 @@
       "expectations": [
         "src/stats.py is edited so an empty input no longer divides by zero.",
         "One new commit landed on feature/mean and the working tree is clean afterwards.",
-        "The commit was created through the git_commit skill rather than a hand-run git commit, which the response or the transcript names.",
+        "script_calls.log records a commit_with_message.sh call (grade.sh script_called), proving the commit went through the staged git_commit helper rather than a hand-run git commit.",
         "The commit subject follows git_commit's single-file form `file name -> concrete change` and names src/stats.py.",
         "The commit message carries no agent-attribution or tool-generation trailer."
       ]

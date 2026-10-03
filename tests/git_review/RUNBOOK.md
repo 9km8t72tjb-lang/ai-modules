@@ -34,6 +34,11 @@ echo "$prompt"         # the user prompt
 echo "$gh_env"         # the stub-gh env file, empty for git-only evals
 ```
 
+Staging places shimmed copies of `git_checkout` and `git_commit` under the
+eval target beside `git_review` (`$target/skill/{git_review,git_checkout,git_commit}`).
+Those shims append to the same `$target/script_calls.log` as `git_review`'s
+bundled scripts.
+
 For a forge eval, put the stub on `PATH` before running anything by hand:
 
 ```bash

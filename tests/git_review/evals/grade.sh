@@ -582,13 +582,14 @@ case "$eval_id" in
   10)
     check "the repository ends on feature/search" on_branch feature/search
     check "feature/search tracks origin/feature/search" upstream_is feature/search origin/feature/search
-    attest "the switch went through git_checkout rather than a hand-run command"
+    check "the switch went through git_checkout" script_called "checkout_branch.sh"
     ;;
   12)
     check "the repository is still on main" on_branch main
     check "the uncommitted line survives" file_contains core.txt "local uncommitted work"
     check "no stash was created" no_stash
     check "the blocking path is named" says "core.txt"
+    check "the blocked switch went through git_checkout" script_called "checkout_branch.sh"
     ;;
   13)
     check "the issue comments were read" gh_called "--json comments"
@@ -818,10 +819,7 @@ case "$eval_id" in
         subject_matches 'src/stats\.py[[:space:]]*->'
     check "the message carries no attribution trailer" \
         message_lacks 'co-authored-by|generated with|generated-with|🤖'
-    # The sibling is loaded by reading its SKILL.md, which no shim can intercept,
-    # so this stays an attest rather than grading whether the model narrated it.
-    # The subject form and the absent trailer above are the real evidence.
-    attest "the commit was made through the git_commit sibling, not a hand-run git commit"
+    check "the commit went through git_commit" script_called "commit_with_message.sh"
     ;;
   *)
     echo "FAIL: unknown eval id: $eval_id" >&2

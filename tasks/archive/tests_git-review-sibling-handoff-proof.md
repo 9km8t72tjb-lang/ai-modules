@@ -2,9 +2,11 @@
 description: Stage logging copies of git_checkout and git_commit in the git_review eval sandbox and grade evals 10, 12, and 48 on the sibling helper calls instead of attest lines.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-03T15:02:07
-status: ready
+updated: 2026-10-03T21:42:59
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make git_review's sibling handoffs observable in its harness

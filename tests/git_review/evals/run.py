@@ -85,7 +85,12 @@ You are running an automated skill regression eval. Do exactly this:
 1. Read the skill definition file in full: {skill_path}
 2. Follow that skill's instructions exactly as written. Resolve any
    bundled scripts it references relative to that SKILL.md's directory.
-3. Carry out the user request below, operating only inside the current
+3. When that skill hands work to git_checkout or git_commit, resolve those
+   named sibling handoffs through these staged copies and their bundled
+   scripts (do not search elsewhere for them):
+   - git_checkout: {checkout_skill_path}
+   - git_commit: {commit_skill_path}
+4. Carry out the user request below, operating only inside the current
    working directory ({workdir}):
 
 {prompt}
@@ -198,8 +203,16 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
+    # Sibling SKILL.md paths stay under stage.sh's $target/skill/ layout (the
+    # shimmed copies that share script_calls.log). Do not derive them from the
+    # artefacts-rebound {skill_path}; stage_skill_tree only copies git_review.
+    target_root = pathlib.Path(staged["target"])
     prompt = WORKER_PROMPT.format(
-        skill_path=skill_path, workdir=workdir, prompt=staged["prompt"]
+        skill_path=skill_path,
+        workdir=workdir,
+        prompt=staged["prompt"],
+        checkout_skill_path=str(target_root / "skill" / "git_checkout" / "SKILL.md"),
+        commit_skill_path=str(target_root / "skill" / "git_commit" / "SKILL.md"),
     )
 
     cmd = vendor.build_print_cmd(

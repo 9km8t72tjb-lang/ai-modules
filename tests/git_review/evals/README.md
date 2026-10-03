@@ -165,7 +165,7 @@ The branch exists only on the remote and the user asked for a review alone, so t
 
 > Check out feature/search and review it.
 
-The user asked to be put onto the branch, so the switch goes through git_checkout and the review runs on the now-local branch.
+The user asked to be put onto the branch, so the switch goes through git_checkout and the review runs on the now-local branch. The grader proves the handoff from `script_calls.log`: a `checkout_branch.sh` line must appear.
 
 ### 11: `remote_only_target`
 
@@ -177,7 +177,7 @@ The remote-qualified form still reviews without moving HEAD.
 
 > Check out feature/search and review it.
 
-git_checkout blocks on the dirty worktree, so HEAD stays put, the blocking paths are named, and the review completes from the remote ref.
+git_checkout blocks on the dirty worktree, so HEAD stays put, the blocking paths are named, and the review completes from the remote ref. The grader still requires a `checkout_branch.sh` line in `script_calls.log`, so a hand-run that merely reports the dirty tree without calling the sibling fails.
 
 ### 13: `pr_required_review`
 
@@ -395,4 +395,4 @@ The fork status or the repository's standing rule blocks a reviewer-side edit, s
 
 > Review this branch, fix the defect you find, and then commit the fix.
 
-The commit reaches history through the `git_commit` sibling rather than a hand-run `git commit`. The grader reads that from the commit itself: one new commit on `feature/mean`, a clean worktree, a subject in `git_commit`'s single-file `file name -> concrete change` form naming `src/stats.py`, and no attribution trailer. It also loads the committed `src/stats.py` and calls `mean([])`, so the fix is graded by behaviour rather than by a guard's wording; a deliberate documented error for an empty list passes, and only a surviving `ZeroDivisionError` fails.
+The commit reaches history through the `git_commit` sibling rather than a hand-run `git commit`. The grader proves that handoff from `script_calls.log` (`commit_with_message.sh`) and still reads the commit itself: one new commit on `feature/mean`, a clean worktree, a subject in `git_commit`'s single-file `file name -> concrete change` form naming `src/stats.py`, and no attribution trailer. It also loads the committed `src/stats.py` and calls `mean([])`, so the fix is graded by behaviour rather than by a guard's wording; a deliberate documented error for an empty list passes, and only a surviving `ZeroDivisionError` fails.

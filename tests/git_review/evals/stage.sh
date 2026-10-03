@@ -23,6 +23,8 @@
 #   $target/gh_calls.log         (forge evals) every stub invocation, one per line
 #   $target/gh_env               (forge evals) the env the runner passes through
 #   $target/skill/git_review     the skill copy the worker loads, scripts shimmed
+#   $target/skill/git_checkout   sibling copy, scripts shimmed to the same log
+#   $target/skill/git_commit     sibling copy, scripts shimmed to the same log
 #   $target/script_calls.log     every bundled-script invocation, one per line
 #   $target/.eval_started_at     the staged HEAD SHA, for grade.sh
 
@@ -35,22 +37,25 @@ target="$(cd "$target" && pwd)"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
-SKILL_SRC="$REPO_ROOT/plugins/ai_dev/skills/git_review"
+SKILLS_SRC="$REPO_ROOT/plugins/ai_dev/skills"
+SKILL_SRC="$SKILLS_SRC/git_review"
+CHECKOUT_SRC="$SKILLS_SRC/git_checkout"
+COMMIT_SRC="$SKILLS_SRC/git_commit"
 
 # Which bundled script a run invoked is a transcript fact, and the runner keeps
-# only the response, stderr and the stub gh log. So the worker loads a copy of
-# the skill whose scripts/ are logging shims that record the invocation and then
-# exec the real script. That gives bundled-script usage the same deterministic
-# evidence the stub gh already gives forge calls, and it changes nothing that
-# ships: the copy lives in the eval sandbox and the shim delegates to the
-# original, so the behaviour under test is the real script's.
-stage_skill_copy() {
-    local dest="$target/skill/git_review" name
-    rm -rf "$target/skill"
+# only the response, stderr and the stub gh log. So the worker loads copies of
+# git_review and of the siblings it hands work to (git_checkout, git_commit)
+# whose scripts/ are logging shims that record the invocation and then exec the
+# real script. That gives bundled-script usage — including sibling handoffs —
+# the same deterministic evidence the stub gh already gives forge calls, and it
+# changes nothing that ships: the copies live in the eval sandbox and each shim
+# delegates to the original, so the behaviour under test is the real script's.
+stage_one_skill() {
+    local src="$1" dest="$2" name
     mkdir -p "$dest"
-    cp -R "$SKILL_SRC/." "$dest/"
+    cp -R "$src/." "$dest/"
 
-    for name in "$SKILL_SRC"/scripts/*.sh; do
+    for name in "$src"/scripts/*.sh; do
         [[ -e "$name" ]] || continue
         name="$(basename "$name")"
         cat > "$dest/scripts/$name" <<SHIM
@@ -58,11 +63,19 @@ stage_skill_copy() {
 # Logging shim staged by tests/git_review/evals/stage.sh. Records the call, then
 # runs the real bundled script so the behaviour under test is unchanged.
 printf '%s %s\n' "$name" "\$*" >> "$target/script_calls.log"
-exec "$SKILL_SRC/scripts/$name" "\$@"
+exec "$src/scripts/$name" "\$@"
 SHIM
         chmod +x "$dest/scripts/$name"
     done
-    printf '%s' "$dest/SKILL.md"
+}
+
+stage_skill_copy() {
+    rm -rf "$target/skill"
+    mkdir -p "$target/skill"
+    stage_one_skill "$SKILL_SRC" "$target/skill/git_review"
+    stage_one_skill "$CHECKOUT_SRC" "$target/skill/git_checkout"
+    stage_one_skill "$COMMIT_SRC" "$target/skill/git_commit"
+    printf '%s' "$target/skill/git_review/SKILL.md"
 }
 
 read -r fixture prompt < <(python3 - "$HERE/evals.json" "$eval_id" <<'PY'
