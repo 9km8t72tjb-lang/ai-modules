@@ -10,7 +10,8 @@ cache here — the repeated draws are the measurement, so replaying a stored
 verdict would defeat it. `--passes` changes the denominator explicitly, and
 the chosen denominator is recorded in the summary alongside the rates.
 
-Passes run **concurrently** (`--workers`, default 5). Every pass owns its own
+Passes run **concurrently** (`--workers`, default
+`vendor.DEFAULT_PARALLEL_WORKERS`). Every pass owns its own
 staged sandbox and writes only inside it, so the passes share nothing but the
 model endpoint — which is what caps useful concurrency, not correctness. The
 deep sequential-only rule in `tests/CLAUDE.md` covers multi-turn repair loops
@@ -36,7 +37,7 @@ Per scenario × pass the runner:
 
 Usage:
     python3 tests/language_humanizer/evals/run.py [scenario ...]
-      [--passes 5] [--workers 5] [--vendor claude|cursor]
+      [--passes 5] [--workers 4] [--vendor claude|cursor]
       [--model sonnet|auto|''] [--timeout 600]
       [--judge-model ''|auto|<override>] [--judge-timeout 300]
       [--worker-bin <bin>] [--skip-judge]
@@ -323,10 +324,17 @@ def main() -> int:
     ap.add_argument("scenarios", nargs="*", default=None)
     ap.add_argument("--passes", type=int, default=5,
                     help="Fixed denominator of passes per scenario (default 5).")
-    ap.add_argument("--workers", type=int, default=5,
-                    help="Passes run concurrently, up to this many (default 5). "
-                         "Each pass owns its own sandbox; the shared model "
-                         "endpoint is what caps useful concurrency.")
+    ap.add_argument(
+        "--workers",
+        type=int,
+        default=vendor.DEFAULT_PARALLEL_WORKERS,
+        help=(
+            "Passes run concurrently, up to this many "
+            f"(default: {vendor.DEFAULT_PARALLEL_WORKERS}). "
+            "Each pass owns its own sandbox; the shared model "
+            "endpoint is what caps useful concurrency."
+        ),
+    )
     vendor.add_vendor_arguments(ap, with_judge=True)
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--judge-timeout", type=int, default=300)

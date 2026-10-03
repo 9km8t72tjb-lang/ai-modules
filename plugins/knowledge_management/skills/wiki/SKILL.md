@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.6
+version: 1.24.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -322,10 +322,11 @@ rather than an ambiguity prompt.
 Passing a `WIKI_PATH` positionally skips discovery and answers for that path
 alone: an existing directory prints its canonical path and exits 0, a missing
 one exits 1, and the wiki predicate stays out of it. That is how a caller
-hands back the candidate the user chose under `<resolving_the_wiki_location>`,
-an `AVAILABLE:` level included, because re-running bare discovery against a choice
-would only reproduce the same exit-2 list. `lint.py` takes the same path as
-its optional positional argument.
+hands back the `$WIKI` that `<proceed_with_operation>` settles from a pick.
+For an `AVAILABLE:` pick that path exists only after `init_wiki.sh` scaffolds
+it, and a positional call before then exits 1. Re-running bare discovery
+against a choice would only reproduce the same exit-2 list. `lint.py` takes
+the same path as its optional positional argument.
 
 `.no_wiki` is the explicit opt-out and overrides the predicate: drop an empty
 file by that name in any directory you do not want a local wiki for, and the
@@ -388,8 +389,9 @@ not a recommendation.
 <adopt_when_user_named_the_path>
 **Carve-out to `<the_hard_rule>`.** When the user's current request
 explicitly names one of the `AVAILABLE:` or `EXISTING:` paths returned
-by exit 2, adopt that path without prompting and **report the adoption
-in one line** so the auto-choice is observable to the user, e.g.
+by exit 2, set `$WIKI` from that candidate the way `<proceed_with_operation>`
+does, without prompting, and **report the adoption in one line** so the
+auto-choice is observable to the user, e.g.
 
 > `Using $WIKI=/path/to/wiki (per your message).`
 
@@ -422,8 +424,9 @@ keep this safe:
 **Present every candidate to the user, in walk order**, with the kind
 spelled out so the choice is unambiguous:
 
-- `AVAILABLE`: no wiki at that level yet; selecting it creates one
-  there via `init_wiki.sh`.
+- `AVAILABLE`: no wiki at that level yet; selecting it creates the wiki
+  at `<level>/wiki` via `init_wiki.sh`, as `<proceed_with_operation>`
+  sets `$WIKI`.
 - `EXISTING`: a wiki already lives at that level; selecting it adopts
   that wiki for the current operation.
 
@@ -446,9 +449,12 @@ the walk-up will short-circuit at the chosen wiki anyway.
 </offer_no_wiki_markers>
 
 <proceed_with_operation>
-**Only now** scaffold (if the chosen path needs it, with
-`"$WIKI_SKILL/scripts/init_wiki.sh"`) and proceed with the operation against
-`$WIKI`.
+**Set `$WIKI` from the chosen path, then scaffold and proceed.** The chosen
+path is the candidate discovery printed. An `EXISTING:` pick is the wiki, so
+`$WIKI` is that path. An `AVAILABLE:` pick is the level that will hold the
+new wiki, so `$WIKI` is `<chosen path>/wiki`, and
+`"$WIKI_SKILL/scripts/init_wiki.sh" "$WIKI"` scaffolds it. Proceed with the
+operation against `$WIKI`.
 </proceed_with_operation>
 
 </the_flow>
@@ -494,8 +500,9 @@ already covers steps 1 to 3 (run discovery, present candidates, offer
 `.no_wiki` markers in unchosen levels). The init-specific steps follow once
 `$WIKI` is chosen:
 
-1. **Run `"$WIKI_SKILL/scripts/init_wiki.sh" "$WIKI"`** against the chosen path
-   to scaffold `SCHEMA.md`, `index.md`, `log.md`, and the directory tree.
+1. **Run `"$WIKI_SKILL/scripts/init_wiki.sh" "$WIKI"`** against `$WIKI` as
+   `<proceed_with_operation>` sets it, to scaffold `SCHEMA.md`, `index.md`,
+   `log.md`, and the directory tree.
 2. **Customize the schema.** Ask the user what domain the wiki covers.
    Be specific. The freshly initialized `SCHEMA.md` has placeholder text
    in the **Domain** and **Tag Taxonomy** sections. Read

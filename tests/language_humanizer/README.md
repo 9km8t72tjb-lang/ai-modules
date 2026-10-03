@@ -48,7 +48,7 @@ inputs did not change; here the repeated independent draws *are* the
 measurement, so replaying a stored verdict would report a sample size the run
 never took.
 
-The passes run **concurrently** instead (default five at a time), which is what
+The passes run **concurrently** instead (default four at a time), which is what
 keeps a fifteen-pass measurement inside ten minutes. Every pass stages its own
 sandbox and writes only inside it, so concurrency costs nothing in isolation;
 the shared model endpoint is the only contended resource, and `--workers 1`

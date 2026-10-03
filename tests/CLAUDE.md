@@ -64,7 +64,8 @@ inherits the CLI default. `--worker-bin` overrides the binary;
 `--vendor cursor` until a Cursor equivalent exists.
 
 The Cursor twin of this file is `tests/AGENTS.md` — keep the vendor
-table and Claude-only list in lockstep when either changes.
+table, the Claude-only list, and the parallel-workers rule in lockstep
+when either changes.
 
 The behavioral eval runners automate the old operator-driven Phase 2:
 instead of running the skill yourself in-session, let the runner spawn
@@ -72,6 +73,42 @@ the vendor worker, then read `response.txt` for the prose-verdict
 expectations `grade.sh` can't check. Skills stage under each eval's
 `artefacts/` directory (beside the sandbox); named agents that must be
 spawnable land only in `<sandbox>/.{claude,cursor}/agents/`.
+
+### Parallel workers: default 4 only where each job has its own sandbox
+
+`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS` is **4**. That is the
+`--workers` default on the two runners whose jobs cannot collide:
+
+- `tests/wiki/layer2/run.py` — one sandbox directory per scenario; passes
+  of the same scenario stay sequential.
+- `tests/language_humanizer/evals/run.py` — one staged sandbox per pass.
+
+`--workers 1` forces the serial path. Raising it past 4 mostly buys
+model contention and timeouts, not faster wall-clock.
+
+Leave these runners sequential. Parallelism would mix their fail-safes
+or blow their timeouts:
+
+- `git_commit` — `grade.sh` scans a shared `TMPDIR` for stragglers.
+- `git_review` — two workers contend for the model past the per-eval timeout.
+- `task`, `task_create`, `task_fix`, `task_auto_check` — host `tasks/`
+  mtime fail-safes, and the deep repair loops in `task_auto_check`.
+- `agent_spinner` — brackets each eval with a host-checkout `git status`.
+- `guardrail_audit`, `skill_doctor` — still serial; no isolation sweep
+  has proven concurrent evals yet.
+
+Do not put this default in `TESTING.md`. That file is methodology.
+Operator knobs live in this file, `tests/AGENTS.md`, and the runner
+`--workers` default.
+
+### Subset runs: skipped ids are not visited
+
+A run that names a subset (`--scenario`, positional eval ids) stages,
+grades, and reports only those ids. A skipped id is absent from the run
+dir. Graders, normalizers, and aggregators walk the run dir and look up
+definitions by id. They do not iterate the full inventory and warn,
+restage, or skip the rest. Pattern A runners already take this shape
+(`ids` nargs). Wiki layer 2 matches it.
 
 ### Verdict cache: skip re-running an eval whose inputs haven't changed
 

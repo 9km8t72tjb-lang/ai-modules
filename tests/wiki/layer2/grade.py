@@ -413,15 +413,17 @@ def main() -> int:
 
     run_dir = pathlib.Path(args.run_dir).resolve()
     evals = json.loads(EVALS_PATH.read_text())
-    scenarios = {e["id"]: e for e in evals["evals"]}
+    evals_by_id = {e["id"]: e for e in evals["evals"]}
 
     summary = []
-    for scenario in evals["evals"]:
+    present = [
+        evals_by_id[path.name]
+        for path in sorted(run_dir.iterdir())
+        if path.is_dir() and path.name in evals_by_id
+    ]
+    for scenario in present:
         sid = scenario["id"]
         scen_dir = run_dir / sid
-        if not scen_dir.is_dir():
-            print(f"  WARNING: missing scenario dir {scen_dir}", file=sys.stderr)
-            continue
         for pass_dir in sorted(scen_dir.glob("pass-*")):
             result = grade_pass(pass_dir, scenario)
             (pass_dir / "grading.json").write_text(json.dumps(result, indent=2))

@@ -18,9 +18,12 @@ Run:
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import re
 import sys
+
+THIS = pathlib.Path(__file__).resolve().parent
 
 REPORT_RE = re.compile(
     r"(====\s*TEST REPORT\s*====.*?====\s*END REPORT\s*====)",
@@ -87,10 +90,12 @@ def main() -> int:
     args = parser.parse_args()
 
     run_dir = pathlib.Path(args.run_dir).resolve()
-    # Match every scenario family the harness ships — L2-* (wiki), WI-* (wiki_import),
-    # WU-* (wiki_wrapup). Sibling-skill scenarios live in the same workspace.
-    pass_dirs = sorted(p for prefix in ("L2-*", "WI-*", "WU-*")
-                       for p in run_dir.glob(f"{prefix}/pass-*"))
+    evals = json.loads((THIS / "evals.json").read_text())
+    known = {e["id"] for e in evals["evals"]}
+    pass_dirs = sorted(
+        path for path in run_dir.glob("*/pass-*")
+        if path.parent.name in known
+    )
     print(f"Normalizing {len(pass_dirs)} pass dirs under {run_dir}\n")
     for pd in pass_dirs:
         r = normalize_pass(pd)

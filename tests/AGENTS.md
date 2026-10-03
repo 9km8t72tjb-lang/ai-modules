@@ -5,7 +5,7 @@ Agent (or any agent that reads `AGENTS.md`). The authored harness is
 committed, including this file; `tests/.gitignore` keeps every regenerated
 subtree local. `tests/README.md` has the layout split. `tests/CLAUDE.md`
 is the Claude Code twin of this file — keep the two in lockstep when the
-operator policy changes.
+operator policy changes, including the parallel-workers rule.
 
 Per-harness design docs live in each subdirectory's `README.md` and
 `RUNBOOK.md`. Use those for *what* the tests cover; use this file for
@@ -84,6 +84,22 @@ python3 tests/language_humanizer/evals/run.py   # judge inherits on Claude
 
 Pass `--force` to ignore the verdict cache; `--no-cache` to neither read nor
 write it.
+
+### Parallel workers
+
+Cursor default is **4 concurrent jobs** (`tests/lib/vendor.py`
+`DEFAULT_PARALLEL_WORKERS`) on wiki layer 2 and `language_humanizer`.
+Pass `--workers 1` to serialize. Pattern A runners stay sequential:
+`git_commit` (shared TMPDIR), `git_review` (timeout), the `task_*`
+family (host `tasks/` fail-safe), `agent_spinner` (host `git status`),
+and `guardrail_audit` / `skill_doctor` until an isolation sweep proves
+them. Details stay in lockstep with `tests/CLAUDE.md`.
+
+### Subset runs
+
+A named subset stages, grades, and reports only those ids. Skipped ids
+are absent from the run dir; post-steps do not walk the full inventory
+and warn. Same rule as `tests/CLAUDE.md`.
 
 ## What's here
 

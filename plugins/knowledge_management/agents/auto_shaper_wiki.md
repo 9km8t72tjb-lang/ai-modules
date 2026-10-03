@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.3
+version: 1.11.4
 model: inherit
 background: false
 effort: high
@@ -225,12 +225,12 @@ have audited before, because the schema, taxonomy, or domain may have changed.
     candidate when CWD is an unresolved `AVAILABLE:` level. After the user
     picks, also offer `.no_wiki` markers for the unchosen `AVAILABLE`
     candidates between CWD (inclusive) and the chosen path (exclusive),
-    and then set `$WIKI` to the chosen path itself. The pick settles the
-    location, mirroring the wiki skill's `<proceed_with_operation>`, and
-    it holds whether or not the user accepted those markers. An
-    `EXISTING:` pick is the wiki to audit; an `AVAILABLE:` pick carries no
-    wiki yet, so stop and tell the user, as on exit 1. Pass that adopted
-    path positionally to every bundled tool from here on
+    and then set `$WIKI` the way the wiki skill's `<proceed_with_operation>`
+    does. The pick settles the location, and it holds whether or not the
+    user accepted those markers. An `EXISTING:` pick is the wiki to audit;
+    an `AVAILABLE:` pick carries no wiki yet, so stop and tell the user, as
+    on exit 1. Pass that adopted path positionally to every bundled tool
+    from here on
     (`"$WIKI_SKILL/scripts/discover_wiki.sh" "$WIKI" --check` to confirm
     it exists, `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"` to lint
     it), which answers for that path alone instead of rediscovering. See

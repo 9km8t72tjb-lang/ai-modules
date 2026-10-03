@@ -17,7 +17,7 @@ correction is auditable rather than a quiet edit of history.
 Usage:
     python3 regrade.py <run_dir> [scenario ...]
       [--vendor claude|cursor] [--judge-model ''|auto|<override>]
-      [--judge-timeout 300] [--workers 5] [--worker-bin <bin>] [--skip-judge]
+      [--judge-timeout 300] [--workers 4] [--worker-bin <bin>] [--skip-judge]
 """
 
 from __future__ import annotations
@@ -130,7 +130,11 @@ def main() -> int:
     ap.add_argument("scenarios", nargs="*", default=None)
     vendor.add_vendor_arguments(ap, with_judge=True)
     ap.add_argument("--judge-timeout", type=int, default=300)
-    ap.add_argument("--workers", type=int, default=5)
+    ap.add_argument(
+        "--workers",
+        type=int,
+        default=vendor.DEFAULT_PARALLEL_WORKERS,
+    )
     ap.add_argument("--skip-judge", action="store_true",
                     help="Re-run only the deterministic grader and carry the "
                          "original judge verdicts forward unchanged.")

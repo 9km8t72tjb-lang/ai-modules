@@ -66,6 +66,7 @@ def main() -> int:
     check("cursor worker model default", cursor.worker_model == "auto")
     check("cursor judge model default", cursor.judge_model == "auto")
     check("cursor label", cursor.label == "agent -p")
+    check("default parallel workers", vendor.DEFAULT_PARALLEL_WORKERS == 4)
 
     parser = argparse.ArgumentParser(add_help=False)
     vendor.add_vendor_arguments(parser, with_judge=True)

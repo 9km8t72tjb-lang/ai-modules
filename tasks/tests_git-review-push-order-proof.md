@@ -2,8 +2,8 @@
 description: Log the push in the git_review push_approval fixture and keep the run's report draft in the sandbox, so eval 41 grades warning-before-push and post-push re-reads deterministically.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-03T13:01:20
-status: open
+updated: 2026-10-03T17:21:37
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -23,13 +23,15 @@ The harness runner is already vendor-aware. Fresh proof runs use `--vendor curso
 
 ## Approach
 
-Install a `post-receive` hook in the fixture's bare origin that appends one line per updated ref to `gh_calls.log`, carrying the ref, the old and new SHAs, and an epoch timestamp, so the log orders the push among the forge calls. Have the fixture add a `TMPDIR` line to its `gh_env` that points into the eval target, so the evidence directory and `report.md` land inside the sandbox for this eval alone.
+Install a `post-receive` hook in the fixture's bare origin that appends one line per updated ref to the fixture-root `gh_calls.log` that `write_gh_env` sets as `GH_STUB_LOG`. The hook does not inherit `gh_env`, so it appends to `$GIT_DIR/../gh_calls.log`. Each line is `push <ref> <epoch>` with `<epoch>` a Python float from `python3` `time.time()`, for example `push refs/heads/feature/export <epoch>`. Have the fixture add a `TMPDIR` line to its `gh_env` that points into the eval target, so the evidence directory and `report.md` land inside the sandbox for this eval alone.
 
-Extend the `41)` case in `grade.sh` with three checks. The log carries the push line. At least one checks or merge-state read follows the push line in the log. A `report.md` under the eval target contains the dismissal warning, and its modification time precedes the push line's timestamp. Read modification times through `python3`, because `stat` flags differ between macOS and Linux. Rewrite the eval 41 expectations in `evals.json`, its entry in `tests/git_review/evals/README.md`, and the `push_approval` fixture row in place to match.
+Rewrite the `41)` case in `grade.sh` in place, replacing the attest line and the count-based checks-reread with three checks. The log carries a line matching the prefix `push` plus a trailing space. A checks read and a merge-state read (mergeable or `mergeStateStatus`) both follow that line in the log. A `report.md` under the eval target contains the dismissal warning, and `grade.sh` obtains both that file's `st_mtime` and the push line's epoch through `python3` as floats and passes the warning-order check when `st_mtime` is strictly less than the epoch. Rewrite the eval 41 expectations in `evals.json`, its entry in `tests/git_review/evals/README.md`, and the `push_approval` fixture row in place to match.
 
 ## Acceptance
 
-- A push to a staged `push_approval` origin appends one line naming `refs/heads/feature/export` to `gh_calls.log`, after the forge calls made before it.
+- A push to a staged `push_approval` origin appends one line matching `push refs/heads/feature/export` plus a trailing space and a `python3` `time.time()` float epoch to `gh_calls.log`, after the forge calls made before it.
 - A collector run inside an eval 41 worker environment writes its evidence directory under the eval target.
-- Grading a staged sandbox whose log has no checks read after the push line fails the re-read check, and grading one whose `report.md` is newer than the push line fails the warning-order check.
-- Eval 41 passes on a fresh `python3 tests/git_review/evals/run.py --vendor cursor 41` run with both new checks in place of the attest line.
+- Grading a staged sandbox whose log has no checks read after the push line fails the re-read check, grading one whose log has no merge-state read after the push line fails the re-read check, and grading one whose `report.md` lacks the dismissal warning or whose `report.md` `st_mtime` is not strictly less than the push-line epoch fails the warning-order check.
+- Eval 41 passes on a fresh `python3 tests/git_review/evals/run.py --vendor cursor 41` run with the three Approach checks in place of both `attest "the warning was emitted before the push ran"` and the count-based checks-reread.
+- The eval 41 expectations in `evals.json`, the ### 41 entry in `tests/git_review/evals/README.md`, and the `push_approval` fixture-table row each name the `gh_calls.log` push line and the `report.md` modification time as the order proofs, and prior agent-attest wording is gone.
+- The warning-order check in the `41)` case of `tests/git_review/evals/grade.sh` requires that a `report.md` under the eval target contains the dismissal warning, obtains both that file's `st_mtime` and the push-line epoch through `python3` as floats, and passes when `st_mtime` is strictly less than the epoch.

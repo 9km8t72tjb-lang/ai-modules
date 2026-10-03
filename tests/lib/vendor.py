@@ -12,6 +12,12 @@ from dataclasses import dataclass
 
 VENDORS = ("claude", "cursor")
 
+# Concurrent workers for harnesses that isolate each scenario or pass in its
+# own sandbox. Pattern A runners that share TMPDIR, a host git status, or a
+# host-tree mtime fail-safe stay sequential; see tests/CLAUDE.md and
+# tests/AGENTS.md.
+DEFAULT_PARALLEL_WORKERS = 4
+
 CLAUDE_ONLY = {
     "trigger_evals": (
         "this harness inspects Claude-specific skill-load evidence from "

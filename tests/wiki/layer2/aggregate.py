@@ -177,11 +177,13 @@ def main() -> int:
     evals_path = pathlib.Path(__file__).resolve().parent / "evals.json"
     evals = json.loads(evals_path.read_text())
 
+    evals_by_id = {e["id"]: e for e in evals["evals"]}
     scenarios = []
-    for s in evals["evals"]:
-        scen_dir = run_dir / s["id"]
-        if scen_dir.is_dir():
-            scenarios.append(aggregate_scenario(scen_dir, s["id"], s["name"]))
+    for path in sorted(run_dir.iterdir()):
+        spec = evals_by_id.get(path.name)
+        if spec is None or not path.is_dir():
+            continue
+        scenarios.append(aggregate_scenario(path, spec["id"], spec["name"]))
 
     benchmark = {
         "run_id": run_dir.name,

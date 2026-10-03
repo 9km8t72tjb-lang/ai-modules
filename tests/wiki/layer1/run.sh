@@ -3434,7 +3434,7 @@ scenario d18 "marker-count boundary (2 yes, 1 no)"           d18_marker_count_bo
 scenario d19 ".no_wiki at CWD overrides predicate"           d19_no_wiki_at_cwd_overrides
 scenario d20 "markered dir w/o 'wiki' in name not adopted"   d20_markered_nonwiki_name_not_adopted
 scenario d21 "positional wiki path resolves itself"          d21_positional_wiki_path
-scenario d22 "positional non-wiki path (AVAILABLE choice)"   d22_positional_non_wiki_path
+scenario d22 "positional non-wiki path"                      d22_positional_non_wiki_path
 scenario d23 "positional missing path exits 1"               d23_positional_missing_path
 scenario d24 "usage error exits 3, not 2"                    d24_usage_error_exits_three
 scenario d25 "dot-named wiki skipped in child scan"          d25_dot_named_wiki_skipped

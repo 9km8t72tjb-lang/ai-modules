@@ -28,8 +28,8 @@ python3 tests/language_humanizer/evals/run.py
 ```
 
 That is the deliverable run: three scenarios × five passes, `claude-sonnet-4-6`
-for both the worker and the judge. The fifteen passes run five at a time
-(`--workers`, default 5), so budget roughly 8 to 15 minutes rather than the hour
+for both the worker and the judge. The fifteen passes run four at a time
+(`--workers`, default 4), so budget roughly 8 to 15 minutes rather than the hour
 the same run takes serially. Each pass is one worker call plus one judge call
 inside its own staged sandbox, which is why they parallelize safely, since
 nothing is shared but the model endpoint.

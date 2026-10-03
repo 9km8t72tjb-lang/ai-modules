@@ -17,7 +17,9 @@ Behavioral runners share `tests/lib/vendor.py` and accept `--vendor {claude,curs
 (default `claude`). Claude workers use the latest `sonnet` alias; Cursor workers
 use `auto` via `agent -p`. See `tests/CLAUDE.md` and `tests/AGENTS.md` for the
 full matrix, auth, Claude-only rejects (`trigger_evals`, output-style deploy),
-and skill/agent staging rules.
+and skill/agent staging rules. Isolated-sandbox runners default to 4 parallel
+workers (`DEFAULT_PARALLEL_WORKERS` in `tests/lib/vendor.py`); the serial
+exceptions live in `tests/CLAUDE.md` / `tests/AGENTS.md`.
 
 ## Convention
 

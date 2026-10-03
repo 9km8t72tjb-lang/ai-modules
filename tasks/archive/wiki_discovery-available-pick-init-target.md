@@ -2,9 +2,11 @@
 description: State once in the wiki hub that a chosen AVAILABLE candidate sets $WIKI to <level>/wiki, route every pick, adoption, init, and handoff site through it, and prove it in layer 2.
 scope: plugins/knowledge_management
 created: 2026-10-01T18:28:06
-updated: 2026-10-03T15:24:39
-status: ready
+updated: 2026-10-03T17:41:17
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Set `$WIKI` to `<level>/wiki` for a chosen `AVAILABLE` candidate
@@ -17,7 +19,7 @@ This task delivers the general rule, with one layer-2 run as its motivating case
 
 ## Context
 
-The hub is [the wiki skill](../plugins/knowledge_management/skills/wiki/SKILL.md). When `discover_wiki.sh` exits 2, each `AVAILABLE:` candidate names a directory level with no wiki yet, and each `EXISTING:` candidate names a wiki. The hub never states which wiki path an `AVAILABLE:` pick settles. Several passages read the chosen candidate itself as the wiki path:
+The hub is [the wiki skill](../../plugins/knowledge_management/skills/wiki/SKILL.md). When `discover_wiki.sh` exits 2, each `AVAILABLE:` candidate names a directory level with no wiki yet, and each `EXISTING:` candidate names a wiki. The hub never states which wiki path an `AVAILABLE:` pick settles. Several passages read the chosen candidate itself as the wiki path:
 
 - The chosen-path handoff paragraph in `<discover_wiki>` says a caller hands back the candidate the user chose, "an `AVAILABLE:` level included". Given that level, `discover_wiki.sh` prints it and exits 0, and `<run_discovery>` adopts an exit-0 path as `$WIKI`.
 - The `AVAILABLE` bullet in `<present_candidates>` says selecting the level "creates one there via `init_wiki.sh`".
@@ -25,11 +27,11 @@ The hub is [the wiki skill](../plugins/knowledge_management/skills/wiki/SKILL.md
 - `<adopt_when_user_named_the_path>` says to "adopt that path without prompting".
 - The init step in `<initializing_a_new_wiki>` runs `init_wiki.sh "$WIKI"` "against the chosen path".
 
-The `<level>/wiki` convention is already settled. [The name-and-marker predicate task](archive/wiki_discovery-from-inside-wiki-dir.md) kept creation exact-name, so an available candidate means a wiki created at `<level>/wiki`. Auto-resolution follows the same convention when it prints `$HOME/wiki`. The convention never reached the hub's flow text.
+The `<level>/wiki` convention is already settled. [The name-and-marker predicate task](wiki_discovery-from-inside-wiki-dir.md) kept creation exact-name, so an available candidate means a wiki created at `<level>/wiki`. Auto-resolution follows the same convention when it prints `$HOME/wiki`. The convention never reached the hub's flow text.
 
-The handoff wording comes from [the choice-handoff task](archive/wiki_discovery-choice-handoff-and-parity.md). It gave `discover_wiki.sh` a positional path that answers for any existing directory without the wiki predicate, mirroring `lint.py`, and it described the use as handing back an `AVAILABLE:` level. The positional behavior stays correct for a scaffolded `<level>/wiki`, so only the description of what gets handed back is wrong. The same description sits in the script's header comment, its `--help` text, and the comment above its positional-mode branch. The label of layer-1 scenario `d22` also calls a positional non-wiki path an "AVAILABLE choice". The docstring of `discover_wiki` in `lint.py` speaks of "a path the user chose" and stays as it is.
+The handoff wording comes from [the choice-handoff task](wiki_discovery-choice-handoff-and-parity.md). It gave `discover_wiki.sh` a positional path that answers for any existing directory without the wiki predicate, mirroring `lint.py`, and it described the use as handing back an `AVAILABLE:` level. The positional behavior stays correct for a scaffolded `<level>/wiki`, so only the description of what gets handed back is wrong. The same description sits in the script's header comment, its `--help` text, and the comment above its positional-mode branch. The label of layer-1 scenario `d22` also calls a positional non-wiki path an "AVAILABLE choice". The docstring of `discover_wiki` in `lint.py` speaks of "a path the user chose" and stays as it is.
 
-The [auto_shaper_wiki agent](../plugins/knowledge_management/agents/auto_shaper_wiki.md) sets `$WIKI` "to the chosen path itself" in its `<discover_wiki>` step and says this mirrors the hub's `<proceed_with_operation>`. The step stops on an `AVAILABLE:` pick without scaffolding, so its behavior is safe today, but its mirror claim breaks once the hub states the rule. `wiki_import` and `wiki_wrapup` resolve `$WIKI` through the hub's discovery flow, so the hub rule reaches them unedited. `wiki_fix` delegates discovery to the agent.
+The [auto_shaper_wiki agent](../../plugins/knowledge_management/agents/auto_shaper_wiki.md) sets `$WIKI` "to the chosen path itself" in its `<discover_wiki>` step and says this mirrors the hub's `<proceed_with_operation>`. The step stops on an `AVAILABLE:` pick without scaffolding, so its behavior is safe today, but its mirror claim breaks once the hub states the rule. `wiki_import` and `wiki_wrapup` resolve `$WIKI` through the hub's discovery flow, so the hub rule reaches them unedited. `wiki_fix` delegates discovery to the agent.
 
 The hub's `<output_contract>` cites `<present_candidates>` and `<adopt_when_user_named_the_path>`. Its layer-1 checker `hub_output_contract.py` runs as scenario `a3`. It fails when the contract shares a six-word run with a cited block, or when a cited block's wording appears twice in the hub.
 
@@ -44,7 +46,7 @@ Scenario L2-4 stages a bare `HOME/proj` through `stage_L2-4` in `tests/wiki/laye
    - The init step in `<initializing_a_new_wiki>` runs against `$WIKI` as `<proceed_with_operation>` sets it.
    - The chosen-path handoff paragraph in `<discover_wiki>` hands back the `$WIKI` a pick settles. For an `AVAILABLE:` pick that path exists only after `init_wiki.sh` scaffolds it, and a positional call before then exits 1.
 3. **Align the agent.** Rewrite the sentence in the agent's `<discover_wiki>` step that sets `$WIKI` "to the chosen path itself", so it sets `$WIKI` the way the hub's `<proceed_with_operation>` does. The step keeps its `.no_wiki` marker offer and keeps stopping on an `AVAILABLE:` pick.
-4. **Align the script's documentation.** In [discover_wiki.sh](../plugins/knowledge_management/skills/wiki/scripts/discover_wiki.sh), rewrite the "Chosen-path handoff" paragraph of the header comment, the matching `--help` paragraph, and the comment above the positional-mode branch. Each describes handing back the wiki path a pick settles, which for an `AVAILABLE:` pick is the level's `wiki/` child once scaffolded. In `tests/wiki/layer1/run.sh`, rename the `d22` scenario label so it describes a positional non-wiki path without calling it an `AVAILABLE` choice, and keep its function body.
+4. **Align the script's documentation.** In [discover_wiki.sh](../../plugins/knowledge_management/skills/wiki/scripts/discover_wiki.sh), rewrite the "Chosen-path handoff" paragraph of the header comment, the matching `--help` paragraph, and the comment above the positional-mode branch. Each describes handing back the wiki path a pick settles, which for an `AVAILABLE:` pick is the level's `wiki/` child once scaffolded. In `tests/wiki/layer1/run.sh`, rename the `d22` scenario label so it describes a positional non-wiki path without calling it an `AVAILABLE` choice, and keep its function body.
 5. **Add a discriminating layer-2 scenario.** Add one `L2-*` scenario to `tests/wiki/layer2/evals.json`. Stage it with its own function in `setup_scenarios.sh` that mirrors `stage_L2-4`, and list it in `ALL_SCENARIOS`. The user request asks to initialize a wiki for the project and names the working-directory candidate as the pick. The fields the worker sees name no init target, so the hub's rule alone must supply `<level>/wiki`. The scenario asserts these facts:
    - `init_target` ends with `<scenario id>/HOME/proj/wiki`.
    - `SCHEMA.md`, `index.md`, and `log.md` exist under `HOME/proj/wiki`.

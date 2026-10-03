@@ -3,8 +3,10 @@
 
 This is the regression-test entrypoint for the wiki skill. Each invocation:
 
-1. Restages all sandboxes via setup_scenarios.sh (one full pass).
-2. Submits one worker per scenario to a ThreadPoolExecutor (default 4 workers).
+1. Restages the sandboxes this run will execute via setup_scenarios.sh
+   (every scenario on a full run; only `--scenario` ids on a subset run).
+2. Submits one worker per scenario to a ThreadPoolExecutor (default
+   `vendor.DEFAULT_PARALLEL_WORKERS`).
    Inside each worker, passes run sequentially:
      - Build the prompt via build_prompt.py.
      - Stage the relevant knowledge-management skill trees and the
@@ -32,10 +34,10 @@ Layout:
 
 Use `--passes N` to override the default from evals.json. Use `--scenario L2-1`
 to run a single scenario (useful when iterating on a specific failure).
-Use `--workers N` to tune parallelism (default 4). The default worker policy
-comes from `tests/lib/vendor.py`: `--vendor claude` uses `sonnet`,
-`--vendor cursor` uses `auto`, and `--model ''` inherits the vendor CLI
-default.
+Use `--workers N` to tune parallelism (default
+`vendor.DEFAULT_PARALLEL_WORKERS`). The default worker policy comes from
+`tests/lib/vendor.py`: `--vendor claude` uses `sonnet`, `--vendor cursor`
+uses `auto`, and `--model ''` inherits the vendor CLI default.
 """
 
 from __future__ import annotations
@@ -271,9 +273,16 @@ def main() -> int:
     vendor.add_vendor_arguments(parser)
     parser.add_argument("--timeout", type=int, default=600,
                         help="Per-pass timeout in seconds (default: 600)")
-    parser.add_argument("--workers", type=int, default=4,
-                        help="Number of scenarios to run in parallel (default: 4). "
-                             "Passes within one scenario stay sequential.")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=vendor.DEFAULT_PARALLEL_WORKERS,
+        help=(
+            "Number of scenarios to run in parallel "
+            f"(default: {vendor.DEFAULT_PARALLEL_WORKERS}). "
+            "Passes within one scenario stay sequential."
+        ),
+    )
     args = parser.parse_args()
     resolved = vendor.resolve(args)
     if shutil.which(resolved.bin) is None and not pathlib.Path(resolved.bin).is_file():
@@ -307,9 +316,13 @@ def main() -> int:
     print(f"Scenarios: {[s['id'] for s in scenarios]}, passes per scenario: {passes}")
     vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
-    # Initial full restage (covers all scenarios). After this, per-scenario
-    # restages happen inline between passes inside each scenario worker.
-    subprocess.run([str(SETUP_SCRIPT)], check=True)
+    # Restage only the scenarios this run will execute. A subset run must not
+    # stage every sandbox just to skip them later.
+    if wanted is None:
+        subprocess.run([str(SETUP_SCRIPT)], check=True)
+    else:
+        for scenario in scenarios:
+            restage_one(scenario["id"])
 
     workers = max(1, min(args.workers, len(scenarios)))
     print(f"Running {len(scenarios)} scenario(s) with {workers} parallel worker(s)")

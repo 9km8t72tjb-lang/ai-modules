@@ -382,6 +382,14 @@ EOF
     _sha_baseline "$wiki/log.md" "$sb/baseline/log.md.sha256"
 }
 
+stage_L2-10() {
+    # L2-10: init from scratch on an AVAILABLE pick; hub rule alone supplies
+    # the init target (no shown-field init path). Stages like L2-4.
+    local sb
+    sb=$(reset_sandbox L2-10)
+    stage "$sb/HOME/proj"
+}
+
 stage_WI-1() {
     # WI-1: existing wiki at CWD, user pastes a fresh source. wiki_import must
     # capture raw + emit proposal without touching wiki pages.
@@ -1335,7 +1343,7 @@ stage_AS-21() {
     _baseline_skill_templates "$sb"
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21)
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

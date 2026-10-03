@@ -72,10 +72,11 @@ fake `HOME`, hands it a user request, and asks for a structured
 TEST REPORT in return. The grader checks that report and the resulting
 sandbox filesystem state against per-scenario assertions.
 
-**Two passes** per scenario, run sequentially with a sandbox restage
-between them. Two independent samples surface flaky behavior; if the
-two passes disagree on an assertion, the regression aggregator flags
-it.
+**Two passes** per scenario, sequential *within* a scenario with a
+sandbox restage between them. Distinct scenarios run in parallel
+(`--workers`, default 4). Two independent samples surface flaky
+behavior; if the two passes disagree on an assertion, the regression
+aggregator flags it.
 
 ### The original five discovery scenarios
 
@@ -140,37 +141,36 @@ What we *don't* trust:
 ./tests/wiki/run_all.sh
 ```
 
-### Full: Layer 1 + Layer 2 (~5 to 10 min, ~50k tokens per pass × 10)
+### Full: Layer 1 + Layer 2 (~5 to 10 min, default 4 parallel scenarios)
 
-The standalone runner shells out to `claude -p` per pass:
+The standalone runner shells out to one vendor worker per pass
+(`claude -p` or `agent -p`) and runs distinct scenarios concurrently:
 
 ```bash
 ./tests/wiki/run_all.sh --layer2
 # or directly:
-python3 ./tests/wiki/layer2/run.py
+python3 ./tests/wiki/layer2/run.py --vendor cursor
 ```
+
+`--workers` defaults to 4 (`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`).
+Passes of one scenario stay sequential. A `--scenario` subset restages
+and grades only those ids.
 
 Single scenario while debugging:
 
 ```bash
-python3 ./tests/wiki/layer2/run.py --scenario L2-2
+python3 ./tests/wiki/layer2/run.py --vendor cursor --scenario L2-2
 ```
 
-### Inside a Claude Code session (faster, true parallel subagents)
+### Inside a Claude Code session
 
-The standalone `claude -p` runner runs scenarios sequentially. Inside a
-live Claude Code session, the parent agent can spawn 5 subagents in
-parallel for pass-1, restage, then 5 in parallel for pass-2, about 3×
-faster. Paste this prompt into a fresh session at the repo root:
+The standalone runner already parallelizes scenarios. Spawning extra
+in-session subagents on top of it is optional, not required for
+throughput. For a subset or a one-off, prefer:
 
-> Re-run the Layer 2 wiki-skill regression in this repo. The harness is
-> in `tests/wiki/layer2/`. For each scenario in `evals.json`, restage
-> the sandbox via `setup_scenarios.sh`, spawn a subagent twice using
-> the prompt built by `build_prompt.py`, and have each subagent write
-> its TEST REPORT to `workspace/run-<ts>/<scenario>/pass-N/report.md`
-> (or to its response; `normalize.py` will recover either). After all
-> 10 runs finish, run `normalize.py`, `grade.py`, `aggregate.py`, and
-> `render_report.py` against the run dir and surface any regressions.
+```bash
+python3 ./tests/wiki/layer2/run.py --vendor cursor --scenario L2-2
+```
 
 ### Output
 

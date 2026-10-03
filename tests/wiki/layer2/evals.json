@@ -795,6 +795,57 @@
       ]
     },
     {
+      "id": "L2-10",
+      "name": "available-cwd-pick-then-init",
+      "description": "Fresh CWD, ambiguous discovery, user names the working-directory AVAILABLE candidate. Shown fields name no init target, so the hub's AVAILABLE→<level>/wiki rule alone must drive init_wiki.sh. Discriminates scaffolding into the level directory itself.",
+      "sandbox_path": "L2-10",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Initialize a wiki for this project. When discovery is ambiguous, pick the working-directory candidate.",
+      "extra_constraints": [
+        "discover should exit 2 with two AVAILABLE candidates (working directory and HOME).",
+        "Adopt the working-directory candidate named in the request.",
+        "After adopting that candidate, run init_wiki.sh, then verify the scaffold exists."
+      ],
+      "expected_resolved_path_subpath": "n/a",
+      "assertions": [
+        {
+          "id": "A1_init_target_under_level",
+          "type": "report_field_endswith",
+          "field": "init_target",
+          "suffix": "L2-10/HOME/proj/wiki"
+        },
+        {
+          "id": "A2_schema_under_wiki",
+          "type": "file_exists",
+          "path": "HOME/proj/wiki/SCHEMA.md"
+        },
+        {
+          "id": "A3_index_under_wiki",
+          "type": "file_exists",
+          "path": "HOME/proj/wiki/index.md"
+        },
+        {
+          "id": "A4_log_under_wiki",
+          "type": "file_exists",
+          "path": "HOME/proj/wiki/log.md"
+        },
+        {
+          "id": "A5_schema_not_in_proj",
+          "type": "path_does_not_exist",
+          "path": "HOME/proj/SCHEMA.md"
+        },
+        {
+          "id": "A6_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A7_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
       "id": "WI-1",
       "name": "wiki-import-paste-proposal-only",
       "description": "wiki_import on a paste: capture raw, mine durable claims, emit 3-section proposal, STOP before any wiki page write. Tests workflow plumbing — does the sibling delegate to the wiki skill's scripts.",

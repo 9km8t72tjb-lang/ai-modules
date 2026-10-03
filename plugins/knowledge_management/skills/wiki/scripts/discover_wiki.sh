@@ -60,9 +60,10 @@
 #   mirroring lint.py's optional positional wiki_path: an existing
 #   directory prints its canonical path and exits 0, a missing one exits 1
 #   with a message on stderr. The wiki predicate is deliberately not
-#   applied, so a caller can hand back the candidate the user picked from
-#   an exit-2 list — an AVAILABLE: level included — instead of re-running
-#   discovery, which would only reproduce the same ambiguous list.
+#   applied, so a caller can hand back the wiki path a pick settles (for
+#   an AVAILABLE: pick, the level's wiki/ child once scaffolded), rather
+#   than re-running discovery, which would only reproduce the same
+#   ambiguous list.
 #
 # Exit codes:
 #   0  a single resolved path on stdout
@@ -134,8 +135,9 @@ Chosen-path handoff (WIKI_PATH):
   A WIKI_PATH argument skips discovery and answers for that path alone,
   mirroring lint.py's optional positional wiki_path: an existing directory
   prints its canonical path and exits 0, a missing one exits 1. The wiki
-  predicate is not applied, so the caller can hand back the candidate the
-  user picked from an exit-2 list instead of re-running discovery.
+  predicate is not applied, so the caller can hand back the wiki path a
+  pick settles (for an AVAILABLE: pick, the level's wiki/ child once
+  scaffolded).
 
 Usage:
   discover_wiki.sh [WIKI_PATH] [--check]
@@ -225,9 +227,10 @@ is_wiki() {
 
 # A given WIKI_PATH answers for itself: discovery is what the caller
 # already ran to get this path, so re-running it here would only reproduce
-# the same ambiguous list. Mirrors lint.py's positional wiki_path — the
-# wiki predicate stays out, so an AVAILABLE: level the user chose resolves
-# just as an EXISTING: wiki does.
+# the same ambiguous list. Mirrors lint.py's positional wiki_path: the
+# wiki predicate stays out, so the caller can hand back the wiki path a
+# pick settles (for an AVAILABLE: pick, the level's wiki/ child once
+# scaffolded).
 if [[ -n "$WIKI_ARG" ]]; then
   # Expand a leading ~ the way lint.py's Path.expanduser() does, for a path
   # handed over as a literal string rather than through shell expansion. The
