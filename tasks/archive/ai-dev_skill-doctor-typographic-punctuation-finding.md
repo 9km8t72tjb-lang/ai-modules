@@ -2,7 +2,7 @@
 description: Rescope skill_doctor's two non-ASCII findings onto the typographic punctuation set, rename both codes after that class, drop the UTF-8 half, and report the measured sibling split.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-12T19:09:05
-updated: 2026-08-13T22:32:02
+updated: 2026-10-03T13:20:10
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -74,7 +74,7 @@ eval surface carries the `no_hyphen_substitution` grader in
 `tests/skill_doctor/evals/grade.sh` and the surface description in
 `tests/skill_doctor/README.md`.
 
-`tasks/wiki_activation-surface-and-descriptions.md` holds the other side of this
+`tasks/archive/wiki_activation-surface-and-descriptions.md` holds the other side of this
 surface, and the two tasks divide it cleanly: this one changes what the check
 fires on, that one changes the descriptions the check fires on. The division has
 one coupling. That task's Acceptance names both `description_non_ascii` and
@@ -131,7 +131,7 @@ its own new behavior and with the existing suite re-run.
   cover that axis unchanged.
 - Which sets the sibling comparison runs over, settled by the skill as shipped.
 - Rewriting the em dashes out of the four wiki family descriptions, owned by
-  [wiki_activation-surface-and-descriptions.md](../wiki_activation-surface-and-descriptions.md).
+  [wiki_activation-surface-and-descriptions.md](wiki_activation-surface-and-descriptions.md).
 
 ## Acceptance
 
@@ -175,7 +175,7 @@ its own new behavior and with the existing suite re-run.
 13. `tests/skill_doctor/evals/grade.sh` and `tests/skill_doctor/README.md`
     describe the finding by its new name, and the `no_hyphen_substitution`
     grader still passes on the `discovery_risky_sibling` eval.
-14. The acceptance item in `tasks/wiki_activation-surface-and-descriptions.md`
+14. The acceptance item in `tasks/archive/wiki_activation-surface-and-descriptions.md`
     that names both old codes names the two new codes instead, and searching that
     file for the old code names returns no match.
 15. Searching `scripts/discovery_safety.py` finds `TYPOGRAPHIC_PUNCT_RE` declared

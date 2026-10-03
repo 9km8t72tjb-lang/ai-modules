@@ -2,7 +2,7 @@
 description: Repair the trigger-eval harness, which reports a zero trigger rate on every positive query, so its numbers measure skill triggering again, then re-baseline the recorded results.
 scope: "local test harnesses"
 created: 2026-08-11T18:59:52
-updated: 2026-08-30T16:53:10
+updated: 2026-10-03T13:20:10
 status: deferred
 reported-by: Andreas Hoffmann
 ---
@@ -42,7 +42,7 @@ harness works again.
 
 The harness is shared: it carries `task` and `task_explain` fixtures beside the
 four wiki ones, so this repair is repo-wide tooling rather than wiki-specific.
-[wiki_activation-surface-and-descriptions.md](../wiki_activation-surface-and-descriptions.md)
+[wiki_activation-surface-and-descriptions.md](wiki_activation-surface-and-descriptions.md)
 rewrites two of those descriptions and needs this harness to measure the result,
 so that task consumes what this one restores.
 [task-family_test-harness-consolidation.md](task-family_test-harness-consolidation.md)
@@ -68,7 +68,7 @@ that inventory section.
 **Out of scope:**
 
 - Rewriting any skill description, owned by
-  [wiki_activation-surface-and-descriptions.md](../wiki_activation-surface-and-descriptions.md).
+  [wiki_activation-surface-and-descriptions.md](wiki_activation-surface-and-descriptions.md).
 - Changing the optimization loop's search strategy or its iteration budget.
 
 ## Acceptance

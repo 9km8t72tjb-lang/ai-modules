@@ -1,7 +1,7 @@
 ---
 name: wiki
-description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; whenever the user mentions their wiki, knowledge base, or research notes in any way, including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.24.5
+description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
+version: 1.24.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -36,9 +36,9 @@ never skipped, even on quick queries.
 Use this skill when the user:
 
 - Asks to create, build, or start a wiki or knowledge base.
-- Asks to ingest, add, or process a source into their wiki.
+- Points at a named source to bring into the wiki: activate `wiki_import`.
 - Asks a question that an existing wiki at the discovered location could answer.
-- Asks to lint, audit, fix, health-check, clean up, or auto-repair their wiki; delegate the work to the `auto_shaper_wiki` agent (see `<lint_and_audit>`).
+- Asks for a wiki-wide lint, audit, health check, clean-up, or auto-repair: activate `wiki_fix`.
 - References their wiki, knowledge base, or "notes" in a research context.
 - Asks to capture procedural knowledge (workflows, conventions, runbooks) alongside the wiki's subject pages.
 </when_to_activate>

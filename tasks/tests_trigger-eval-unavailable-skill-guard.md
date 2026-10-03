@@ -2,7 +2,7 @@
 description: Make the trigger-eval runner fail loudly on an unavailable skill instead of silently scoring a zero, and document how to read a zero-recall outcome in the tests-tree README.
 scope: "local test harnesses"
 created: 2026-08-30T16:57:07
-updated: 2026-10-03T13:01:20
+updated: 2026-10-03T13:20:10
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -80,7 +80,7 @@ an availability failure, which now exits loudly rather than scoring zero.
 **Out of scope:**
 
 - Rewriting any skill `description:` to move a routing result, owned by
-  [wiki_activation-surface-and-descriptions.md](wiki_activation-surface-and-descriptions.md).
+  [wiki_activation-surface-and-descriptions.md](archive/wiki_activation-surface-and-descriptions.md).
 - Re-baselining recorded runs or deleting the stale 2026-05-17 run logs; that
   output is gitignored and a fresh run supersedes it.
 - Adding trigger-eval cases for any skill and editing the task-family

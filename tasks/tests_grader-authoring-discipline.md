@@ -1,9 +1,9 @@
 ---
-description: Make eval graders assert substance over surface form and split long conjunctions, with durable rules aligned across TESTING.md and standing instructions, and mechanics in the tests tree.
+description: Make eval graders assert substance over form, subject-anchored matches, wrap-collapsed checks, and split conjunctions; rules in TESTING.md and standing instructions, mechanics in the tests tree.
 scope: "local test harnesses"
 created: 2026-08-15T14:08:10
-updated: 2026-10-03T13:01:20
-status: open
+updated: 2026-10-03T13:21:23
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -56,7 +56,7 @@ when it is arithmetic.
 Placement matters because of how each file is read. `TESTING.md` is the
 family-consulted testing guardrail and already carries overlapping design
 principles under `## Test Design Principles` (substance over wording, wraps
-collapsed). The repo's standing instructions (`AGENTS.md` / `CLAUDE.md`) load at
+collapsed and negations dropped). The repo's standing instructions (`AGENTS.md` / `CLAUDE.md`) load at
 inference time, so an agent authoring a new grader meets a short grader-authoring
 pointer there without going looking. The tests tree is committed and reaches
 every clone, but it is not auto-loaded, so a file under it is read only by
@@ -92,11 +92,15 @@ failed the two-options check. The label-presence check has the same shape: it
 counts the literal string `Open decision:`, so a run on 2026-09-05 whose body
 carried `**Open decision (guardrail-bound):**` scored zero labels and failed as
 though the agent had never surfaced the fork, when it had surfaced it and named
-the ground the governing rule asks for. The grader's own comments concede the
-tradeoff, saying a conformant clause phrased without either subject marker would
-false-fail. The effect is that these evals report roughly a one-in-five pass rate
-that reads as an unstable skill and is mostly grader arithmetic, which is the
-same signature the conjunction rule above describes.
+the ground the governing rule asks for. The same literal `"Open decision:"`
+written/surfacing contract still appears in
+`tests/task_create/evals/evals.json` expectations and
+`tests/task_create/evals/README.md`, so widening `grade.sh` alone would leave
+those harness prose surfaces behind the needle change. The grader's own comments
+concede the tradeoff, saying a conformant clause phrased without either subject
+marker would false-fail. The effect is that these evals report roughly a
+one-in-five pass rate that reads as an unstable skill and is mostly grader
+arithmetic, which is the same signature the conjunction rule above describes.
 
 ## Approach
 
@@ -104,9 +108,12 @@ same signature the conjunction rule above describes.
    `## Test Design Principles` in place so the four rules above sit there as the
    canonical authoring requirements. Keep the existing substance and wrap-collapse
    principles by extending them to the full four-rule set rather than leaving a
-   second overlapping statement beside them. Preserve any principle already there
-   that is not one of these four (for example filesystem-fact preference and
-   fail-branch / sandbox staging) as sibling bullets.
+   second overlapping statement beside them. When rewriting wrap-collapse into
+   the four-rule "Read prose with wraps collapsed" form, keep the standing
+   "negations dropped" requirement with that rule or as its own sibling bullet.
+   Preserve any principle already there that is not one of these four (for
+   example filesystem-fact preference and fail-branch / sandbox staging) as
+   sibling bullets.
 2. **Point the standing instructions at that home.** Extend the
    `## Regression test harnesses` section of both `AGENTS.md` and `CLAUDE.md`
    with a short grader-authoring pointer that names the four rules and cites
@@ -125,10 +132,14 @@ same signature the conjunction rule above describes.
    structured-report-field check that still matches a name anywhere on a
    `verdict:` line—including the `fix_coherence` either-side alter checks
    `(a)`, `(c)`, and `(e)`—through `verdict_is` or an either-side disjunction of
-   `verdict_is`; and in the `task_create` grader re-derive the still-false
-   label-structure needles from the label forms already recorded under its run
-   workspace, so each check names the part of the label that must be present and
-   passes on every phrasing that carries it.
+   `verdict_is`; and in the `task_create` harness rewrite in lockstep the
+   label-structure needles in `tests/task_create/evals/grade.sh` and the
+   written/surfacing contract in `tests/task_create/evals/evals.json` and
+   `tests/task_create/evals/README.md`, re-deriving each from the label forms
+   already recorded under its run workspace so every surface describes a labeled
+   open-decision lead-in by substance — including a qualified form such as
+   `**Open decision (guardrail-bound):**` — and each check names the part of the
+   label that must be present and passes on every phrasing that carries it.
 
 **Out of scope:**
 
@@ -145,6 +156,11 @@ same signature the conjunction rule above describes.
 1. `TESTING.md` `## Test Design Principles` states all four rules as the
    canonical grader-authoring requirements, and its prior overlapping substance
    and wrap-collapse wording is superseded rather than left beside a second copy.
+   Principles already in that section that are not one of the four —
+   filesystem-fact preference and fail-branch / sandbox staging — remain as
+   sibling bullets beside the four rules. The standing "negations dropped"
+   requirement remains with the wrap-collapse rule or as its own sibling bullet
+   rather than being deleted by that supersession.
 2. The `## Regression test harnesses` section of both `AGENTS.md` and
    `CLAUDE.md` carries the same short pointer that names the four rules and cites
    that `TESTING.md` section.
@@ -155,15 +171,25 @@ same signature the conjunction rule above describes.
    such check uses it.
 5. Every structured-report-field check in those graders matches its record by
    subject, so a name appearing inside another record's prose cannot satisfy or
-   defeat it.
-6. Each label-structure check in the `task_create` grader passes on the
+   defeat it. The `fix_coherence` either-side alter checks `(a)`, `(c)`, and
+   `(e)` stay satisfied when the alter verdict lands on either named owner, via
+   an either-side `verdict_is` disjunction.
+6. Each label-structure check in `tests/task_create/evals/grade.sh` passes on the
    still-false forms already recorded under its run workspace: a why-open clause
    written about the evidence rather than about the fork, and a label whose
    lead-in qualifies the phrase, as in `**Open decision (guardrail-bound):**`.
-   The label-presence check still reports zero labels for a body that surfaces
-   no decision at all, so widening it costs no detection.
-7. A recorded run of the task-family evals after the changes reports, per eval,
-   which behaviours passed and which failed; the recorded result is the
-   deliverable, and a behaviour that still fails is recorded with its reason
-   rather than removed from the set. Prefer `--vendor cursor` for that recorded
-   run per `TESTING.md`.
+   The same substance contract — a labeled open-decision lead-in, including that
+   qualified form — supersedes any literal-only `"Open decision:"`
+   written/surfacing wording in `tests/task_create/evals/evals.json` and
+   `tests/task_create/evals/README.md`, so `grade.sh` and those harness prose
+   surfaces stay lockstep. The label-presence check still reports zero labels
+   for a body that surfaces no decision at all, so widening it costs no
+   detection.
+7. After the grader changes, a `--vendor cursor` run of the task-family evals
+   (per `TESTING.md`) yields a per-eval per-behaviour pass/fail summary, and that
+   summary is committed at
+   `tests/task/results/grader_authoring_discipline.md`. The file names each
+   eval, which behaviours passed and which failed, and for every still-failing
+   behaviour records its reason rather than dropping it from the set. The file
+   is the deliverable; a gitignored `results/run-*.md` or `results/run-*.json`
+   report is not.

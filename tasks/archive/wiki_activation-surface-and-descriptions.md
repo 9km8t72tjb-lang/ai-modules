@@ -2,9 +2,11 @@
 description: Realign the wiki family's activation surface: hub stops claiming import and audit ground, purpose-first descriptions, em-dash sentence splits, and trigger fixtures aligned to the boundary.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-09-05T21:33:57
-status: ready
+updated: 2026-10-03T13:19:18
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Realign the wiki family's activation surface and descriptions
@@ -52,7 +54,7 @@ the sentences never earned. The `ai_instruction_writing` skill's
 keep UTF-8, rather than substituting a hyphen or an en dash, which keeps the same
 break.
 
-Two related items bound the work. [archive/task-family_sibling-trigger-routing.md](archive/task-family_sibling-trigger-routing.md)
+Two related items bound the work. [task-family_sibling-trigger-routing.md](task-family_sibling-trigger-routing.md)
 records that description-sharpening regressed routing for the `task_*` family
 while naming helped, so treat wording changes here as measured rather than
 assumed. The trigger-eval surface measures in deployed mode, where the wiki
@@ -60,7 +62,7 @@ fixtures score non-zero, so that measurement is available to check the wording
 changes here rather than blocked on a runner repair.
 
 Co-edit:
-[ai-dev_skill-doctor-typographic-punctuation-finding.md](archive/ai-dev_skill-doctor-typographic-punctuation-finding.md)
+[ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
 renamed the `discovery_safety.py` finding codes and narrowed both findings from
 the ASCII boundary to a typographic punctuation set. The Acceptance check that
 runs `scripts/discovery_safety.py` names the two shipped codes,
@@ -94,7 +96,7 @@ this task's verification holds either way.
 - The hub's `<lint_and_audit>` operation, which keeps spawning the agent for a
   session already inside a wiki.
 - Family declaration and authority blocks, owned by
-  [wiki_family-inheritance-blocks.md](wiki_family-inheritance-blocks.md).
+  [wiki_family-inheritance-blocks.md](../wiki_family-inheritance-blocks.md).
 - Changing the trigger-eval runner, a separate harness this task does not touch.
 
 ## Acceptance

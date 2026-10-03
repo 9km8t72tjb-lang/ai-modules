@@ -2,8 +2,8 @@
 description: Rewrite deployment.sh to run under the stock macOS bash 3.2, guard the floor with a lint check and a bash-3.2 test run, fix two mapfile graders, and state the floor in the deploy README.
 scope: deployment
 created: 2026-09-18T19:48:56
-updated: 2026-09-18T19:48:56
-status: open
+updated: 2026-10-03T13:20:29
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -33,7 +33,7 @@ What bash 3.2 does with each construct is verified on a stock macOS build rather
 
 The rest of the repository already meets this floor. Every shell script bundled inside a skill passes a bash 3.2 syntax check and uses no bash-4 construct, and the charter guardrail hook declares `#!/bin/sh`. Outside the deploy script the only offenders are two eval graders, `tests/agent_spinner/evals/grade.sh` and `tests/git_commit/evals/grade.sh`, each of which reads a command's output through a single `mapfile -t` call.
 
-Regression coverage lives in `tests/deployment/script_tests/`, whose `run.sh` and `style_run.sh` both resolve the script into `DEPLOY_SCRIPT` and execute it directly, letting the shebang pick the interpreter. One assertion in `style_run.sh` greps the script for the literal string `declare -A STYLE_MAP`, so it fails by construction once the map changes shape.
+Regression coverage lives in `tests/deployment/script_tests/`, whose `run.sh` and `style_run.sh` both resolve the script into `DEPLOY_SCRIPT` and execute it directly, letting the shebang pick the interpreter. Two assertions in `style_run.sh` bind the map's current shape: one greps the script for the literal string `declare -A STYLE_MAP`, and after sourcing the script and calling `parse_deployment_conf` another checks `[[ "${STYLE_MAP[claude]:-}" == "natural-language" ]]`, so both fail by construction once the map changes shape.
 
 Static enforcement has to be built rather than configured. The Makefile's `lint-sh` target runs `shellcheck` over `SH_FILES`, and shellcheck 0.11.0 offers no bash-version target: its `-s` flag selects a dialect from `sh`, `bash`, `dash`, `ksh`, and `busybox`, none of which expresses a version floor.
 
@@ -45,11 +45,11 @@ Replace each associative array with an indexed array of `key|value` entries and 
 
 Replace both case-modification comparisons with a bracket-class glob, `[[ "$bname" == [Rr][Ee][Aa][Dd][Mm][Ee]* ]]`, which bash 3.2 supports and which needs no global shell option. The `nocasematch` shell option would also work and is deliberately left aside, because it changes matching for every comparison in its scope rather than the one being fixed.
 
-Add a static check to the Makefile's shell lint so the floor survives future edits. The check scans the same `SH_FILES` set for the verified construct list recorded under **Context** and fails with the offending file and construct named. Keep it a plain shell and `grep` step, since the repo's standing rules hold the toolchain to Make, shell, and Markdown with jq, git, and Python 3 as the accepted standing dependencies.
+Add a static check to the Makefile's shell lint so the floor survives future edits. The check scans the same `SH_FILES` set with plain shell and `grep` for this fixed greppable token and expansion set, and fails with the offending file and construct named: `declare -A`, `${var^^}` / `${var,,}`, `mapfile`, `readarray`, `declare -n`, `wait -n`, `read -N`, `shopt -s globstar`, `${var@Q}`, `&>>`, `;;&`, `coproc`, `[[ -v`, `EPOCHSECONDS`, and `printf '%(fmt)T'` (and equivalent greppable forms of those same constructs). Leave negative-array-index coverage to the bash-3.2 execution proofs alone; grep cannot reliably detect that class. Keep the check a plain shell and `grep` step, since the repo's standing rules hold the toolchain to Make, shell, and Markdown with jq, git, and Python 3 as the accepted standing dependencies.
 
-Parameterize the deployment script tests so they invoke the script through an explicit interpreter, defaulting to `/bin/bash` where it exists and falling back to the shebang elsewhere, and rewrite the `style_run.sh` assertion that greps for `declare -A STYLE_MAP` so it asserts the replacement structure by that structure's own verbatim label. The static check and the bash-3.2 run cover different failure classes, so both are delivered: the static pass reaches constructs on untaken branches, and the run proves the taken paths.
+Parameterize the deployment script tests so they invoke the script through an explicit `/bin/bash` interpreter, and rewrite both `style_run.sh` STYLE_MAP assertions — the grep for `declare -A STYLE_MAP` and the post-`parse_deployment_conf` check `[[ "${STYLE_MAP[claude]:-}" == "natural-language" ]]` — so each asserts the replacement structure by that structure's own form, with the consumer check still proving that `claude` resolves to `natural-language`. Locate the bash≥5 interpreter for the behaviour-identity check as the first `bash` on `PATH` whose major version is at least 5 and whose resolved path differs from `/bin/bash`; when `/bin/bash` itself is already bash≥5, that single interpreter satisfies both sides of the check. When neither holds, the identity check is not runnable and the `/bin/bash` dry-run Acceptance items alone carry the behaviour proof for that host. The static check and the bash-3.2 run cover different failure classes, so both are delivered: the static pass reaches constructs on untaken branches, and the run proves the taken paths.
 
-Rewrite the two graders' `mapfile -t` calls as a `while IFS= read -r` loop appending to an array, preserving each grader's current handling of an empty result.
+Rewrite the two graders' `mapfile -t` calls as a `while IFS= read -r` loop appending to an array.
 
 Rewrite the shell-requirement passage of `deployment/README.md` in place so it states the bash 3.2 floor and the reason the floor exists, superseding the present unversioned sentence rather than adding a second one beside it.
 
@@ -64,10 +64,11 @@ Rewrite the shell-requirement passage of `deployment/README.md` in place so it s
 
 - `/bin/bash deployment/deployment.sh --clear-backups --dry-run` completes and prints its run summary, where it currently exits non-zero on an unbound-variable error before any output.
 - `/bin/bash deployment/deployment.sh --global --dry-run` completes and prints its per-artefact plan.
-- The output of `--global --dry-run` under `/bin/bash` and under a bash 5 interpreter is identical, confirming the rewrite changed no behaviour.
+- When the Approach locator yields a qualifying bash≥5 interpreter, the output of `--global --dry-run` under `/bin/bash` and under that interpreter is identical, confirming the rewrite changed no behaviour. When it yields none, the identity check is not run and the `/bin/bash` dry-run Acceptance items alone carry the behaviour proof for that host.
 - A staged fixture shell file containing `declare -A m=()` is flagged by the new static check, naming the file and the construct; a second fixture containing `${v^^}` is flagged the same way; both fixtures are removed before the tree is final.
+- The lint recipe that implements the static check (Makefile / shell-lint step text) includes each greppable pattern Approach names: `declare -A`, `${var^^}` / `${var,,}`, `mapfile`, `readarray`, `declare -n`, `wait -n`, `read -N`, `shopt -s globstar`, `${var@Q}`, `&>>`, `;;&`, `coproc`, `[[ -v`, `EPOCHSECONDS`, and `printf '%(fmt)T'`.
 - The new static check reports no finding over the repository's tracked shell files as they stand after the rewrite.
 - `tests/deployment/script_tests/run.sh` and `tests/deployment/script_tests/style_run.sh` pass with the deploy script invoked through `/bin/bash`.
-- No assertion in `tests/deployment/script_tests/style_run.sh` greps for the literal `declare -A STYLE_MAP`, and the assertion that replaced it names the new structure's own label.
+- No assertion in `tests/deployment/script_tests/style_run.sh` greps for the literal `declare -A STYLE_MAP` or evaluates `${STYLE_MAP[claude]}` (or any other associative `STYLE_MAP` subscript), and the assertions that replaced those checks name the new structure's own label and prove that the rewritten table or helper yields `natural-language` for `claude`.
 - `/bin/bash -n` succeeds on `tests/agent_spinner/evals/grade.sh` and `tests/git_commit/evals/grade.sh`, and neither file calls `mapfile` or `readarray`.
 - `deployment/README.md` states the bash 3.2 floor and why it exists, and no remaining passage in that file describes the shell requirement without a version.
