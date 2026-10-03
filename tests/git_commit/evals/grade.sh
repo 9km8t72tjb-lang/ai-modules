@@ -87,9 +87,10 @@ if [[ "$eval_id" == "6" ]]; then
   if (( fail > 0 )); then
     printf 'failed checks:\n'
     for f in "${failures[@]}"; do printf '  - %s\n' "$f"; done
-    printf 'NOTE: eval-6 is timing-sensitive — if no_commit_landed failed, the\n'
-    printf '      agent may have committed before the writer fired (or the file\n'
-    printf '      was baselined). Retry, or tune GIT_COMMIT_DRIFT_DELAY.\n'
+    printf 'NOTE: eval-6 writer is marker-gated on prepare success — if\n'
+    printf '      foreign_present failed, prepare may never have run (or the\n'
+    printf '      marker wait timed out). If no_commit_landed failed, the\n'
+    printf '      agent committed before the marker-gated write landed.\n'
     exit 1
   fi
   exit 0

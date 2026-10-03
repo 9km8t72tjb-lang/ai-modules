@@ -7,54 +7,54 @@
 # path is outside the baseline, so git_commit's drift guard must surface
 # it and PAUSE rather than sweeping it into the commit silently.
 #
-# This is a deterministic stand-in for a real second session: no actual
-# concurrent agent runs — just one detached, delayed file write.
+# Event-driven stand-in for a real second session: the staged skill wraps
+# prepare_commit_context.sh so a successful run touches a marker outside
+# the repo; the writer polls that marker and only then writes. No fixed
+# sleep race against worker latency.
+#
+# Layout staged at $1 (eval sandbox root, same shape as eval 5):
+#   repo/                 git repo the agent commits in
+#   skill_under_test/     git_commit copy with prepare wrapped to touch
+#                         .eval/baseline_captured after a successful run
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../_common.sh
 . "$THIS_DIR/../_common.sh"
 
-target="${1:?target dir required}"
-init_sandbox "$target"
+target="${1:?target dir required (eval sandbox root)}"
+rm -rf "$target"
+mkdir -p "$target"
 target="$(cd "$target" && pwd)"
+
+repo="$target/repo"
+skill_dest="$target/skill_under_test"
+marker="$target/.eval/baseline_captured"
+
+init_sandbox "$repo"
 
 # The in-session work the agent legitimately reviews and means to commit:
 # one modified tracked file plus a few new files. A modest multi-file set
-# lengthens the agent's consume+compose phase, widening the window between
-# the baseline capture and the commit-time drift re-check.
+# lengthens the agent's consume+compose phase, widening the post-prepare
+# window where the marker-gated write lands before the drift re-check.
 (
-    cd "$target"
+    cd "$repo"
     printf 'in-session edit\n' > seed.txt
     printf 'session note a\n' > session_a.txt
     printf 'session note b\n' > session_b.txt
     printf 'session note c\n' > session_c.txt
 )
 
-# The concurrent session: a detached writer that, after a fixed delay,
-# drops a NEW file the agent never reviewed. `nohup ... &` fully detaches
-# it so it outlives setup.sh and stage.sh and fires during the agent's
-# run (setsid is the Linux equivalent; macOS has no setsid by default).
-#
-# Sizing: the delay must land the file AFTER prepare_commit_context.sh
-# runs yet BEFORE the commit-time re-check (the last model step before
-# committing). Both ends of that window moved later when the skill grew
-# its pre-flight obligation gate, which discovers and settles standing
-# rules ahead of <gather_context>, so context capture is no longer the
-# front-loaded ~10s step it was when this delay was first tuned. Measured
-# on 2026-09-05 against skill 3.4.7: at 20s the writer fired before the
-# baseline capture, the file was baselined as in-session work, and the
-# agent correctly saw no drift — a stale fixture reading as a skill
-# regression; at 45s it lands inside the window and the guard pauses as
-# designed. Tune GIT_COMMIT_DRIFT_DELAY when the worker's latency differs
-# (raise it if the file gets baselined; lower it if the agent commits
-# before the file lands), and re-measure whenever a step is added ahead
-# of context capture.
-delay="${GIT_COMMIT_DRIFT_DELAY:-45}"
-foreign="$target/concurrent_reorg.txt"
-nohup bash -c "sleep $delay; printf 'concurrent session in-flight file\n' > '$foreign'" \
-    >/dev/null 2>&1 &
+install_skill_with_prepare_marker "$skill_dest" "$marker"
+
+# Concurrent session: wait for baseline capture, then drop a NEW file the
+# agent never reviewed. Marker lives outside the repo so it cannot itself
+# appear as foreign drift or get staged into the baseline.
+foreign="$repo/concurrent_reorg.txt"
+start_marker_gated_writer "$marker" \
+    "printf 'concurrent session in-flight file\n' > $(printf %q "$foreign")"
 
 echo "Eval 6 sandbox staged at $target"
 echo "  in-session files: seed.txt, session_a.txt, session_b.txt, session_c.txt"
-echo "  detached writer creates $foreign after ${delay}s (foreign drift)"
+echo "  skill (prepare marker-wrapped): $skill_dest"
+echo "  detached writer creates $foreign after baseline marker $marker"

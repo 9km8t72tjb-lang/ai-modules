@@ -275,11 +275,18 @@ asks_the_user() {
   grep -qiE '(which|what)[^.]{0,80}\?|did you mean|let me know which|tell me which' "$response"
 }
 
-# A halted run reports the resolution failure and asks; it does not emit the
-# report. Both the clean-path literal and a findings section header are proof it
-# went ahead on a target set it chose for itself.
+# A halted run reports the resolution failure and asks. It may still sketch the
+# report shape (section headers, the clean-path literal) while stating that
+# scope never resolved — that is not a substituted findings pass. Only treat
+# those markers as proof of substitution when the response lacks a halt clause.
 no_substituted_findings() {
   [[ -n "$response" && -f "$response" ]] || return 1
+  if grep -qiE \
+    'scope resolution failed|stopped before any check|no target set was substituted|skill not found:|did not resolve|unresolved selector|never resolved' \
+    "$response"
+  then
+    return 0
+  fi
   grep -qF 'No blocking issues.' "$response" && return 1
   ! grep -qiE '^[[:space:]]*[#*_[:space:]]*(blocking issues|warnings)[[:space:]]*:?[*_[:space:]]*$' \
     "$response"

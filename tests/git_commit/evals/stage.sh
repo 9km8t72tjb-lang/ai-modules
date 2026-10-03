@@ -13,20 +13,23 @@
 #
 # Layout: every eval stages under $target as
 #   $target/repo                   the git repo the agent commits in
-#   $target/skill_under_test/      (eval 5 only) per-sandbox skill copy
+#   $target/skill_under_test/      (evals 5, 6, 7) per-sandbox skill copy
+#   $target/.eval/baseline_captured  (evals 6, 7) prepare-success marker
+#                                   the detached writer waits on
 #   $target/.eval_started_at       marker containing the staged HEAD SHA;
 #                                   grade.sh uses it for the
 #                                   "new commit landed" and "no TMPDIR
 #                                   context-file straggler" checks
 #
-# For evals 1..4, 6..9 skill_path is the real plugin skill. Eval 5 uses a
+# For evals 1..4, 8..9 skill_path is the real plugin skill. Eval 5 uses a
 # per-sandbox stubbed copy (see fixtures/script_failure/setup.sh). Evals
-# 6 and 7 additionally launch a detached background writer inside their
-# fixture to simulate a concurrent session editing the same tree during
-# the agent's run (see fixtures/concurrent_drift, fixtures/ambiguous_drift).
-# Evals 8 and 9 plant an agent-directed pre-commit obligation in a sandbox
-# AGENTS.md and observe whether the skill's pre-flight relevance test ran
-# it (see fixtures/obligation_skip, fixtures/obligation_run).
+# 6 and 7 use a per-sandbox copy whose prepare_commit_context.sh touches
+# .eval/baseline_captured on success, plus a marker-gated detached writer
+# that stands in for a concurrent session (see fixtures/concurrent_drift,
+# fixtures/ambiguous_drift). Evals 8 and 9 plant an agent-directed
+# pre-commit obligation in a sandbox AGENTS.md and observe whether the
+# skill's pre-flight relevance test ran it (see fixtures/obligation_skip,
+# fixtures/obligation_run).
 
 set -euo pipefail
 
@@ -69,13 +72,16 @@ case "$eval_id" in
     prompt="Commit."
     ;;
   6)
-    "$HERE/fixtures/concurrent_drift/setup.sh" "$target/repo" >/dev/null
-    skill_path="$SKILL_MD"
+    # concurrent_drift stages $target/repo and $target/skill_under_test
+    # (prepare wrapped to touch .eval/baseline_captured) plus a
+    # marker-gated writer. Mirror eval 5's skill_path wiring.
+    "$HERE/fixtures/concurrent_drift/setup.sh" "$target" >/dev/null
+    skill_path="$target/skill_under_test/SKILL.md"
     prompt="Commit."
     ;;
   7)
-    "$HERE/fixtures/ambiguous_drift/setup.sh"  "$target/repo" >/dev/null
-    skill_path="$SKILL_MD"
+    "$HERE/fixtures/ambiguous_drift/setup.sh" "$target" >/dev/null
+    skill_path="$target/skill_under_test/SKILL.md"
     prompt="Commit."
     ;;
   8)

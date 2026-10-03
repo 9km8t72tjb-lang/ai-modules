@@ -683,9 +683,12 @@ case "$eval_id" in
     }
     updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
     disposition_line_regrouped() { disposition_blocks | grep -qiE 'repeated-link:.*regrouped'; }
+    # Empty channel ("Surfaced-but-not-fixed: none") is success. Fail only when
+    # a repeated-link finding is named on that channel. Do not grep
+    # disposition_blocks for the channel label: those blocks collapse following
+    # prose and false-fail on a legitimate empty-channel line.
     not_surfaced_unfixed() {
-      ! { disposition_blocks | grep -qiE 'surfaced-but-not-fixed'; } \
-        && ! response_has 'surfaced-but-not-fixed[^\r\n]*repeated-link'
+      ! response_has 'surfaced-but-not-fixed[^\n]{0,160}repeated-link'
     }
     check "the repeated-link warn is cleared on the target" warn_cleared
     check "the target's account of the sibling sits in one section" account_in_one_section
@@ -746,12 +749,13 @@ case "$eval_id" in
     # A regrouped or kept finding carries its own disposition line and leaves
     # the surfaced-but-not-fixed channel empty; a surfaced one belongs there,
     # so the filter is asserted only for the two dispositioned outcomes.
+    # Same empty-channel rule as not_surfaced_unfixed (no disposition_blocks
+    # channel-label grep — that helper collapses following prose).
     disposition_filter_holds() {
       if disposition_blocks | grep -qiE 'repeated-link:.*surfaced'; then
         return 0
       fi
-      ! { disposition_blocks | grep -qiE 'surfaced-but-not-fixed'; } \
-        && ! response_has 'surfaced-but-not-fixed[^\r\n]*repeated-link'
+      ! response_has 'surfaced-but-not-fixed[^\n]{0,160}repeated-link'
     }
     check "task ends status: ready, written only by task_check" status_ready
     check "the ready path reports a disposition for the repeated-link finding" disposition_reported

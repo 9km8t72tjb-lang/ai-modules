@@ -58,8 +58,8 @@ tests/git_commit/evals/
     ├── mixed_state/setup.sh
     ├── large_changeset/setup.sh
     ├── script_failure/setup.sh     # self-contained — copies a stubbed skill
-    ├── concurrent_drift/setup.sh   # foreign drift — detached writer, expects a pause
-    ├── ambiguous_drift/setup.sh    # same-path drift — detached writer, expects commit-all
+    ├── concurrent_drift/setup.sh   # foreign drift — marker-gated writer, expects a pause
+    ├── ambiguous_drift/setup.sh    # same-path drift — marker-gated writer, expects commit-all
     ├── obligation_skip/setup.sh    # pre-flight relevance test — expects a stated skip
     └── obligation_run/setup.sh     # pre-flight relevance test — expects the gate to run
 ```
@@ -80,15 +80,16 @@ python3 tests/git_commit/evals/run.py 8 9        # just the pre-flight relevance
 python3 tests/git_commit/evals/run.py --model '' # inherit the CLI default instead
 ```
 
-Evals 6 and 7 exercise the drift guard with a **detached, delayed writer**
-that stands in for a concurrent session editing the same tree mid-run, with no
-real second agent. They are timing-based: the writer's fixed delay
-(`GIT_COMMIT_DRIFT_DELAY`, default 20s) must land its write after the agent
-runs `prepare_commit_context.sh` but before its commit-time drift re-check.
-Eval 6 expects the skill to **pause** on the new outside-baseline file (no
-commit lands); eval 7 expects **commit-all** on an ambiguous same-path edit.
-If eval 6 shows the agent committed instead of pausing, the write likely fell
-outside that window, so retry or tune `GIT_COMMIT_DRIFT_DELAY`.
+Evals 6 and 7 exercise the drift guard with a **marker-gated detached
+writer** that stands in for a concurrent session editing the same tree
+mid-run, with no real second agent. Each fixture stages a
+`skill_under_test/` copy whose `prepare_commit_context.sh` touches
+`.eval/baseline_captured` (outside the repo) after a successful real
+prepare; the writer polls that marker and only then writes. Eval 6
+expects the skill to **pause** on the new outside-baseline file (no
+commit lands); eval 7 expects **commit-all** on an ambiguous same-path
+edit. Optional knobs: `GIT_COMMIT_DRIFT_MARKER_TIMEOUT` (default 240s)
+and `GIT_COMMIT_DRIFT_POST_MARKER_DELAY` (default 0).
 
 Evals 8 and 9 exercise `<prepare_worktree>`'s **relevance test** and are a
 matched pair: each sandbox plants one agent-directed pre-commit obligation in
@@ -222,16 +223,19 @@ leaves the fixture's own edit as the only dirty path, so the changed path set
 the relevance test reads is unambiguous, and gitignoring `.eval/` keeps the
 gate's marker out of both `git status` and the commit.
 
-Evals 6 and 7 (`concurrent_drift/`, `ambiguous_drift/`) each launch a
-**detached background writer** (`nohup ... &`) before returning, so running
-one standalone spawns a process that writes into the sandbox after the delay
-(`GIT_COMMIT_DRIFT_DELAY`, default 20s). Debug them against a throwaway
-sandbox and expect the drift file to appear a few seconds later:
+Evals 6 and 7 (`concurrent_drift/`, `ambiguous_drift/`) each stage a
+`skill_under_test/` copy with prepare wrapped to touch
+`.eval/baseline_captured`, then launch a **marker-gated detached writer**
+(`nohup ... &`) before returning. Running one standalone spawns a process
+that writes into the sandbox only after you invoke the wrapped prepare
+(or after the marker-wait timeout). Debug them against a throwaway
+sandbox:
 
 ```bash
-GIT_COMMIT_DRIFT_DELAY=3 \
-  bash tests/git_commit/evals/fixtures/concurrent_drift/setup.sh /tmp/drift-debug
-sleep 4 && git -C /tmp/drift-debug status --short --untracked-files=all
+bash tests/git_commit/evals/fixtures/concurrent_drift/setup.sh /tmp/drift-debug
+bash /tmp/drift-debug/skill_under_test/scripts/prepare_commit_context.sh
+# writer fires on the marker; foreign file appears under repo/
+sleep 1 && git -C /tmp/drift-debug/repo status --short --untracked-files=all
 ```
 
 ## Why under tests/ and not inside the skill

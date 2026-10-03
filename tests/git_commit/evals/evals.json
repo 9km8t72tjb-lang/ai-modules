@@ -78,7 +78,7 @@
     {
       "id": 6,
       "prompt": "Commit.",
-      "expected_output": "A concurrent session drops a new file (concurrent_reorg.txt) into the working tree after prepare_commit_context.sh captured the reviewed-set baseline. The skill's drift guard catches the outside-baseline path at its commit-time re-check, surfaces it, and PAUSES to ask whether it belongs rather than sweeping it into a commit silently. No new commit lands. (Timing-based fixture — see fixtures/concurrent_drift/setup.sh.)",
+      "expected_output": "A concurrent session drops a new file (concurrent_reorg.txt) into the working tree after prepare_commit_context.sh captured the reviewed-set baseline. The skill's drift guard catches the outside-baseline path at its commit-time re-check, surfaces it, and PAUSES to ask whether it belongs rather than sweeping it into a commit silently. No new commit lands. (Marker-gated fixture — see fixtures/concurrent_drift/setup.sh.)",
       "files": ["evals/fixtures/concurrent_drift/setup.sh"],
       "expectations": [
         "The skill invoked prepare_commit_context.sh and read its <status_after_staging_new_files> snapshot as the reviewed-set baseline.",
@@ -92,7 +92,7 @@
     {
       "id": 7,
       "prompt": "Commit.",
-      "expected_output": "seed.txt is dirty before the run (already in the reviewed-set baseline); a concurrent session re-edits that same seed.txt after the baseline is captured, appending a marker. No path outside the baseline appears, so the drift check is ambiguous. The skill commits all with no pause, and the commit includes seed.txt carrying the concurrent further-edit content — no file is silently dropped. (Timing-based fixture — see fixtures/ambiguous_drift/setup.sh.)",
+      "expected_output": "seed.txt is dirty before the run (already in the reviewed-set baseline); a concurrent session re-edits that same seed.txt after the baseline is captured, appending a marker. No path outside the baseline appears, so the drift check is ambiguous. The skill commits all with no pause, and the commit includes seed.txt carrying the concurrent further-edit content — no file is silently dropped. (Marker-gated fixture — see fixtures/ambiguous_drift/setup.sh.)",
       "files": ["evals/fixtures/ambiguous_drift/setup.sh"],
       "expectations": [
         "The skill ran the model-side drift check and found no path outside the reviewed-set baseline (only seed.txt, which was already in the baseline).",
