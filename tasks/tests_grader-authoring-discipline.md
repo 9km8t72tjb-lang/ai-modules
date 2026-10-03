@@ -1,9 +1,9 @@
 ---
-description: Make eval graders assert substance over surface form and split long conjunctions, with the durable rule in the versioned repo instructions and the mechanics in the tests tree.
+description: Make eval graders assert substance over surface form and split long conjunctions, with durable rules aligned across TESTING.md and standing instructions, and mechanics in the tests tree.
 scope: "local test harnesses"
 created: 2026-08-15T14:08:10
-updated: 2026-09-12T10:20:47
-status: ready
+updated: 2026-10-03T13:01:20
+status: open
 reported-by: Andreas Hoffmann
 ---
 
@@ -13,8 +13,9 @@ reported-by: Andreas Hoffmann
 
 An eval grader fails only when the behaviour under test is genuinely wrong. The
 rules that make that true are written where a future author reads them: the
-durable authoring rule lands in the repo's own versioned instructions, and the
-harness mechanics land in the tests tree beside the runners they govern. A grader
+durable authoring rule lands in the repo's testing guardrail and in the
+versioned standing instructions that load at inference time, and the harness
+mechanics land in the tests tree beside the runners they govern. A grader
 written against these rules distinguishes a real regression from a correct answer
 phrased differently, and a failing eval names which behaviour broke rather than
 only that something did.
@@ -52,14 +53,16 @@ passed nearly always while the eval as a whole rarely did, and each run failed o
 a different check. That signature reads as instability in the thing under test
 when it is arithmetic.
 
-Placement matters because of how each file is read. The repo's standing
-instructions load at inference time, so an agent authoring a new grader meets the
-rule there without going looking. The tests tree is committed and reaches every
-clone, but it is not auto-loaded, so a file under it is read only by someone
-already working on the harness. The durable authoring rule therefore lands in the
-versioned standing instructions, where the next grader author encounters it, while
-the tests tree keeps the runner-specific mechanics beside the runners they
-govern.
+Placement matters because of how each file is read. `TESTING.md` is the
+family-consulted testing guardrail and already carries overlapping design
+principles under `## Test Design Principles` (substance over wording, wraps
+collapsed). The repo's standing instructions (`AGENTS.md` / `CLAUDE.md`) load at
+inference time, so an agent authoring a new grader meets a short grader-authoring
+pointer there without going looking. The tests tree is committed and reaches
+every clone, but it is not auto-loaded, so a file under it is read only by
+someone already working on the harness. The durable rule therefore has one
+canonical home in `TESTING.md`, a compact inference-time pointer in the standing
+instructions, and harness mechanics in `tests/README.md`.
 
 Much of the mechanics already shipped in the two derived graders. Both carry
 wrap-collapsed helpers (`unwrapped_file` / `unwrapped` / `label_window`),
@@ -67,13 +70,14 @@ subject-anchored structured match (`verdict_line` / subject-anchored why-open),
 dual-shape acceptance on existing repair-shape checks (for example reconcile
 `(a)` verify-or-follow and `(d)` enumeration-or-selector), subject-anchored
 `verdict_line` / `verdict_is` on many structured-field checks, and per-check
-PASS/FAIL reporting. What remains is the durable four rules absent from the
-standing instructions, harness mechanics not yet recorded in `tests/README.md`,
-wrap-use completeness across every multi-word check, residual subject-anchoring
-in `fix_coherence` checks `(a)`, `(c)`, and `(e)` that still bare-grep
-`^ *verdict:` lines then filter by task-name pattern rather than `verdict_is`,
-and the still-false `task_create` label-structure needles (evidence-phrased
-why-open; qualified lead-in; label-presence without a literal `Open decision:`).
+PASS/FAIL reporting. What remains is aligning the durable four rules across
+`TESTING.md` and the standing instructions, harness mechanics not yet recorded
+in `tests/README.md`, wrap-use completeness across every multi-word check,
+residual subject-anchoring in `fix_coherence` checks `(a)`, `(c)`, and `(e)`
+that still bare-grep `^ *verdict:` lines then filter by task-name pattern rather
+than `verdict_is`, and the still-false `task_create` label-structure needles
+(evidence-phrased why-open; qualified lead-in; label-presence without a literal
+`Open decision:`).
 
 A second surface carries the same defect, measured on 2026-09-05 while running
 this repo's eval sweep. The `task_create` eval grader checks an "Open decision:"
@@ -84,11 +88,11 @@ is the user's call ...; the evidence base does not settle it" and failed the
 why-open check, whose needle list matches "left for the user" and "user-owned"
 but neither of those phrasings. Two other runs enumerated two options as
 `**Option A ...**` / `**Option B ...**` bullets and as `(a) ... (b) ...` and
-failed the two-options check. The label-presence check has the same shape: it counts the
-literal string `Open decision:`, so a run on 2026-09-05 whose body carried
-`**Open decision (guardrail-bound):**` scored zero labels and failed as though
-the agent had never surfaced the fork, when it had surfaced it and named the
-ground the governing rule asks for. The grader's own comments concede the
+failed the two-options check. The label-presence check has the same shape: it
+counts the literal string `Open decision:`, so a run on 2026-09-05 whose body
+carried `**Open decision (guardrail-bound):**` scored zero labels and failed as
+though the agent had never surfaced the fork, when it had surfaced it and named
+the ground the governing rule asks for. The grader's own comments concede the
 tradeoff, saying a conformant clause phrased without either subject marker would
 false-fail. The effect is that these evals report roughly a one-in-five pass rate
 that reads as an unstable skill and is mostly grader arithmetic, which is the
@@ -96,18 +100,26 @@ same signature the conjunction rule above describes.
 
 ## Approach
 
-1. **State the durable rule in the versioned repo instructions.** Extend the
+1. **State the durable rule once in `TESTING.md`.** Rewrite
+   `## Test Design Principles` in place so the four rules above sit there as the
+   canonical authoring requirements. Keep the existing substance and wrap-collapse
+   principles by extending them to the full four-rule set rather than leaving a
+   second overlapping statement beside them. Preserve any principle already there
+   that is not one of these four (for example filesystem-fact preference and
+   fail-branch / sandbox staging) as sibling bullets.
+2. **Point the standing instructions at that home.** Extend the
    `## Regression test harnesses` section of both `AGENTS.md` and `CLAUDE.md`
-   with the four rules above, phrased as authoring requirements for a new
-   grader. Keep them short enough to sit beside the existing harness conventions
-   rather than displacing them. Keep the two files lockstep on this addition.
-2. **State the mechanics in `tests/README.md`.** Record the harness-level detail
+   with a short grader-authoring pointer that names the four rules and cites
+   `TESTING.md` `## Test Design Principles` as the canonical text, rather than
+   restating the full rule bodies a second time. Keep the two standing files
+   lockstep on this addition.
+3. **State the mechanics in `tests/README.md`.** Record the harness-level detail
    there: property-named checks that accept every satisfying phrasing and
    placement, including dual repair shapes where the rubric permits them; the
    shared helper for wrap-collapsed matching; the subject-anchored form for
    structured-field checks; and the per-behaviour reporting shape. Point back
-   at the versioned rule rather than restating it.
-3. **Close the remaining gaps against the rules.** Walk the checks in the
+   at `TESTING.md` rather than restating the durable rule.
+4. **Close the remaining gaps against the rules.** Walk the checks in the
    task-family eval grader and in the `task_create` eval grader and finish
    wrap-use completeness on every multi-word check; re-anchor every
    structured-report-field check that still matches a name anywhere on a
@@ -130,24 +142,28 @@ same signature the conjunction rule above describes.
 
 ## Acceptance
 
-1. The `## Regression test harnesses` section of both `AGENTS.md` and
-   `CLAUDE.md` states all four rules as grader-authoring requirements, and the
-   two files carry the same statement.
-2. `tests/README.md` records the mechanics for each rule and cites the versioned
-   statement rather than repeating it, so the two do not drift.
-3. The task-family and `task_create` eval graders each have a wrap-collapsing
+1. `TESTING.md` `## Test Design Principles` states all four rules as the
+   canonical grader-authoring requirements, and its prior overlapping substance
+   and wrap-collapse wording is superseded rather than left beside a second copy.
+2. The `## Regression test harnesses` section of both `AGENTS.md` and
+   `CLAUDE.md` carries the same short pointer that names the four rules and cites
+   that `TESTING.md` section.
+3. `tests/README.md` records the mechanics for each rule and cites `TESTING.md`
+   rather than repeating the durable rule, so the surfaces do not drift.
+4. The task-family and `task_create` eval graders each have a wrap-collapsing
    helper available to every check that matches more than one word, and each
    such check uses it.
-4. Every structured-report-field check in those graders matches its record by
+5. Every structured-report-field check in those graders matches its record by
    subject, so a name appearing inside another record's prose cannot satisfy or
    defeat it.
-5. Each label-structure check in the `task_create` grader passes on the
+6. Each label-structure check in the `task_create` grader passes on the
    still-false forms already recorded under its run workspace: a why-open clause
    written about the evidence rather than about the fork, and a label whose
    lead-in qualifies the phrase, as in `**Open decision (guardrail-bound):**`.
    The label-presence check still reports zero labels for a body that surfaces
    no decision at all, so widening it costs no detection.
-6. A recorded run of the task-family evals after the changes reports, per eval,
+7. A recorded run of the task-family evals after the changes reports, per eval,
    which behaviours passed and which failed; the recorded result is the
    deliverable, and a behaviour that still fails is recorded with its reason
-   rather than removed from the set.
+   rather than removed from the set. Prefer `--vendor cursor` for that recorded
+   run per `TESTING.md`.

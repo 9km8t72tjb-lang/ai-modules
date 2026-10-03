@@ -2,7 +2,7 @@
 description: Rework the git_review delta_rereview fixture and eval 32 so every re-review tag has one unambiguous home, no tree comment states a tag, and the grader checks the full tag set.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-03T11:55:00
+updated: 2026-10-03T13:01:20
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -22,6 +22,8 @@ The fixture is `tests/git_review/evals/fixtures/delta_rereview/setup.sh`. Eval 3
 - The decision the user relays in the eval prompt settles the chunk size, which is also f3, the acknowledged-but-unfixed finding. The expectations then say both "The chunk-size finding (f3) is tagged open and acknowledged." and that the relayed decision settles f3. "open and acknowledged" sits outside the closed vocabulary, and no expectation or check covers "open and not acknowledged".
 
 An audit on 2026-10-01 sampled eval 32 twice: one run never tagged f1 closed, and the other tagged f6 "open". Every earlier recorded run had passed. A post-fix re-audit on 2026-10-02 still saw f1 covered only as a descriptive "addressing f1" fact under What the changes do and implement, with no `closed` tag under its original heading — the skill's `<descriptive_sections>` pull. The skill's `<tags>` rule now keeps the tag under the original heading even when a descriptive section states the same change; this fixture rewrite remains required so each tag has one unambiguous evidence home and the grader can check the full set.
+
+The harness runner is already vendor-aware (`tests/git_review/evals/run.py` via `tests/lib/vendor.py`). Fresh proof runs use `--vendor cursor` per `TESTING.md`.
 
 ## Approach
 
@@ -48,4 +50,4 @@ Rewrite the eval 32 expectations in `evals.json` to the mapping above: replace t
 - The staged prior review body records f6 as closed in that round, and the staged first-round `src/export.py` calls `sanitize()`.
 - The eval 32 expectations in `evals.json` name one tag per prior finding as Approach lists, use only the vocabulary `<tags>` defines, and contain no "open and acknowledged" line.
 - The `32)` case in `grade.sh` checks the closed, regressed, settled, new, and not-acknowledged tags, and grading a captured eval 32 response with its `not acknowledged` text removed fails that check.
-- Eval 32 passes on one fresh run and on two `--force` resamples, three runs in all. When a run fails, its `grading.txt` names the missing tag, and the fix lands in the fixture or the skill rather than in a looser check, per the test-integrity rule in `TESTING.md`.
+- Eval 32 passes on one fresh `python3 tests/git_review/evals/run.py --vendor cursor 32` run. When that run fails, its `grading.txt` names the missing tag, and the fix lands in the fixture or the skill rather than in a looser check, per the test-integrity rule in `TESTING.md`. A further `--force` resample runs only when that first run failed and the tree under test changed.

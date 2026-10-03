@@ -2,7 +2,7 @@
 description: Restage the git_review unreadable_path fixture so one changed path's new content is unreachable through git, record unread paths in the collector, and grade eval 19 on it.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-02T10:23:20
+updated: 2026-10-03T13:01:20
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -19,6 +19,8 @@ The fixture `tests/git_review/evals/fixtures/unreadable_path/setup.sh` commits a
 
 The collector `plugins/ai_dev/skills/git_review/scripts/collect_review_evidence.sh` writes the whole-range diff through `collect_range` and sends git's stderr to `/dev/null`. When one blob is missing, `git diff` fails for the whole range, so today the collector would write an empty `full_diff.txt` and the run would lose the readable paths too.
 
+The harness runner is already vendor-aware. Fresh proof runs use `--vendor cursor` per `TESTING.md`.
+
 ## Approach
 
 Stage the sandbox clone as a blobless partial clone (`git clone --filter=blob:none`) of the fixture's bare origin, so blobs arrive on demand from the promisor remote. Read the new content of every changed path except `src/locked.py` once, so those blobs are local, and then make that one blob unreachable while `git fetch` keeps working. The suggested route is deleting that blob's loose object from the bare origin, because a blobless fetch never asks for it. Confirm the chosen route in the staged sandbox before grading anything on it.
@@ -33,4 +35,4 @@ Extend the `19)` case in `grade.sh` with `says_not "secret_flag"`, so a run that
 - Running the collector on that sandbox writes `unread_paths.txt` naming `src/locked.py`, lists it in `manifest.txt`, and keeps the `src/readable.py` change in `full_diff.txt`. A new script test asserts this and fails against the current collector.
 - The skill's `<unread_remainder>` names `unread_paths.txt` as the input it reads.
 - The `19)` case in `grade.sh` fails a response that contains `secret_flag`.
-- Eval 19 passes on a fresh run, with the report naming `src/locked.py` as unread and stating no approvable verdict.
+- Eval 19 passes on a fresh `python3 tests/git_review/evals/run.py --vendor cursor 19` run, with the report naming `src/locked.py` as unread and stating no approvable verdict.

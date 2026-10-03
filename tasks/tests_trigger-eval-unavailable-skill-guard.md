@@ -2,7 +2,7 @@
 description: Make the trigger-eval runner fail loudly on an unavailable skill instead of silently scoring a zero, and document how to read a zero-recall outcome in the tests-tree README.
 scope: "local test harnesses"
 created: 2026-08-30T16:57:07
-updated: 2026-09-05T21:26:04
+updated: 2026-10-03T13:01:20
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,6 +21,11 @@ a skill that is not deployed then sees a loud failure they can act on, and a
 genuine zero in deployed mode reads as evidence about the description.
 
 ## Context
+
+This harness is Claude-only for a product reason: it grades Claude `Skill(...)` /
+stream-json load evidence, and `tests/lib/vendor.py` rejects `--vendor cursor`
+for `trigger_evals` until a Cursor equivalent exists. That is a Claude feature
+surface, not leftover harness shape from before the vendor switch.
 
 `tests/trigger_evals/run.py` resolves the skill under test from the deployed tree
 (`~/.claude/skills/<name>/`) and falls back to skill-creator's UUID-proxy runner

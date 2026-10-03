@@ -2,7 +2,7 @@
 description: Narrow the shared behavioral-eval verdict cache key with fail-closed per-eval dependency declarations, so an edit re-runs only the evals that can reach it.
 scope: "local test harnesses"
 created: 2026-09-04T17:54:29
-updated: 2026-09-04T17:54:29
+updated: 2026-10-03T13:01:20
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -25,9 +25,9 @@ construction rather than by an author remembering to declare a dependency.
 ## Context
 
 The shared helper is `tests/lib/eval_cache.py`. Its `content_key()` builds each
-eval's key from five inputs: the `source_roots` it is handed, the `harness_dir`,
-the worker model, the eval id, and the prompt. Both directory inputs are hashed
-as whole trees by `_tree_hash()`, which is where the coarseness lives:
+eval's key from the `source_roots` it is handed, the `harness_dir`, the worker
+model, the eval id, and the prompt. Both directory inputs are hashed as whole
+trees by `_tree_hash()`, which is where the coarseness lives:
 
 - **The skill tree.** Each runner's `source_roots_for()` names the skill
   directories a worker's behavior depends on, and the whole of each one is
@@ -36,33 +36,38 @@ as whole trees by `_tree_hash()`, which is where the coarseness lives:
   `grade.sh` included, even though a grader is a `case` statement whose arms are
   already per-eval.
 
-Five Pattern-A behavioral runners share the helper: `git_commit`, `task`,
-`task_create`, `task_auto_check`, and `git_review`. A change to the helper
-governs all of them, so the work lands once rather than per harness.
+Every Pattern A `evals/run.py` under `tests/` that already imports
+`tests/lib/eval_cache` and calls `content_key()` shares this helper. A change to
+the helper governs all of them, so the work lands once rather than per harness.
+Derive that runner set at implementation time from the tree rather than from a
+frozen list. The worker-model field already separates Cursor (`auto`) and Claude
+(`sonnet`) cache entries, so this task leaves vendor selection alone.
 
 `tests/CLAUDE.md` documents what the cache key hashes, in the verdict-cache
-section that names the key's inputs. That passage describes the current
-whole-tree behavior and is rewritten by this task rather than left beside the
-new one.
+section that names the key's inputs, and `tests/AGENTS.md` mirrors that policy.
+Those passages describe the current whole-tree behavior and are rewritten by
+this task rather than left beside the new one.
 
 The measured motivation, as one illustration of the general cost: in a single
 session on the `git_review` skill, an edit confined to publishing rules
-invalidated all 48 of that harness's evals, of which 35 are plain review runs
+invalidated all of that harness's evals, of which most are plain review runs
 that never enter the publishing or reviewer-edit stages at all; and a change to
-one grader `case` arm invalidated the 47 evals that arm does not grade. Two full
-suite runs of roughly two and a half hours each went to verifying edits that at
-most 13 evals could reach.
+one grader `case` arm invalidated every eval that arm does not grade. Full suite
+runs went to verifying edits that only a minority of evals could reach.
 
 [The grader-authoring discipline task](tests_grader-authoring-discipline.md)
 governs how grader checks assert and shares the `grade.sh` edit surface. The two
 touch the same file for different reasons and impose no order on each other.
+[The git eval-runner parity task](tests_git-eval-runner-parity.md) adds runners
+that will consume the same helper once they exist; this task's fail-closed
+default keeps an undeclared eval correct for any runner that lands later.
 
 ## Approach
 
 Extend `tests/lib/eval_cache.py` so `content_key()` accepts an optional
 per-eval dependency declaration and folds it into the key in place of the
-whole-tree hashes it covers, then teach the five runners and the harness
-definitions to supply one.
+whole-tree hashes it covers, then teach every Pattern A runner that already
+calls `content_key()` and its harness definitions to supply one.
 
 **Declare dependencies per eval, and fail closed.** An eval declares the parts
 of the skill tree and the harness tree its verdict depends on. Whatever a
@@ -99,7 +104,8 @@ its own eval.
 
 - Changing what any eval covers or how any check asserts; this task changes when
   an eval re-runs.
-- The worker-spawning and grading flow inside each runner, which stays as it is.
+- The worker-spawning and grading flow inside each runner, which stays as it is,
+  including the `--vendor` switch in `tests/lib/vendor.py`.
 - The legacy two-layer `wiki` harness, which runs no Pattern-A verdict cache.
 - Backfilling declarations across every existing eval. The fail-closed default
   keeps an undeclared eval correct, so declarations land where the run cost
@@ -128,14 +134,14 @@ its own eval.
 6. A `grade.sh` whose `case` shape the splitter cannot parse contributes its
    whole content to every eval's key, proven by a test over a deliberately
    unparseable grader.
-7. Each of the five Pattern-A runners (`git_commit`, `task`, `task_create`,
-   `task_auto_check`, `git_review`) passes its declaration through to
-   `content_key()`, and each runner's suite reaches the same verdicts it reached
-   before the change on an unchanged tree, recorded as the before-and-after
-   comparison.
-8. The verdict-cache section of `tests/CLAUDE.md` states the narrowed key and
-   the fail-closed rule, and the passage describing the whole-tree key is gone
-   rather than left beside the new statement.
+7. Every Pattern A `evals/run.py` under `tests/` that already calls
+   `content_key()` passes its declaration through to that helper, and each such
+   runner's suite reaches the same verdicts it reached before the change on an
+   unchanged tree, recorded as the before-and-after comparison. Prefer
+   `--vendor cursor` for that comparison per `TESTING.md`.
+8. The verdict-cache sections of `tests/CLAUDE.md` and `tests/AGENTS.md` state
+   the narrowed key and the fail-closed rule, and the passages describing the
+   whole-tree key are gone rather than left beside the new statement.
 9. `evals.json` for at least one harness carries declarations for its evals, and
    `tests/<skill>/evals/README.md` for that harness records what a declaration
    means and how an author writes one.

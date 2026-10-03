@@ -2,7 +2,7 @@
 description: Re-measure the task_auto_check eval timing band against the current loop, set its default --timeout above the re-measured ceiling, and update the RUNBOOK and run.py help to match.
 scope: "local test harnesses"
 created: 2026-09-05T03:06:08
-updated: 2026-09-05T21:33:57
+updated: 2026-10-03T13:01:20
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -19,21 +19,20 @@ the deadline cuts off. Both places that state the band, the timing note in
 `tests/task_auto_check/evals/run.py`, carry the same re-measured figure.
 
 The user-visible outcome: an operator who runs this harness at its default sees
-graded verdicts rather than `worker rc=-1` cutoffs, and the documented band
-matches what the evals actually take.
+graded verdicts rather than worker cutoffs, and the documented band matches what
+the evals actually take.
 
 ## Context
 
 This task began life covering two threads, and the first is already fixed in the
 working tree. The shared helper `as_text()` in `tests/lib/worker_io.py` now
 decodes every runner's timeout-path output, so a single eval that overruns its
-deadline is recorded as a failed eval and the sweep continues. Nine runners were
-wired to it, the local copy in `tests/task_auto_check/evals/run.py` was removed
-in favour of the shared one, the `tests/task/evals/run.py` default was raised to
-1800 with its README timing notes rewritten, and a section documenting the helper
-was added to `tests/CLAUDE.md`. That crash fix is what makes a long measurement
-run safe to do at all: a repair-class eval that overruns no longer aborts the
-evals queued behind it, so the sampling below can proceed to completion.
+deadline is recorded as a failed eval and the sweep continues. The
+`tests/task_auto_check/evals/run.py` runner is vendor-aware through
+`tests/lib/vendor.py`, writes both `worker_rc` and `claude_rc` in `timing.json`,
+and the shared timeout-path decode is what makes a long measurement run safe to
+do at all: a repair-class eval that overruns no longer aborts the evals queued
+behind it, so the sampling below can proceed to completion.
 
 The one remaining thread is the timing band, which is stale.
 `tests/task_auto_check/RUNBOOK.md` states the repair-class scenarios "take
@@ -54,19 +53,23 @@ The RUNBOOK's repair-class set is `repair_to_ready`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`, and
 `immediate_ready_citations_overturn`, and its cost-discipline section requires
 running them solo and sequentially, because two nested loops in parallel contend
-for the model and both slow down.
+for the model and both slow down. `TESTING.md` prefers `--vendor cursor` for
+behavioral runs; re-measure on that worker unless a Cursor sample cannot complete
+the loop, in which case record the Claude sample and why.
 
 ## Approach
 
-Run each repair-class eval solo and sequentially, with `--timeout` set to a
-ceiling well above 1800 so none is cut off, and capture `duration_s` from each
-`timing.json` at `claude_rc` 0. Take the band as the range across those
+Run each repair-class eval solo and sequentially with `--vendor cursor`, with
+`--timeout` set to a ceiling well above 1800 so none is cut off, and capture
+`duration_s` from each `timing.json` at `worker_rc` 0 (the file also writes
+`claude_rc` as the same value). Take the band as the range across those
 completing runs, and set the harness default above the observed upper end with
 the same headroom the default already keeps above the old band rather than
 sitting on its floor. Rewrite the band in place in both
 `tests/task_auto_check/RUNBOOK.md` and the `--timeout` help in
 `tests/task_auto_check/evals/run.py` so one figure governs both, superseding the
 stale "900 to 1500s" wording rather than leaving a second figure beside it.
+Name the vendor used for the measurement in the RUNBOOK note.
 
 The recorded measurement is the deliverable, so the durations and the band drive
 the default rather than the reverse. Where the completing runs show the loop does
@@ -83,14 +86,16 @@ task lands.
 A sampled run measures each repair-class eval (`repair_to_ready`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
 `immediate_ready_citations_overturn`) solo and sequentially at a `--timeout`
-ceiling high enough that none is cut off. Each measured run reaches a graded
-verdict with `claude_rc` of `0` and a recorded `duration_s`, with no `-1` cutoff
-among them, and each eval is run at least twice so the band rests on more than
-one draw per eval.
+ceiling high enough that none is cut off, under `--vendor cursor` unless the
+RUNBOOK records why a Claude sample was required instead. Each measured run
+reaches a graded verdict with `worker_rc` of `0` and a recorded `duration_s`,
+with no `-1` cutoff among them, and each eval is run at least twice so the band
+rests on more than one draw per eval.
 
 The observed `duration_s` values and the band derived from them, its lower and
 upper end, are recorded in `tests/task_auto_check/RUNBOOK.md`, taken from the
-completing runs above rather than from any run the deadline cut off.
+completing runs above rather than from any run the deadline cut off, and the note
+names the vendor used for the sample.
 
 `tests/task_auto_check/RUNBOOK.md` no longer states the `~900 to 1500s` band or
 instructs passing `--timeout 1800`; the superseding passage states the

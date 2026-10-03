@@ -1,8 +1,8 @@
 ---
-description: Give the git_checkout and git_refresh harnesses the same sonnet-pinned eval runner the other Pattern A harnesses ship, so an eval sweep reaches their eleven behavioral evals.
+description: Give git_checkout and git_refresh the same vendor-aware Pattern A eval runner the other harnesses ship, so an eval sweep reaches their behavioral evals.
 scope: "local test harnesses"
 created: 2026-09-05T02:10:57
-updated: 2026-10-01T22:16:21
+updated: 2026-10-03T13:01:20
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -12,32 +12,32 @@ reported-by: Andreas Hoffmann
 ## Goal
 
 `python3 tests/git_checkout/evals/run.py` and `python3 tests/git_refresh/evals/run.py`
-each stage their fixtures, drive one sonnet-pinned worker per eval, grade the
-result deterministically, and record a verdict in the shared cache, exactly as
-the five runners already in the tree do. The user-visible outcome: a sweep that
-runs every behavioral harness reaches all eleven of these evals and reports them
-beside the rest, so a change to either skill is regression-checked instead of
-being taken on trust.
+each stage their fixtures, drive one vendor-resolved print-mode worker per eval,
+grade the result deterministically, and record a verdict in the shared cache,
+exactly as every other Pattern A harness that already ships `evals/run.py` does.
+The user-visible outcome: a sweep that runs every behavioral harness reaches
+these evals and reports them beside the rest, so a change to either skill is
+regression-checked instead of being taken on trust.
 
 ## Context
 
-Seven Pattern A harnesses define behavioral evals. Five of them ship
-`evals/run.py` beside a `stage.sh` and a `grade.sh`: `tests/git_commit/`,
-`tests/task/`, `tests/task_create/`, `tests/task_auto_check/`, and
-`tests/git_review/`. Two more, `tests/guardrail_audit/` and
-`tests/skill_doctor/`, ship the same shape. `tests/git_checkout/evals/` and `tests/git_refresh/evals/`
-hold only `evals.json` and `fixtures/`. `tests/git_checkout/evals/README.md`
-records the consequence in its own words, that no command executes a behavioral
-eval and the model-runs-the-skill step is left to whoever is in the session;
-`tests/git_refresh/evals/` carries no README at all.
+Every Pattern A harness under `tests/` that already defines behavioral evals and
+ships `evals/run.py` shares `tests/lib/vendor.py` and accepts
+`--vendor {claude,cursor}` (default `claude` with worker model `sonnet`, or
+`--vendor cursor` with `auto`). `tests/git_checkout/evals/` and
+`tests/git_refresh/evals/` still hold only `evals.json` and `fixtures/`.
+`tests/git_checkout/evals/README.md` records the consequence in its own words,
+that no command executes a behavioral eval and the model-runs-the-skill step is
+left to whoever is in the session; `tests/git_refresh/evals/` carries no README
+at all.
 
 Three costs follow from that gap. The evals never enter the verdict cache, so
 they contribute nothing to the cache's regression signal. A skill edit cannot be
-regression-checked against them without a person sitting through eleven manual
-runs. And driving them by hand runs the skill under the host session's inherited
-model, which the harness model policy in the tests tree's own operating guide
-rules out: every skill under test is pinned to `claude-sonnet-4-6` so results do
-not drift with the host session.
+regression-checked against them without a person sitting through every manual
+run. And driving them by hand runs the skill under the host session's inherited
+model, which the harness model policy in `tests/CLAUDE.md` / `tests/AGENTS.md`
+rules out: the worker is pinned through `--vendor` defaults (`sonnet` / `auto`),
+not a dated model id and not the host session's model.
 
 Measured on 2026-09-05 while running this repo's full eval sweep. Every other
 behavioral harness ran from a command; these two could not, and their evals went
@@ -58,18 +58,22 @@ on each other.
 
 Take `tests/git_commit/evals/run.py` as the reference implementation, since its
 harness is the closest in shape: a small eval set, per-eval fixtures staged by
-`setup.sh`, and a `grade.sh` that reads the post-run sandbox. Carry over its
-structure rather than inventing a second one, so a future change to the shared
-runner shape lands in one recognisable form across the tree.
+`setup.sh`, a `grade.sh` that reads the post-run sandbox, and a vendor-aware
+`run.py` that imports `tests/lib/vendor.py` and `tests/lib/eval_cache.py`. Carry
+over that structure rather than inventing a second one, so a future change to
+the shared runner shape lands in one recognisable form across the tree.
 
 For each of the two harnesses, add `evals/stage.sh` that stages one fixture and
 prints `printf %q`-quoted `name=value` lines for the sandbox path, the skill
 path, and the prompt; add `evals/grade.sh` as a `case` over eval id that asserts
 the post-run repository state each eval's expectations name; and add
-`evals/run.py` that imports `worker_env()` and `preflight_auth()` from
-`tests/lib/worker_auth.py`, defaults `--model` to `claude-sonnet-4-6`, accepts
-`--force` and `--no-cache`, and records verdicts through `tests/lib/eval_cache.py`
-with `source_roots_for()` naming the skill directory under test.
+`evals/run.py` that calls `vendor.add_vendor_arguments`, `vendor.resolve`,
+`vendor.preflight_auth`, `vendor.stage_skill_tree`, and `vendor.build_print_cmd`,
+accepts `--force` and `--no-cache`, and records verdicts through
+`tests/lib/eval_cache.py` with `source_roots_for()` naming the skill directory
+under test. Keep the vendor defaults that `vendor.py` already defines: Claude
+worker model `sonnet`, Cursor worker model `auto`. Do not pin a dated Claude
+model id.
 
 Derive each `grade.sh` arm from the expectations already written in
 `evals/evals.json`, and keep the arm asserting the property rather than a
@@ -82,37 +86,34 @@ fixtures, matching what `tests/git_checkout/evals/README.md` already does for
 its seven, and rewrite the passage in that existing README that describes the
 evals as having no runner, since this task gives them one.
 
-Register both runners in the tests tree's operating guide and its README:
-add them to the model-policy table listing which worker each harness pins, to
-the verdict-cache section listing which runners share the cache, and to the
-worker-auth section listing which runners use the shared helper. Those three
-passages enumerate the runners by name, so each grows by two entries rather
-than being restated.
+Register both runners in the tests tree's operating guides and inventory:
+rewrite the model-policy / vendor, verdict-cache, and worker-auth passages in
+`tests/CLAUDE.md` and `tests/AGENTS.md` so each lists the new runners beside the
+existing ones, and rewrite any inventory row in `tests/README.md` that still
+describes these evals as reaching only the script surface.
 
-**Out of scope:** Adding behavioral evals beyond the eleven already defined in
+**Out of scope:** Adding behavioral evals beyond those already defined in
 the two `evals.json` files, which the standing repo rule on harness growth keeps
 to its own session.
 
 ## Acceptance
 
-`python3 tests/git_checkout/evals/run.py` with no arguments runs all seven evals
-and prints a graded summary naming each eval id and its verdict, and
-`python3 tests/git_refresh/evals/run.py` does the same for its four.
-
-Re-running either command with unchanged inputs replays every verdict from the
-cache and spawns no worker, and re-running with `--force` spawns a worker for
-each eval and refreshes the stored verdict.
-
-Each runner reports `claude-sonnet-4-6` as its worker model when no `--model` is
-given, and each fails fast with the shared helper's remediation message when the
-stored login is dead rather than recording a failed verdict per eval.
-
-`tests/git_refresh/evals/README.md` exists and documents each of the four evals
-against the fixture that stages it.
-
-The tests tree's operating guide lists both runners in its model-policy,
-verdict-cache, and worker-auth passages, and neither its inventory nor
-`tests/README.md` still describes these evals as reaching only the script
-surface.
-
-`make lint` passes.
+- `python3 tests/git_checkout/evals/run.py --vendor cursor` with no eval-id
+  arguments runs every eval in that harness's `evals.json` and prints a graded
+  summary naming each eval id and its verdict, and
+  `python3 tests/git_refresh/evals/run.py --vendor cursor` does the same for its
+  evals.
+- Re-running either command with unchanged inputs replays every verdict from the
+  cache and spawns no worker, and re-running with `--force` spawns a worker for
+  each eval and refreshes the stored verdict.
+- With `--vendor cursor` and no `--model`, each runner resolves to Cursor worker
+  model `auto`. With `--vendor claude` and no `--model`, each resolves to Claude
+  worker model `sonnet` for compatibility. Each fails fast with the shared vendor
+  preflight's remediation message when the chosen vendor's login is dead rather
+  than recording a failed verdict per eval.
+- `tests/git_refresh/evals/README.md` exists and documents each of that harness's
+  evals against the fixture that stages it.
+- `tests/CLAUDE.md` and `tests/AGENTS.md` list both runners in their vendor /
+  model-policy, verdict-cache, and worker-auth passages, and neither those guides
+  nor `tests/README.md` still describes these evals as reaching only the script
+  surface.

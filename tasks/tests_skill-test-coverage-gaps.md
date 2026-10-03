@@ -2,7 +2,7 @@
 description: Add the skill-test coverage the skill_doctor sweep found missing: a script-test surface for ai_instruction_formatting's linter, and a recorded coverage disposition for the behaviour-only skills.
 scope: "local test harnesses"
 created: 2026-09-05T09:47:15
-updated: 2026-09-05T09:47:15
+updated: 2026-10-03T13:01:20
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -27,7 +27,7 @@ The behaviour-only set is derived, not fixed: it is the skills with no `scripts/
 
 The Pattern A shape and where each surface lives are set by the standing repo rules and by the tests-tree operating guide; `tests/git_commit/` is the named reference implementation, and the eval schema is skill-creator's.
 
-`git_refresh` also has behavioural evals with no runner, but a separate open task already owns adding that runner, so this task leaves it there and defers to it under Approach.
+`git_refresh` also has behavioural evals with no runner, but a separate open task already owns adding that vendor-aware runner, so this task leaves it there and defers to it under Approach. Script-test surfaces this task adds need no `--vendor` choice; behavioral coverage it elects to add prefers `--vendor cursor` per `TESTING.md`, except where the surface is Claude-only for a product reason.
 
 ## Approach
 
@@ -45,4 +45,3 @@ Derive the behaviour-only set at implementation time by re-running the skill_doc
 - Running the new harness through the repo's standard script-test entry point reaches it, so it appears in the run and reports pass or fail rather than sitting as an orphan file.
 - The tests-tree operating-guide inventory and `tests/README.md` both list the new `ai_instruction_formatting` harness, and neither still implies that skill is untested.
 - Each of `format_markdown`, `format_python`, `harness_portability`, `executive_summary`, and `spr` has, in the tree, either added coverage (a trigger entry or eval harness that runs) or a documented reason for having none, recorded where the operating guide keeps coverage decisions; a fresh skill_doctor test-coverage check names none of them as an undocumented gap.
-- `make lint` passes.

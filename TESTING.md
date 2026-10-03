@@ -42,9 +42,12 @@ subtrees so lint scope matches git scope. The two lists change together.
 
 Make plus POSIX shell plus Markdown, with `jq`, `git`, and Python 3 as standing
 dependencies, matching the charter's toolchain invariant. Bundled-script tests
-are plain shell. Behavioural evals spawn a `claude -p` worker per scenario,
-pinned to one cheap, stable model so results do not drift with the host
-session; only the grading level runs on the inherited model.
+are plain shell. Behavioural evals spawn one worker per scenario through the
+runner's vendor switch. Use the Cursor worker for those runs: Cursor tests are
+cheaper and faster. It runs as `agent -p` on model `auto`. The Claude worker
+(`claude -p` on `sonnet`) remains available when a run needs a Claude-pinned
+sample. Pin the worker for a run so results stay comparable, and keep grading
+on the model-free grader.
 
 ## Coverage Expectations
 
@@ -60,13 +63,20 @@ than something to defer.
 ## Running Tests
 
 ```bash
-make lint                                   # markdown, JSON, shell, repo-wide
-bash tests/<skill>/run_all.sh               # that skill's deterministic surface
-bash tests/<skill>/script_tests/run.sh      # the same, where no run_all.sh exists
-python3 tests/<skill>/evals/run.py          # behavioural evals, spawns workers
-python3 tests/<skill>/evals/run.py <id>     # one eval
-python3 tests/<skill>/evals/run.py --force  # ignore the recorded verdicts
+make lint                                              # markdown, JSON, shell, repo-wide
+bash tests/<skill>/run_all.sh                          # that skill's deterministic surface
+bash tests/<skill>/script_tests/run.sh                 # the same, where no run_all.sh exists
+python3 tests/<skill>/evals/run.py --vendor cursor     # behavioural evals on Cursor
+python3 tests/<skill>/evals/run.py --vendor cursor <id>    # one eval
+python3 tests/<skill>/evals/run.py --vendor cursor --force # ignore recorded verdicts
 ```
+
+Run behavioural evals with `--vendor cursor`. Cursor tests are cheaper and
+faster than the Claude worker. The Cursor worker is `agent -p` with model
+`auto`. Pass `--vendor claude` when the question is a Claude-pinned sample
+(`claude -p` on `sonnet`). The verdict cache keys on the worker model, so a
+Cursor result and a Claude result stay separate evidence. Grading stays
+model-free on either worker.
 
 Trigger evals answer a different question, whether a skill's `description:`
 loads it on a realistic message, and run through
@@ -82,6 +92,9 @@ standing moment, such as `make lint` before a commit.
 Beyond those, **re-running a check whose inputs did not change is waste, not
 rigour.** It returns what the recorded run already returned, and on a sampling
 surface it also resamples noise. Spend a run on what is genuinely unknown.
+When that run is a behavioural eval, spend it on the Cursor worker
+(`--vendor cursor`): Cursor tests are cheaper and faster, and the cache
+records them under their own model key.
 
 Judge "changed" by whether the change can reach the behaviour under test, not
 by whether some byte moved in a watched directory. A recorded verdict stays
