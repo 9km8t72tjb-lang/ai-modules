@@ -86,7 +86,7 @@ loosely would serve page two on the very first call and hide a pagination bug.
 | `stale_reference_and_derived` | 30 | A rename a standing instruction still points at, plus a derived doc whose source changed. |
 | `thread_resolve` | 43, 44 | Two threads: one whose finding the tree closed, one whose finding still stands. |
 | `trunk_default` | 4 | The default branch is named trunk, so the base has to come from the remote HEAD. |
-| `unreadable_path` | 19 | One changed path chmodded to 000, so it cannot be read. |
+| `unreadable_path` | 19 | One changed path whose new content git cannot produce, while every other changed path stays readable. |
 | `verified_and_inferred` | 22 | One defect a command reproduces and one race described only in prose. |
 | `version_lockstep` | 31 | A component version bump without the two manifest updates the standing rules require. |
 
@@ -219,7 +219,9 @@ The only defect sits in the final hunk of a whole-file diff spanning several tho
 
 > Review this branch.
 
-One changed path cannot be read, so the run names the unread remainder rather than calling the change approvable.
+One changed path's new content is unreachable through git and absent from the
+worktree, so the collector records it in `unread_paths.txt`, the run names that
+unread remainder, and the report withholds the approvability verdict.
 
 ### 20: `secrets_and_home_path`
 

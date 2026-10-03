@@ -184,6 +184,54 @@ collect_head_sync() {
     } | write_and_record head_sync.txt "the head against its own upstream, which decides the fast-forward"
 }
 
+# Walk name-status rows and emit the head-side path of each change. Renames
+# contribute the new path; every other status contributes its single path.
+changed_paths_from_name_status() {
+    local status path renamed_to
+    while IFS=$'\t' read -r status path renamed_to; do
+        [[ -z "$status" ]] && continue
+        case "$status" in
+            R*|C*) printf '%s\n' "${renamed_to:-$path}" ;;
+            *) printf '%s\n' "$path" ;;
+        esac
+    done < "$OUT/name_status.txt"
+}
+
+# When the whole-range diff fails because one blob is missing, keep every
+# per-path result that succeeds and record the unread remainder so the report
+# can name those paths instead of losing the readable ones too.
+collect_range_diffs_per_path() {
+    local path unread=0
+    : > "$OUT/full_diff.txt"
+    : > "$OUT/diff_stat.txt"
+    : > "$OUT/removed_hunks.txt"
+    : > "$OUT/unread_paths.txt"
+
+    while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        if git diff -M --find-renames "$BASE...$HEAD_REF" -- "$path" \
+                >> "$OUT/full_diff.txt" 2>/dev/null; then
+            git diff --stat "$BASE...$HEAD_REF" -- "$path" \
+                >> "$OUT/diff_stat.txt" 2>/dev/null || true
+            git diff -M "$BASE...$HEAD_REF" -- "$path" 2>/dev/null |
+                grep -E '^(diff --git |---|\+\+\+|-)' \
+                >> "$OUT/removed_hunks.txt" || true
+        else
+            printf '%s\n' "$path" >> "$OUT/unread_paths.txt"
+            unread=1
+        fi
+    done < <(changed_paths_from_name_status)
+
+    record "full_diff.txt" "the complete three-dot diff, readable paths kept when one path is unread"
+    record "diff_stat.txt" "the three-dot diff stat, readable paths kept when one path is unread"
+    record "removed_hunks.txt" "every removed line, for the retirement heading"
+    if ((unread)); then
+        record "unread_paths.txt" "changed paths whose new content git could not produce"
+    else
+        rm -f "$OUT/unread_paths.txt"
+    fi
+}
+
 collect_range() {
     local mb
     step "merge base and ahead/behind counts"
@@ -199,10 +247,6 @@ collect_range() {
         printf 'ahead: %s\n' "$(printf '%s' "${counts:-0	0}" | cut -f2)"
     } | write_and_record counts.txt "how far head is ahead of and behind base"
 
-    step "three-dot diff stat"
-    git diff --stat "$BASE...$HEAD_REF" 2>/dev/null |
-        write_and_record diff_stat.txt "the three-dot diff stat"
-
     step "three-dot name-status with rename detection"
     git diff --name-status -M --find-renames "$BASE...$HEAD_REF" 2>/dev/null |
         write_and_record name_status.txt "three-dot name-status with rename detection"
@@ -215,14 +259,19 @@ collect_range() {
     git log --first-parent --format='%H%n%an%n%ad%n%B%n---' "$BASE..$HEAD_REF" 2>/dev/null |
         write_and_record commits_first_parent.txt "the branch commits along the first parent, so in-branch merges from the base stay visible"
 
-    step "full three-dot diff"
-    git diff -M --find-renames "$BASE...$HEAD_REF" 2>/dev/null |
-        write_and_record full_diff.txt "the complete three-dot diff"
-
-    step "removed hunks view"
-    git diff -M "$BASE...$HEAD_REF" 2>/dev/null |
-        grep -E '^(diff --git |---|\+\+\+|-)' |
-        write_and_record removed_hunks.txt "every removed line, for the retirement heading"
+    step "three-dot diff stat and full diff"
+    if git diff -M --find-renames "$BASE...$HEAD_REF" > "$OUT/full_diff.txt" 2>/dev/null; then
+        git diff --stat "$BASE...$HEAD_REF" 2>/dev/null |
+            write_and_record diff_stat.txt "the three-dot diff stat"
+        record "full_diff.txt" "the complete three-dot diff"
+        step "removed hunks view"
+        git diff -M "$BASE...$HEAD_REF" 2>/dev/null |
+            grep -E '^(diff --git |---|\+\+\+|-)' |
+            write_and_record removed_hunks.txt "every removed line, for the retirement heading"
+    else
+        step "per-path retry for unread paths"
+        collect_range_diffs_per_path
+    fi
 }
 
 # The base side of a deleted or renamed path is gone from the head tree, so read

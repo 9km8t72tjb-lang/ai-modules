@@ -541,6 +541,55 @@ s15_usage_and_argument_handling() {
     $ok
 }
 
+# The unreadable_path fixture hides one changed blob from git. The collector
+# must keep the readable path in the evidence set and record the locked path as
+# unread rather than emptying the whole-range diff.
+s22_unreadable_path_records_unread_remainder() {
+    local target repo ret ev ok=true
+    target="$SCRATCH/s22"
+    rm -rf "$target"
+    mkdir -p "$target"
+    repo=$("$HERE/../evals/fixtures/unreadable_path/setup.sh" "$target") || return 1
+    ev="$target/ev"
+    ret=$(collect "$repo" --base main --head widen --out "$ev" --no-fetch)
+    assert_eq "exit" "${ret%%|*}" "0" || ok=false
+    assert_contains "unread_paths lists locked.py" "$(cat "$ev/unread_paths.txt" 2>/dev/null)" \
+        "src/locked.py" || ok=false
+    assert_contains "manifest lists unread_paths" "$(cat "$ev/manifest.txt" 2>/dev/null)" \
+        "unread_paths.txt" || ok=false
+    assert_contains "full_diff keeps readable.py" "$(cat "$ev/full_diff.txt" 2>/dev/null)" \
+        "src/readable.py" || ok=false
+    assert_contains "diff_stat keeps readable.py" "$(cat "$ev/diff_stat.txt" 2>/dev/null)" \
+        "src/readable.py" || ok=false
+    assert_contains "removed_hunks keeps readable.py" "$(cat "$ev/removed_hunks.txt" 2>/dev/null)" \
+        "src/readable.py" || ok=false
+    assert_absent "full_diff hides secret_flag" "$(cat "$ev/full_diff.txt" 2>/dev/null)" \
+        "secret_flag" || ok=false
+
+    # Acceptance git-command hide checks on the staged sandbox.
+    git -C "$repo" show "HEAD:src/locked.py" >/dev/null 2>&1 && {
+        log "    [git show HEAD:src/locked.py unexpectedly succeeded]"
+        ok=false
+    }
+    git -C "$repo" diff "main...HEAD" -- src/locked.py >/dev/null 2>&1 && {
+        log "    [git diff of src/locked.py unexpectedly succeeded]"
+        ok=false
+    }
+    git -C "$repo" show "HEAD:src/readable.py" >/dev/null 2>&1 || {
+        log "    [git show HEAD:src/readable.py failed]"
+        ok=false
+    }
+    git -C "$repo" fetch --all >/dev/null 2>&1 || {
+        log "    [git fetch --all failed]"
+        ok=false
+    }
+    test ! -e "$repo/src/locked.py" || {
+        log "    [src/locked.py is present in the worktree]"
+        ok=false
+    }
+    $ok
+}
+
 # --- extract_heading_range.sh ------------------------------------------------
 
 write_report() {
@@ -827,6 +876,8 @@ scenario s18 "range errors and the heading listing"                   s18_range_
 scenario s19 "the same heading twice is that section alone"           s19_single_heading_range_is_that_section_alone
 scenario s20 "head_sync reports the upstream relationship"            s20_head_sync_reports_the_upstream_relationship
 scenario s21 "delta rereview fixture and tag grader fail branches" s21_delta_rereview_tag_grader
+scenario s22 "unreadable path records unread remainder and keeps readable diffs" \
+    s22_unreadable_path_records_unread_remainder
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

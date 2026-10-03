@@ -1,7 +1,7 @@
 ---
 name: git_review
 description: "Review the changes the user names and answer two questions kept apart: could they be approved in general, and can they be structurally merged as they are. The target is a pull request by URL or number, a branch by name or already checked out, or the default branch's uncommitted changes and unpushed commits. The report opens with the reviewed commit, tree state, and approvability verdict, works through fixed headings, and closes with a yes or no on structural mergeability. Use when the user asks to review this branch, assess the pull request, give a full assessment, say whether this can be merged, review my uncommitted changes, re-review the delta since last time, or post the review as a comment on the PR. Publishing to the pull request, resolving a review thread, and editing the branch each wait for an explicit request in the current turn. Checkout, commit, and branch cleanup stay with git_checkout, git_commit, and git_refresh, and approving or merging stays with the PR's owners."
-version: 1.0.6
+version: 1.0.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -43,7 +43,7 @@ license: MIT
 
     <git_layer>
       <collect>Invoke `scripts/collect_review_evidence.sh` to write the git evidence, and the forge evidence when it is reachable, into a scratch directory of plain files with a `manifest.txt`. Read those files rather than issuing the underlying commands one at a time.</collect>
-      <evidence_set>The collected set covers the head against its own upstream in `head_sync.txt`, which is what `<compare_heads>` and `<fast_forward_when_clean>` decide on and is separate from the base comparison; the merge base with the ahead and behind counts; the three-dot diff stat and name-status with rename detection; the commit list with full messages both without merges and along the first parent, so in-branch merges from the base stay visible and the branch's own contribution stays separate from what the base already holds; a removed-hunks view for the retirement heading; the base-side content of deleted files and prior versions through `git show`; a `git merge-tree` test merge naming any conflicting file; a scan for credential patterns and hardcoded home paths; and the diff size with the share of binary and generated files.</evidence_set>
+      <evidence_set>The collected set covers the head against its own upstream in `head_sync.txt`, which is what `<compare_heads>` and `<fast_forward_when_clean>` decide on and is separate from the base comparison; the merge base with the ahead and behind counts; the three-dot diff stat and name-status with rename detection; the commit list with full messages both without merges and along the first parent, so in-branch merges from the base stay visible and the branch's own contribution stays separate from what the base already holds; a removed-hunks view for the retirement heading; the base-side content of deleted files and prior versions through `git show`; a `git merge-tree` test merge naming any conflicting file; a scan for credential patterns and hardcoded home paths; the diff size with the share of binary and generated files; and `unread_paths.txt` when a whole-range diff fails and a per-path retry keeps every readable path while recording each path whose new content git could not produce.</evidence_set>
       <claims_against_the_tree>Check the version and manifest lockstep the repository's own rules require, and check the pull request body against the branch for version and test-count claims. Name each stale claim.</claims_against_the_tree>
       <documentation_findings>Two documentation findings carry their own weight. A standing instruction or document that still references a file this change deleted or renamed misdirects every later reader, so report it rather than treating it as merely stale. A derived artifact whose source this change edited goes to the report flagged for regeneration by its owner rather than repaired inside the review.</documentation_findings>
       <lint_baseline>Judge a lint hit against the repository-wide baseline before calling it a defect: a hit the tree already carried outside this diff is baseline, not a finding against this change. Apply `<non_findings>` when composing the report.</lint_baseline>
@@ -81,7 +81,7 @@ license: MIT
     <scale_the_reading>
       <small_diff>Read a small diff directly.</small_diff>
       <large_diff>For a large diff, read each changed file sequentially in order with the question list in `references/review_questions.md`: read the whole file, sample nothing, and trust no comment or docstring.</large_diff>
-      <unread_remainder>Name what was not read instead of calling a change approvable while changed lines remain unread.</unread_remainder>
+      <unread_remainder>Read `unread_paths.txt` from the evidence set when it is present, name those paths as the unread remainder, and withhold the approvability verdict while any changed path remains unread. Name what was not read for every other unread case the same way.</unread_remainder>
     </scale_the_reading>
 
     <report>

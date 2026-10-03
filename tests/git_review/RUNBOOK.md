@@ -95,10 +95,8 @@ would then be reading partial sandbox state.
 
 ## The fixture that needs care
 
-`unreadable_path` chmods a file to `000` to make it unreadable. The run
-directory is disposable, but if you interrupt a run mid-way and later want to
-delete the workspace by hand, that file needs its mode restored first:
-
-```bash
-chmod -R u+rwX tests/git_review/evals/workspace
-```
+`unreadable_path` restages the sandbox as a blobless partial clone with
+sparse-checkout that omits `src/locked.py`, then deletes that path's new blob
+from both the clone and the bare origin so no git command and no file read can
+produce the hidden content. Ordinary workspace removal is enough; the run
+directory carries no chmod-000 files.

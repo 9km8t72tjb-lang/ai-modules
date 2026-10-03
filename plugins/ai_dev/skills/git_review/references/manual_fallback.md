@@ -80,14 +80,38 @@ HEAD_REF=origin/feature  # the resolved head
 
 git merge-base "$BASE" "$HEAD_REF"
 git rev-list --left-right --count "$BASE...$HEAD_REF"
-git diff --stat "$BASE...$HEAD_REF"
 git diff --name-status -M --find-renames "$BASE...$HEAD_REF"
 git log --no-merges --format='%H%n%an%n%ad%n%B%n---' "$BASE..$HEAD_REF"
 git log --first-parent --format='%H%n%an%n%ad%n%B%n---' "$BASE..$HEAD_REF"
 git diff -M --find-renames "$BASE...$HEAD_REF"
+git diff --stat "$BASE...$HEAD_REF"
 ```
 
-The removed-hunks view for the retirement heading:
+When the whole-range `git diff` fails because one path's content is missing,
+diff each changed path from `name-status` on its own for the full diff, the
+`--stat` output that fills `diff_stat.txt`, and the removed-hunks view. Keep
+every per-path result that succeeds, and write each path git cannot produce to
+`unread_paths.txt`.
+
+```bash
+# per-path retry when the whole-range diff fails
+while IFS=$'\t' read -r status path renamed_to; do
+  case "$status" in
+    R*|C*) target_path="${renamed_to:-$path}" ;;
+    *) target_path="$path" ;;
+  esac
+  if git diff -M --find-renames "$BASE...$HEAD_REF" -- "$target_path"; then
+    git diff --stat "$BASE...$HEAD_REF" -- "$target_path"
+    git diff -M "$BASE...$HEAD_REF" -- "$target_path" |
+      grep -E '^(diff --git |---|\+\+\+|-)'
+  else
+    printf '%s\n' "$target_path" >> unread_paths.txt
+  fi
+done < name_status.txt
+```
+
+The removed-hunks view for the retirement heading when the whole-range diff
+succeeds:
 
 ```bash
 git diff -M "$BASE...$HEAD_REF" | grep -E '^(diff --git |---|\+\+\+|-)'
