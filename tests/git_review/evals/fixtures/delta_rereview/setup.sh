@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # A branch that has already been reviewed once. The stub gh serves that prior
 # review body, the author's newer replies, and one inline thread, while the tree
-# carries the state each tag has to read: one finding fixed, one claimed without
-# a code change, one acknowledged but unfixed, one declined with a reason, one
-# settled by a recorded decision, one regressed, and one new.
+# carries the state each tag has to read from evidence alone: one finding fixed,
+# one claimed without a code change, one acknowledged join left unchanged, one
+# declined with a reason, one settled by a recorded decision, one previously
+# closed sanitize path that the follow-up drops, one unanswered routed question,
+# and one new helper. The follow-up source names none of those tags.
 
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -63,39 +65,26 @@ first_round="$(git rev-parse HEAD)"
 cat > src/export.py <<'PY'
 def export(rows, destination):
     """Write rows to destination."""
-    # f1 closed: the handle is closed now.
     with open(destination, "w") as handle:
-        # f2 still open: the author's reply claims this was fixed; it was not.
         for i in range(len(rows)):
             handle.write(str(rows[i]) + str(rows[i + 1]))
 
-    # f6 regressed: sanitize() guarded this path in the first round and the
-    # import is gone again, so destination reaches open() unchecked.
     return destination
 
 
 def chunk(rows):
-    # f3 acknowledged and still unfixed: 512 remains unexplained.
     return [rows[i:i + 512] for i in range(0, len(rows), 512)]
 
 
 def doExport(rows, destination):
-    # f4 declined with a reason: the author keeps the camelCase alias for the
-    # external callers that already import it.
     return export(rows, destination)
 
 
-def flush(handle):
-    """Flush pending writes.
-
-    New in this round: the caller may pass None when nothing was buffered, and
-    this dereferences it unconditionally.
-    """
+def flush(handle=None):
+    """Flush pending writes."""
     handle.flush()
 
 
-# A prose concession beside the code change: the note below acknowledges the
-# gap without closing it.
 # TODO: route export() through paths.sanitize before the next release.
 PY
 git add -A
@@ -114,7 +103,7 @@ cat > "$payloads/reviews.json" <<JSON
       "author": {"login": "reviewer"},
       "state": "COMMENTED",
       "submittedAt": "2026-08-29T12:00:00Z",
-      "body": "Reviewed \`$first_round\`.\\n\\n## What is critical\\n\\n- f6 src/export.py: destination reaches open() without passing paths.sanitize.\\n\\n## Bugs it may introduce\\n\\n- f1 src/export.py: the file handle is never closed.\\n- f2 src/export.py: rows[i + 1] walks one past the end on the last iteration.\\n\\n## What should be fixed though it is not a clear bug\\n\\n- f3 src/export.py: the 512 chunk size is unexplained.\\n- f4 src/export.py: doExport is camelCase among snake_case siblings.\\n\\n## Decisions the implementer must make before fixing\\n\\n- f5 Does export() retry on a failed write, or does the transport own retries?\\n- f9 Routed to the security owner: is sanitize() sufficient for absolute paths?"
+      "body": "Reviewed \`$first_round\`.\\n\\n## What is critical\\n\\n- f6 src/export.py: destination reaches open() through paths.sanitize; closed in this round.\\n\\n## Bugs it may introduce\\n\\n- f1 src/export.py: the file handle is never closed.\\n- f2 src/export.py: rows[i + 1] walks one past the end on the last iteration.\\n- f7 src/export.py: adjacent rows are concatenated with str(rows[i]) + str(rows[i + 1]), a missing delimiter between records and a separate defect from the off-by-one index.\\n\\n## What should be fixed though it is not a clear bug\\n\\n- f3 src/export.py: the 512 chunk size is unexplained.\\n- f4 src/export.py: doExport is camelCase among snake_case siblings.\\n\\n## Decisions the implementer must make before fixing\\n\\n- f5 Does export() retry on a failed write, or does the transport own retries?\\n- f9 Routed to the security owner: is sanitize() sufficient for absolute paths?"
     },
     {
       "author": {"login": "author"},
@@ -129,7 +118,7 @@ JSON
 cat > "$payloads/comments.json" <<'JSON'
 {
   "comments": [
-    {"author": {"login": "author"}, "body": "f3: fair, the 512 is arbitrary. Leaving it for now, I will document it.", "createdAt": "2026-08-30T09:31:00Z"},
+    {"author": {"login": "author"}, "body": "f7: fair, will fix in the next push", "createdAt": "2026-08-30T09:31:00Z"},
     {"author": {"login": "author"}, "body": "f4: keeping doExport. Two external callers import that name and I am not breaking them in this release.", "createdAt": "2026-08-30T09:32:00Z"},
     {"author": {"login": "author"}, "body": "f5: the decisions log settles this. Retries stay in the transport.", "createdAt": "2026-08-30T09:33:00Z"}
   ]

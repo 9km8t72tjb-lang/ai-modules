@@ -352,6 +352,18 @@ finding_title_matches() {
     done
 }
 
+# Keep bold titles that match the first pattern, then drop any that match the
+# second. A title tagged "open and not acknowledged" therefore cannot satisfy
+# a plain-open check, because successive positive filters would keep it.
+finding_title_matches_excluding() {
+    have_response || return 1
+    local titles
+    [[ $# -eq 2 ]] || return 1
+    titles="$(grep -E '^[[:space:]]*(>[[:space:]]*)?\*\*' "$response")" || return 1
+    titles="$(printf '%s\n' "$titles" | grep -iE -- "$1")" || return 1
+    printf '%s\n' "$titles" | grep -viE -- "$2" >/dev/null
+}
+
 # A first review writes a findings heading only when a finding or decision sits
 # under it, so a heading holding nothing but a placeholder line such as "No
 # findings." is the shape the report rule replaces. A bold title line is a
@@ -590,10 +602,12 @@ case "$eval_id" in
     # Tag on a bold finding title — a descriptive "addressing f1" / "closes"
     # sentence alone must not satisfy closed.
     check "a finding is tagged closed" finding_title_matches 'closed'
+    check "a finding is tagged open" finding_title_matches_excluding 'open' 'not acknowledged'
+    check "a finding is tagged open and not acknowledged" finding_title_matches 'not acknowledged'
     check "a finding is tagged regressed" finding_title_matches 'regressed'
-    check "a finding is tagged settled by a decision" says_regex "settled"
+    check "a finding is tagged settled by a decision" finding_title_matches 'settled'
+    check "a finding is tagged new" finding_title_matches 'new'
     check "the new finding is named" says "flush"
-    check "the routed-unanswered item stays open" says_regex "routed|security owner"
     check "the loop-stop question is answered" says_regex "loop"
     attest "the declined-with-reason item (doExport) is left out"
     attest "the relayed outside decision settles the chunk-size item"

@@ -1,7 +1,7 @@
 ---
 name: git_review
 description: "Review the changes the user names and answer two questions kept apart: could they be approved in general, and can they be structurally merged as they are. The target is a pull request by URL or number, a branch by name or already checked out, or the default branch's uncommitted changes and unpushed commits. The report opens with the reviewed commit, tree state, and approvability verdict, works through fixed headings, and closes with a yes or no on structural mergeability. Use when the user asks to review this branch, assess the pull request, give a full assessment, say whether this can be merged, review my uncommitted changes, re-review the delta since last time, or post the review as a comment on the PR. Publishing to the pull request, resolving a review thread, and editing the branch each wait for an explicit request in the current turn. Checkout, commit, and branch cleanup stay with git_checkout, git_commit, and git_refresh, and approving or merging stays with the PR's owners."
-version: 1.0.5
+version: 1.0.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -109,10 +109,10 @@ license: MIT
     <re_review>
       <trigger>Treat the target as reviewed before when an anchor commit in this conversation or a prior post by the user on the pull request shows a previous review.</trigger>
       <read_the_new_discussion_first>Read every comment and review body newer than the reviewer's last post before assessing anything, then fetch the new commits and review the delta under the same headings.</read_the_new_discussion_first>
-      <tags>Give every prior finding that `<dispositions>` keeps exactly one tag, a closed one included, from this set: closed, open, open and not acknowledged, settled by a decision, regressed, or new. Keep that tag under the finding's original heading even when a descriptive section states the same change as an established fact; a descriptive sentence never stands in for the tag.</tags>
+      <tags>Give every prior finding that `<dispositions>` keeps its own tagged entry and exactly one tag, a closed finding included, from this set: closed, open, open and not acknowledged, settled by a decision, or regressed. Tag a defect that first appears in this delta `new`, under the heading that finding belongs in. Write the tag as one of those phrases in backticks on the finding's title line, immediately after the bold title. Keep that tag under the finding's original heading even when a descriptive section states the same change as an established fact; a descriptive sentence never stands in for the tag.</tags>
       <verify_claimed_fixes>Verify each claimed fix against the tree rather than against the reply that claims it.</verify_claimed_fixes>
       <separate_the_classes>Separate code changes from prose concessions, and the author's defects from the reviewer's own scope calls.</separate_the_classes>
-      <dispositions>Leave out an item the author declined or deferred with a stated reason. Keep an item routed to someone but unanswered open. Fold in a decision the user relays from outside the pull request.</dispositions>
+      <dispositions>Leave out an item the author declined or deferred with a stated reason. Tag an item routed to someone but unanswered `open and not acknowledged`. Fold in a decision the user relays from outside the pull request.</dispositions>
       <can_the_loop_stop>Say plainly whether the review loop can stop.</can_the_loop_stop>
     </re_review>
 

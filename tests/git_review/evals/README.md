@@ -60,7 +60,7 @@ loosely would serve page two on the very first call and hide a pagination bug.
 | `conflicting_branch` | 3 | The base rewrote the same file after the branch left it, so the test merge conflicts on config.ini. |
 | `deep_file_defect` | 18 | A 4800-line file whose only defect sits at the very end. |
 | `default_branch_uncommitted` | 5 | On the default branch with staged, unstaged, and untracked changes plus one commit ahead of the upstream. |
-| `delta_rereview` | 32 | A prior review by this reviewer, newer author replies, and a tree carrying one instance of every delta tag. |
+| `delta_rereview` | 32 | A prior review plus follow-up whose evidence homes map onto closed, open, open and not acknowledged, settled by a decision, declined-and-left-out, regressed, and new, with no tag named in the tree. |
 | `existing_post` | 42 | A comment already on the pull request from this reviewer. |
 | `gate_disagreement` | 26 | The workflow and the documented make target run different commands for the same gate; on the branch the documented command passes and the workflow's strict command fails its coverage floor. |
 | `gates_workflow_and_runner` | 25 | A test suite plus a workflow whose gate command matches the documented one. |
@@ -297,7 +297,7 @@ The component version rose without the manifest updates the standing rules requi
 
 > Re-review the delta on pull request 7. One more thing from outside the PR: the module owner decided in yesterday's design call that chunk() keeps its fixed 512 size for this release.
 
-A delta re-review that reads the newer discussion first, tags every prior finding, keeps the eight headings, and says whether the loop can stop.
+A delta re-review that tags f1 closed, f2 and f7 open, f9 open and not acknowledged, f3 and f5 settled by a decision, f6 regressed, flush() new, and leaves f4 out.
 
 ### 33: `seeded_findings`
 

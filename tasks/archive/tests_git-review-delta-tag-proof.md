@@ -2,9 +2,11 @@
 description: Rework the git_review delta_rereview fixture and eval 32 so each prior finding has one evidence home, no tree comment states a tag, and the grader checks the full tag set.
 scope: tests/git_review
 created: 2026-10-02T10:23:20
-updated: 2026-10-03T14:58:03
-status: ready
+updated: 2026-10-03T18:19:48
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make the git_review delta eval prove every re-review tag
@@ -27,7 +29,7 @@ The harness runner is already vendor-aware (`tests/git_review/evals/run.py` via 
 
 ## Approach
 
-Rewrite the fixture so each unit the Acceptance bullet labeled `Delta eval:` in [ai-dev_git-review-skill.md](ai-dev_git-review-skill.md) enumerates has one unambiguous evidence home (a prior finding, a new helper, or a prose concession), and each tag follows from the evidence alone:
+Rewrite the fixture so each unit the Acceptance bullet labeled `Delta eval:` in [ai-dev_git-review-skill.md](../ai-dev_git-review-skill.md) enumerates has one unambiguous evidence home (a prior finding, a new helper, or a prose concession), and each tag follows from the evidence alone:
 
 - f1 is fixed in the tree, so it reads closed.
 - f2 is claimed fixed in an author reply while the tree still carries it, so it reads open.

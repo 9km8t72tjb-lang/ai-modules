@@ -4,8 +4,9 @@
 # Covers collect_review_evidence.sh, which gathers the git layer (and the
 # forge layer through a stub gh) into a scratch directory, and
 # extract_heading_range.sh, which cuts an inclusive heading range out of a
-# drafted report, plus the grader's report-form discrimination. Repository
-# scenarios stage their own sandbox under scratch/<id>/; form checks read fixtures.
+# drafted report, plus the grader's report-form discrimination and the eval-32
+# delta-tag fail branches. Repository scenarios stage their own sandbox under
+# scratch/<id>/; form checks read fixtures.
 # shellcheck disable=SC2329
 
 set -uo pipefail
@@ -699,6 +700,95 @@ JSON
 JSON
 }
 
+s21_delta_rereview_tag_grader() {
+    local target="$SCRATCH/s21"
+    local grader="$HERE/../evals/grade.sh"
+    local complete="$HERE/fixtures/delta_rereview_complete.md"
+    local follow_up first_sha first_py reviews comments out rc ok=true
+
+    rm -rf "$target"
+    mkdir -p "$target"
+    bash "$HERE/../evals/stage.sh" 32 "$target" >/dev/null || return 1
+
+    follow_up="$(cat "$target/repo/src/export.py")"
+    first_sha="$(cat "$target/.first_round_sha")"
+    first_py="$(git -C "$target/repo" show "$first_sha:src/export.py")"
+    reviews="$(cat "$target/payloads/reviews.json")"
+    comments="$(cat "$target/payloads/comments.json")"
+
+    printf '%s\n' "$follow_up" | grep -qiE 'f[1-9]|closed|regressed|acknowledg|declined|concession|New in this round' && {
+        log "    [follow-up export.py still names a finding id or tag stem]"
+        return 1
+    }
+    printf '%s\n' "$follow_up" | grep -q '# TODO:' || {
+        log "    [follow-up export.py lost the TODO sanitize line]"
+        return 1
+    }
+    printf '%s\n' "$follow_up" | grep -q 'sanitize' || {
+        log "    [follow-up TODO no longer names sanitize]"
+        return 1
+    }
+    printf '%s\n' "$first_py" | grep -q 'sanitize(' || {
+        log "    [first-round export.py does not call sanitize()]"
+        return 1
+    }
+    printf '%s\n' "$first_py" | grep -qF 'str(rows[i]) + str(rows[i + 1])' || {
+        log "    [first-round export.py lost the no-delimiter join]"
+        return 1
+    }
+    printf '%s\n' "$follow_up" | grep -qF 'str(rows[i]) + str(rows[i + 1])' || {
+        log "    [follow-up export.py lost the no-delimiter join]"
+        return 1
+    }
+    printf '%s\n' "$reviews" | grep -qi 'closed in this round' || {
+        log "    [prior review body does not record f6 as closed]"
+        return 1
+    }
+    printf '%s\n' "$reviews" | grep -q 'f7' || {
+        log "    [prior review body lacks f7]"
+        return 1
+    }
+    printf '%s\n' "$reviews" | grep -qF 'str(rows[i]) + str(rows[i + 1])' || {
+        log "    [prior review body does not name the no-delimiter join]"
+        return 1
+    }
+    printf '%s\n' "$comments" | grep -q 'f7:' || {
+        log "    [comments.json lacks an author acknowledgment of f7]"
+        return 1
+    }
+    printf '%s\n' "$comments" | grep -qiE 'f3:.*unfixed|Leaving it for now' && {
+        log "    [comments.json still acknowledges f3 as unfixed]"
+        return 1
+    }
+
+    out=$(bash "$grader" 32 "$target/repo" "$complete" 2>&1) && rc=0 || rc=$?
+    assert_eq "complete delta response grades clean" "$rc" "0" || ok=false
+    assert_contains "complete delta response tags open" "$out" "a finding is tagged open" || ok=false
+    assert_contains "complete delta response tags not acknowledged" "$out" \
+        "a finding is tagged open and not acknowledged" || ok=false
+
+    local stripped="$target/missing_not_acknowledged.md"
+    local only_not_ack="$target/only_not_acknowledged.md"
+    python3 - "$complete" "$stripped" "$only_not_ack" <<'PY'
+import pathlib, sys
+src = pathlib.Path(sys.argv[1]).read_text()
+pathlib.Path(sys.argv[2]).write_text(src.replace("not acknowledged", ""))
+pathlib.Path(sys.argv[3]).write_text(src.replace("`open`:", "`open and not acknowledged`:"))
+PY
+
+    out=$(bash "$grader" 32 "$target/repo" "$stripped" 2>&1) && rc=0 || rc=$?
+    assert_eq "missing not-acknowledged text fails grading" "$rc" "1" || ok=false
+    assert_contains "missing not-acknowledged text fails that check" "$out" \
+        "FAIL  a finding is tagged open and not acknowledged" || ok=false
+
+    out=$(bash "$grader" 32 "$target/repo" "$only_not_ack" 2>&1) && rc=0 || rc=$?
+    assert_eq "open-only-as-not-acknowledged fails grading" "$rc" "1" || ok=false
+    assert_contains "open-only-as-not-acknowledged fails the plain-open check" "$out" \
+        "FAIL  a finding is tagged open" || ok=false
+
+    $ok
+}
+
 form_discrimination() {
     local eval_id out rc ok=true
     local grader="$HERE/../evals/grade.sh"
@@ -736,6 +826,7 @@ scenario s17 "a single heading runs to the end of the file"           s17_range_
 scenario s18 "range errors and the heading listing"                   s18_range_errors_and_listing
 scenario s19 "the same heading twice is that section alone"           s19_single_heading_range_is_that_section_alone
 scenario s20 "head_sync reports the upstream relationship"            s20_head_sync_reports_the_upstream_relationship
+scenario s21 "delta rereview fixture and tag grader fail branches" s21_delta_rereview_tag_grader
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

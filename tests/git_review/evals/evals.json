@@ -451,7 +451,7 @@
     {
       "id": 32,
       "prompt": "Re-review the delta on pull request 7. One more thing from outside the PR: the module owner decided in yesterday's design call that chunk() keeps its fixed 512 size for this release.",
-      "expected_output": "A delta re-review that reads the newer discussion first, tags every prior finding, keeps the eight headings, and says whether the loop can stop.",
+      "expected_output": "A delta re-review that tags f1 closed, f2 and f7 open, f9 open and not acknowledged, f3 and f5 settled by a decision, f6 regressed, flush() new, and leaves f4 out.",
       "files": [
         "evals/fixtures/delta_rereview/setup.sh"
       ],
@@ -459,12 +459,13 @@
         "The run reads the comments and review bodies newer than the reviewer's own last post before assessing the code.",
         "The closed-handle finding (f1) is tagged closed.",
         "The off-by-one finding (f2) stays open despite the author's claim that it was handled, because the tree still carries it.",
-        "The chunk-size finding (f3) is tagged open and acknowledged.",
+        "The no-delimiter join finding (f7) stays open; the author acknowledged it and the tree still writes str(rows[i]) + str(rows[i + 1]).",
+        "The chunk-size finding (f3) is tagged settled by a decision.",
         "The camelCase finding (f4) is left out, because the author declined it with a stated reason.",
         "The retry-policy question (f5) is tagged settled by a decision.",
         "The sanitize finding (f6) is tagged regressed.",
         "The None dereference in the new flush() helper is tagged new.",
-        "The security question routed to the owner (f9) stays open, because it was routed and never answered.",
+        "The security question routed to the owner (f9) is tagged open and not acknowledged, because it was routed and never answered.",
         "The TODO comment about sanitize is separated from the code changes as a prose concession rather than counted as a fix.",
         "The relayed outside decision about the 512 chunk size is folded in and settles f3 rather than leaving it as an open decision.",
         "All eight headings are present as tag homes, including any that hold no remaining finding.",

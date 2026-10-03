@@ -69,5 +69,11 @@ section when the fix needs a judgement call>`.
 
 > **`<path>:<line>` — `<the prior finding>`.** `closed`: `<what in the tree
 > closed it>`.
+>
+> **`<path>:<line>` — `<the routed unanswered finding>`.** `open and not
+> acknowledged`: `<who it was routed to, and that they have not answered>`.
+>
+> **`<path>:<line>` — `<the defect this delta introduced>`.** `new`: `<what
+> the follow-up added>`.
 
 The tag vocabulary is closed and `<re_review>` owns it.
