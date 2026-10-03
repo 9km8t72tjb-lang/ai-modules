@@ -158,11 +158,12 @@ fi
 # Declared here (before REPO_ROOT discovery) so root auto-discovery can use
 # the same folder list as artifact discovery below.
 # ---------------------------------------------------------------------------
-declare -A ASSET_FOLDERS=(
-  [agents]="agent"
-  [commands]="command"
-  [skills]="skill"
-  [hooks]="hook"
+# Indexed folder|type table. Bash 3.2 has no associative arrays.
+declare -a ASSET_FOLDERS=(
+  "agents|agent"
+  "commands|command"
+  "skills|skill"
+  "hooks|hook"
 )
 
 # ---------------------------------------------------------------------------
@@ -374,12 +375,12 @@ matches_filter() {
 # deployment.conf parser
 #
 # Parses per-tool deployment configuration and populates:
-#   DISALLOW_MAP["tool|rel_path"] = 1
-#   REPLACE_RULES+=("tool<TAB>pattern<TAB>var<TAB>value")
-#   STYLE_MAP["tool"] = name
+#   DISALLOW_MAP entries are "tool|pattern" (indexed set)
+#   REPLACE_RULES entries are "tool<TAB>pattern<TAB>var<TAB>value"
+#   STYLE_MAP entries are "tool|name" (indexed key|value table)
 # ---------------------------------------------------------------------------
-declare -A DISALLOW_MAP=()
-declare -A STYLE_MAP=()
+declare -a DISALLOW_MAP=()
+declare -a STYLE_MAP=()
 declare -a REPLACE_RULES=()
 
 path_matches_pattern() {
@@ -427,7 +428,7 @@ parse_deployment_conf() {
       # Strip leading/trailing whitespace
       disallowed="${disallowed#"${disallowed%%[![:space:]]*}"}"
       disallowed="${disallowed%"${disallowed##*[![:space:]]}"}"
-      [[ -n "$disallowed" ]] && DISALLOW_MAP["${current_tool}|${disallowed}"]=1
+      [[ -n "$disallowed" ]] && DISALLOW_MAP+=("${current_tool}|${disallowed}")
       continue
     fi
 
@@ -452,10 +453,41 @@ parse_deployment_conf() {
       local style_name="${BASH_REMATCH[1]}"
       style_name="${style_name#"${style_name%%[![:space:]]*}"}"
       style_name="${style_name%"${style_name##*[![:space:]]}"}"
-      [[ -n "$style_name" ]] && STYLE_MAP["$current_tool"]="$style_name"
+      [[ -n "$style_name" ]] && STYLE_MAP+=("${current_tool}|${style_name}")
       continue
     fi
   done < "$DEPLOYMENT_CONF"
+}
+
+# Bash 3.2 indexed-array helpers. Callers check the array length before
+# expanding it, because an empty "${array[@]}" is unbound under set -u on
+# this floor. A call that forwards an array uses ${name[@]+"${name[@]}"}
+# so an empty array passes no arguments. table_get returns the last
+# matching value so a repeated key keeps the last assignment.
+array_has_exact() {
+  local needle="$1"
+  shift
+  local item
+  for item in "$@"; do
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
+table_get() {
+  local needle="$1"
+  shift
+  local entry key found=""
+  local hit=1
+  for entry in "$@"; do
+    key="${entry%%|*}"
+    if [[ "$key" == "$needle" ]]; then
+      found="${entry#*|}"
+      hit=0
+    fi
+  done
+  [[ "$hit" -eq 0 ]] || return 1
+  printf '%s' "$found"
 }
 
 # Check if a relative path is disallowed for a given tool.
@@ -463,14 +495,18 @@ parse_deployment_conf() {
 is_disallowed() {
   local tool="$1"
   local rel_path="$2"
+  local entry key_tool key_pattern
 
-  # Exact match
-  [[ -n "${DISALLOW_MAP["${tool}|${rel_path}"]+x}" ]] && return 0
+  if [[ ${#DISALLOW_MAP[@]} -gt 0 ]] && array_has_exact "${tool}|${rel_path}" "${DISALLOW_MAP[@]}"; then
+    return 0
+  fi
+
+  [[ ${#DISALLOW_MAP[@]} -gt 0 ]] || return 1
 
   # Check configured patterns.
-  for key in "${!DISALLOW_MAP[@]}"; do
-    local key_tool="${key%%|*}"
-    local key_pattern="${key#*|}"
+  for entry in "${DISALLOW_MAP[@]}"; do
+    key_tool="${entry%%|*}"
+    key_pattern="${entry#*|}"
     [[ "$key_tool" == "$tool" ]] || continue
 
     # Skip exact matches (already handled)
@@ -486,6 +522,9 @@ get_matching_replacements() {
   local tool="$1"
   local rel_path="$2"
   local rule=""
+
+  # Bash 3.2 set -u treats an empty "${array[@]}" as unbound.
+  [[ ${#REPLACE_RULES[@]} -gt 0 ]] || return 0
 
   for rule in "${REPLACE_RULES[@]}"; do
     local rule_tool=""
@@ -633,8 +672,9 @@ discover_artifacts() {
       local plugin_name
       plugin_name="$(basename "$plugin_dir")"
 
-      for folder in "${!ASSET_FOLDERS[@]}"; do
-        local art_type="${ASSET_FOLDERS[$folder]}"
+      for asset_entry in "${ASSET_FOLDERS[@]}"; do
+        local folder="${asset_entry%%|*}"
+        local art_type="${asset_entry#*|}"
         local folder_path="${plugin_dir}${folder}"
 
         # Skip if folder doesn't exist
@@ -661,7 +701,7 @@ discover_artifacts() {
             bname="$(basename "$f")"
             # Skip hidden files and README files
             [[ "$bname" == .* ]] && continue
-            [[ "${bname^^}" == README* ]] && continue
+            [[ "$bname" == [Rr][Ee][Aa][Dd][Mm][Ee]* ]] && continue
             local name_no_ext="${bname%.*}"
             local rel_path="plugins/${plugin_name}/${folder}/${bname}"
             discovered+=("${name_no_ext}|${art_type}|${rel_path}")
@@ -679,7 +719,7 @@ discover_artifacts() {
       local bname
       bname="$(basename "$style_file")"
       [[ "$bname" == .* ]] && continue
-      [[ "${bname^^}" == README* ]] && continue
+      [[ "$bname" == [Rr][Ee][Aa][Dd][Mm][Ee]* ]] && continue
       local name_no_ext="${bname%.*}"
       local rel_path="styles/${bname}"
       discovered+=("${name_no_ext}|style|${rel_path}")
@@ -827,7 +867,7 @@ copy_path_with_replacements() {
   fi
 
   ok "copied" "$target <- $source"
-  maybe_apply_replacements "$target" "${replacements[@]}"
+  maybe_apply_replacements "$target" ${replacements[@]+"${replacements[@]}"}
   SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
   append_deployed_artifact_log "$target" "$target_id" "$artifact_type" "$source"
 }
@@ -1448,7 +1488,7 @@ install_for_app() {
         vscode)
           ensure_dir "$VSCODE_PROMPTS_DIR"
           local dest_path="${VSCODE_PROMPTS_DIR}/${name}.prompt.md"
-          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
+          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
           ;;
         antigravity)
           info "skip" "[$name] Antigravity command workflow deployment is not supported"
@@ -1457,13 +1497,13 @@ install_for_app() {
           local dest_dir="${app_dir}/prompts"
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.md"
-          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
+          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
           ;;
         *)
           local dest_dir="${app_dir}/commands"
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.md"
-          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
+          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
           ;;
       esac
       ;;
@@ -1493,7 +1533,7 @@ install_for_app() {
       for dest_dir in "${dest_dirs[@]}"; do
         ensure_dir "$dest_dir"
         local dest_path="${dest_dir}/${name}"
-        copy_path_with_replacements "$source_abs" "$dest_path" "$log_owner" "$type" "${replacement_specs[@]}"
+        copy_path_with_replacements "$source_abs" "$dest_path" "$log_owner" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
       done
       ;;
     agent)
@@ -1504,7 +1544,7 @@ install_for_app() {
           local dest_path="${dest_dir}/${name}.agent.md"
           rewrite_agent_frontmatter "$source_abs" "$dest_path" "$app_id"
           $DRY_RUN || append_deployed_artifact_log "$dest_path" "$app_id" "$type" "$source_abs"
-          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
+          maybe_apply_replacements "$dest_path" ${replacement_specs[@]+"${replacement_specs[@]}"}
           ;;
         cursor|claude)
           local dest_dir="${app_dir}/agents"
@@ -1512,28 +1552,28 @@ install_for_app() {
           local dest_path="${dest_dir}/${name}.md"
           rewrite_agent_frontmatter "$source_abs" "$dest_path" "$app_id"
           $DRY_RUN || append_deployed_artifact_log "$dest_path" "$app_id" "$type" "$source_abs"
-          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
+          maybe_apply_replacements "$dest_path" ${replacement_specs[@]+"${replacement_specs[@]}"}
           ;;
         codex)
           local dest_dir="${app_dir}/agents"
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.toml"
           generate_toml_agent "$source_abs" "$dest_path" "$app_id" "$type"
-          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
+          maybe_apply_replacements "$dest_path" ${replacement_specs[@]+"${replacement_specs[@]}"}
           ;;
         opencode)
           local dest_dir="${app_dir}/agents"
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.md"
           generate_opencode_agent "$source_abs" "$dest_path" "$app_id" "$type"
-          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
+          maybe_apply_replacements "$dest_path" ${replacement_specs[@]+"${replacement_specs[@]}"}
           ;;
         antigravity)
           local dest_dir="${app_dir}/agents"
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.md"
           generate_antigravity_agent "$source_abs" "$dest_path" "$app_id" "$type"
-          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
+          maybe_apply_replacements "$dest_path" ${replacement_specs[@]+"${replacement_specs[@]}"}
           ;;
       esac
       ;;
@@ -1553,7 +1593,7 @@ install_for_app() {
           local dest_file
           dest_file="${dest_dir}/$(basename "$source_abs")"
           if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-            copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" "${replacement_specs[@]}"
+            copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
           else
             copy_file "$source_abs" "$dest_file" "$app_id" "$type"
           fi
@@ -1565,7 +1605,7 @@ install_for_app() {
             [[ "$source_abs" == *cursor-hooks* ]] || { info "skip" "[$name] not a Cursor hook config"; return 0; }
             local dest_path="${app_dir}/hooks.json"
             if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-              copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
+              copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
             else
               copy_file "$source_abs" "$dest_path" "$app_id" "$type"
             fi
@@ -1575,7 +1615,7 @@ install_for_app() {
             local dest_file
             dest_file="${dest_dir}/$(basename "$source_abs")"
             if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" "${replacement_specs[@]}"
+              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
             else
               copy_file "$source_abs" "$dest_file" "$app_id" "$type"
             fi
@@ -1602,7 +1642,7 @@ install_for_app() {
             local dest_file
             dest_file="${dest_dir}/$(basename "$source_abs")"
             if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" "${replacement_specs[@]}"
+              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
             else
               copy_file "$source_abs" "$dest_file" "$app_id" "$type"
             fi
@@ -1626,7 +1666,7 @@ install_for_app() {
             local dest_file
             dest_file="${dest_dir}/$(basename "$source_abs")"
             if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" "${replacement_specs[@]}"
+              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
             else
               copy_file "$source_abs" "$dest_file" "$app_id" "$type"
             fi
@@ -1654,7 +1694,7 @@ install_for_app() {
             local dest_file
             dest_file="${dest_dir}/$(basename "$source_abs")"
             if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" "${replacement_specs[@]}"
+              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
             else
               copy_file "$source_abs" "$dest_file" "$app_id" "$type"
             fi
@@ -1673,12 +1713,15 @@ install_for_app() {
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.md"
           if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-            copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
+            copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
           else
             copy_file "$source_abs" "$dest_path" "$app_id" "$type"
           fi
 
-          local active_style="${STYLE_MAP[$app_id]:-}"
+          local active_style=""
+          if [[ ${#STYLE_MAP[@]} -gt 0 ]]; then
+            active_style="$(table_get "$app_id" "${STYLE_MAP[@]}" || true)"
+          fi
           if [[ -z "$active_style" ]]; then
             warn "skip" "[$name] no style:<name> in deployment.conf for $app_id; file copied, outputStyle not set"
           elif [[ "$active_style" != "$name" ]]; then
@@ -1770,7 +1813,7 @@ clear_old_backups_for_app_dir() {
 }
 
 clear_backups_for_active_targets() {
-  declare -A cleared_roots=()
+  declare -a cleared_roots=()
   for target in "${APP_TARGETS[@]}"; do
     IFS='|' read -r app_id _label base_dir <<< "$target"
     # Each backup_roots entry is "path|backup_name". An empty backup_name
@@ -1789,9 +1832,9 @@ clear_backups_for_active_targets() {
     for backup_root_entry in "${backup_roots[@]}"; do
       local_backup_root="${backup_root_entry%%|*}"
       local_backup_name="${backup_root_entry#*|}"
-      if [[ -z "${cleared_roots[$local_backup_root]+x}" ]]; then
+      if [[ ${#cleared_roots[@]} -eq 0 ]] || ! array_has_exact "$local_backup_root" "${cleared_roots[@]}"; then
         clear_old_backups_for_app_dir "$local_backup_root" "$local_backup_name"
-        cleared_roots["$local_backup_root"]=1
+        cleared_roots+=("$local_backup_root")
       fi
     done
   done
@@ -2039,7 +2082,7 @@ else
   echo "Backing up activated target directories..."
   echo ""
 
-  declare -A backed_up=()
+  declare -a backed_up=()
   for target in "${APP_TARGETS[@]}"; do
     IFS='|' read -r app_id _label base_dir <<< "$target"
     # Each backup_roots entry is "path|backup_name". An empty backup_name
@@ -2057,7 +2100,7 @@ else
     for backup_root_entry in "${backup_roots[@]}"; do
       local_backup_root="${backup_root_entry%%|*}"
       local_backup_name="${backup_root_entry#*|}"
-      if [[ -z "${backed_up[$local_backup_root]+x}" ]]; then
+      if [[ ${#backed_up[@]} -eq 0 ]] || ! array_has_exact "$local_backup_root" "${backed_up[@]}"; then
         if $CLEAR_BACKUPS; then
           clear_old_backups_for_app_dir "$local_backup_root" "$local_backup_name"
         fi
@@ -2066,7 +2109,7 @@ else
         else
           backup_app_dir "$local_backup_root" "$local_backup_name"
         fi
-        backed_up["$local_backup_root"]=1
+        backed_up+=("$local_backup_root")
       fi
     done
   done

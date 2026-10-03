@@ -2,7 +2,7 @@
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
 created: 2026-06-02T18:58:04
-updated: 2026-09-18T19:09:33
+updated: 2026-10-03T14:55:53
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -33,7 +33,7 @@ Relevant code in `deployment/deployment.sh`:
 - `uninstall_logged_artifacts`; the only reader of the log. Already filters by active target and type.
 - The `Config:` banner line that echoes the conf path.
 
-The sibling task [bash 3.2 floor](deployment_bash-32-floor.md) rewrites the two associative arrays `parse_deployment_conf` fills into indexed arrays, so whichever of the two lands second builds on the other's shape rather than the one quoted here.
+The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) rewrites the two associative arrays `parse_deployment_conf` fills into indexed arrays, so whichever of the two lands second builds on the other's shape rather than the one quoted here.
 
 Current conf (`deployment/deployment.conf`) is **not purely machine state**. It carries shared defaults every checkout needs:
 

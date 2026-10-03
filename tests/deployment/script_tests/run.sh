@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 DEPLOY_SCRIPT="${REPO_ROOT}/deployment/deployment.sh"
+# Invoke the deploy script on the stock bash the floor targets.
+DEPLOY_BASH="/bin/bash"
 DEPLOY_LOG="${REPO_ROOT}/deployment/deployed_artefacts.log"
 FIXTURE_PLUGIN="${REPO_ROOT}/plugins/__opencode_deploy_test"
 BYTECODE_PLUGIN="${REPO_ROOT}/plugins/__bytecode_deploy_test"
@@ -94,14 +96,14 @@ cat > "$FIXTURE_PLUGIN/commands/opencode_fixture_command.md" <<'COMMAND'
 This command exists only while the OpenCode deployment regression test runs.
 COMMAND
 
-dry_run_output="$(HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --target opencode --global --dry-run)"
+dry_run_output="$(HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --target opencode --global --dry-run)"
 printf '%s\n' "$dry_run_output" | grep -q "${HOME_DIR}/.config/opencode" || fail "global dry-run did not resolve ~/.config/opencode"
 printf '%s\n' "$dry_run_output" | grep -q "would-bak.*\.opencode-config" || fail "global dry-run did not use the OpenCode backup name override"
 if printf '%s\n' "$dry_run_output" | grep -q "${HOME_DIR}/.opencode/"; then
   fail "global dry-run used ~/.opencode"
 fi
 
-antigravity_dry_run="$(HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --target antigravity --global --dry-run)"
+antigravity_dry_run="$(HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --target antigravity --global --dry-run)"
 printf '%s\n' "$antigravity_dry_run" | grep -q "${HOME_DIR}/.gemini/config" ||
   fail "Antigravity global dry-run did not resolve ~/.gemini/config"
 printf '%s\n' "$antigravity_dry_run" | grep -q "${HOME_DIR}/.gemini/config/skills/task" ||
@@ -116,7 +118,7 @@ if printf '%s\n' "$antigravity_dry_run" | grep -q "${HOME_DIR}/.gemini/antigravi
   fail "Antigravity global dry-run deployed agents under the IDE skill root"
 fi
 
-"$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target opencode >/dev/null
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target opencode >/dev/null
 
 assert_dir "$PROJECT_DIR/.opencode/skills/task"
 assert_file "$PROJECT_DIR/.opencode/skills/task/SKILL.md"
@@ -142,14 +144,14 @@ assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^model:
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^permission:'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" 'edit: deny|bash: deny'
 
-"$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target opencode --uninstall >/dev/null
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target opencode --uninstall >/dev/null
 
 [[ ! -e "$PROJECT_DIR/.opencode/skills/task" ]] || fail "uninstall left skill directory"
 [[ ! -e "$PROJECT_DIR/.opencode/commands/opencode_fixture_command.md" ]] || fail "uninstall left fixture command"
 [[ ! -e "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" ]] || fail "uninstall left agent file"
 
 antigravity_project_out="${SCRATCH}/antigravity-project.out"
-"$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target antigravity >"$antigravity_project_out"
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target antigravity >"$antigravity_project_out"
 
 assert_dir "$PROJECT_DIR/.agents/skills/task"
 assert_file "$PROJECT_DIR/.agents/skills/task/SKILL.md"
@@ -197,11 +199,11 @@ skill_log_count="$(grep -Fc "$PROJECT_DIR/.agents/skills/task"$'\t' "$DEPLOY_LOG
 grep -F "$PROJECT_DIR/.agents/skills/task"$'\t' "$DEPLOY_LOG" | grep -Fq $'\tcodex\tskill\t' ||
   fail "shared .agents/skills/task should be logged under codex owner"
 
-"$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target antigravity --uninstall >/dev/null
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target antigravity --uninstall >/dev/null
 [[ ! -e "$PROJECT_DIR/.agents/agents/auto_drift_task.md" ]] || fail "Antigravity uninstall left agent file"
 assert_dir "$PROJECT_DIR/.agents/skills/task"
 
-"$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target codex --uninstall >/dev/null
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target codex --uninstall >/dev/null
 [[ ! -e "$PROJECT_DIR/.agents/skills/task" ]] || fail "Codex uninstall should remove shared skill directory"
 
 # ---------------------------------------------------------------------------
@@ -239,7 +241,7 @@ mkdir -p "$DIRTY_SRC/scripts/__pycache__"
 printf '\x00\x01fake-bytecode\n' > "$DIRTY_SRC/scripts/__pycache__/lint.cpython-314.pyc"
 printf '\x00\x01fake-bytecode\n' > "$DIRTY_SRC/scripts/stray.pyc"
 
-"$DEPLOY_SCRIPT" --project-dir "$BYTECODE_PROJECT_DIR" --target opencode --type skill >/dev/null
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$BYTECODE_PROJECT_DIR" --target opencode --type skill >/dev/null
 
 DIRTY_DEST="$BYTECODE_PROJECT_DIR/.opencode/skills/__bytecode_dirty"
 CLEAN_DEST="$BYTECODE_PROJECT_DIR/.opencode/skills/__bytecode_clean"
@@ -263,7 +265,7 @@ mkdir -p "$DIRTY_DEST/scripts/__pycache__"
 printf '\x00\x01stale-bytecode\n' > "$DIRTY_DEST/scripts/__pycache__/lint.cpython-314.pyc"
 printf '\x00\x01stale-bytecode\n' > "$DIRTY_DEST/scripts/stale.pyc"
 
-"$DEPLOY_SCRIPT" --project-dir "$BYTECODE_PROJECT_DIR" --target opencode --type skill >/dev/null
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$BYTECODE_PROJECT_DIR" --target opencode --type skill >/dev/null
 
 assert_file "$DIRTY_DEST/SKILL.md"
 assert_no_bytecode "$DIRTY_DEST"

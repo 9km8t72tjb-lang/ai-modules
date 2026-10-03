@@ -263,10 +263,15 @@ no_pasted_return_shape() {
 # which the contract requires it to carry, so counting bare mentions would fail
 # exactly the brief that obeys the rule.
 briefs_one_distinct_target() {
-  local pattern="$1" f found all=()
+  local pattern="$1" f line
+  local -a found=()
+  local -a all=()
   brief_files | grep -q . || return 1
   while IFS= read -r f; do
-    mapfile -t found < <(
+    found=()
+    while IFS= read -r line || [[ -n "${line:-}" ]]; do
+      found+=("$line")
+    done < <(
       { grep -E 'Your target path' "$f" || sed -E 's/(Write only [^.]*)\. *Leave.*/\1/' "$f" \
           | grep -E 'Write only'; } 2>/dev/null | grep -oE "$pattern" | sort -u)
     [[ "${#found[@]}" -eq 1 ]] || return 1

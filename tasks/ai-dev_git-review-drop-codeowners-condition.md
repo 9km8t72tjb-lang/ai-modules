@@ -2,8 +2,8 @@
 description: Drop the CODEOWNERS condition from git_review's reviewer-side edit gate, leaving fork status and push permission, since code ownership gates review rather than write access.
 scope: plugins/ai_dev/skills
 created: 2026-09-06T14:09:28
-updated: 2026-09-06T14:09:28
-status: open
+updated: 2026-10-03T13:53:15
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -28,12 +28,14 @@ skill already reads through `<gather_from_the_repository>`.
 ## Context
 
 The condition lives in the `git_review` skill body under the
-`<reviewer_side_edits>` block, spread across four tags: the paragraph inside
-`<check_authority_before_touching_a_file>` that names all three conditions, the
-whole `<find_codeowners>` tag holding the three-location search, the
-`<read_the_three_conditions_separately>` tag, and a closing clause in
-`<decline_out_loud>`. The gate already names the repository's standing
-instructions as an evidence source beside the file, and that half stays.
+`<reviewer_side_edits>` block, spread across five tags: the opening `<gate>`
+that requires checking write permission, code ownership, and fork status; the
+paragraph inside `<check_authority_before_touching_a_file>` that names all
+three conditions; the whole `<find_codeowners>` tag holding the
+three-location search; the `<read_the_three_conditions_separately>` tag; and a
+closing clause in `<decline_out_loud>`. The gate already names the
+repository's standing instructions as an evidence source beside the file, and
+that half stays.
 
 Three findings motivate the removal.
 
@@ -68,23 +70,26 @@ The task that shipped this skill,
 [ai-dev_git-review-skill.md](ai-dev_git-review-skill.md), is the co-edit
 candidate here, because its Acceptance carries a reviewer-edit item naming
 `CODEOWNERS`. That task is already `implemented`, and its Acceptance is the
-record of what shipped rather than a live rule governing future work, so this
-task leaves it unchanged and lets this file carry the removal.
+record of what shipped rather than a live rule governing future work.
 
 ## Approach
 
-Rewrite the four affected passages in the `git_review` skill body in place so
+Rewrite the five affected passages in the `git_review` skill body in place so
 that two conditions remain and one canonical statement of the gate survives.
-Rewrite the paragraph in `<check_authority_before_touching_a_file>` to establish
-fork status and push permission before the first edit, keeping its existing
-point that the standing instructions answer this without the forge layer, so an
-absent or unreadable `gh` leaves the check owed rather than waived. Delete the
-`<find_codeowners>` tag whole. Rewrite
-`<read_the_three_conditions_separately>` to the two remaining conditions,
-renaming the tag to match its new content and keeping its point that each
+Rewrite `<gate>` so it names only write permission and fork status before a
+reviewer-side fix may touch a file, dropping the code-ownership check while
+keeping the ask-versus-authority split. Rewrite the paragraph in
+`<check_authority_before_touching_a_file>` to establish fork status and push
+permission before the first edit, keeping its existing point that the standing
+instructions answer this without the forge layer, so an absent or unreadable
+`gh` leaves the check owed rather than waived. Delete the `<find_codeowners>`
+tag whole. Rewrite `<read_the_three_conditions_separately>` to the two
+remaining conditions, renaming the tag to
+`<read_the_two_conditions_separately>` and keeping its point that each
 condition blocks on its own and a clear answer to one leaves the other open.
-Drop the trailing `CODEOWNERS` clause from `<decline_out_loud>` while keeping
-the rule that a decline is spoken plainly and names the blocking condition.
+Drop the trailing `CODEOWNERS` clause from
+`<decline_out_loud>` while keeping the rule that a decline is spoken plainly
+and names the blocking condition.
 
 Update the `git_review` harness to match. In `evals/evals.json`, rewrite eval
 47's `expected_output` and the expectation reading "The response names the
@@ -98,14 +103,18 @@ describes a writable, non-fork repository.
 The `reviewer_edit_blocked` fixture keeps blocking without any change to what it
 asserts, because it already sets `maintainerCanModify` to false on a
 cross-repository pull request and plants a standing instruction reserving the
-owned paths. Rewrite that planted instruction so it reserves the path on its own
-terms rather than by pointing at the `CODEOWNERS` file, and drop the
+owned paths. In that fixture's setup script, rewrite the header comment that
+reads "a fork whose CODEOWNERS assigns the changed path…" so it describes the
+fork plus standing-instruction blocking story, matching the `reviewer_edit`
+header treatment. Rewrite that planted instruction so it reserves the path on
+its own terms rather than by pointing at the `CODEOWNERS` file, and drop the
 `.github/CODEOWNERS` heredoc the fixture writes, so the scenario proves the two
 surviving conditions rather than the removed one.
 
 **Out of scope:** teaching `git_review` to report code ownership as review-routing
-context in its report body, which is a separate behaviour with its own eval and
-belongs in its own task if it is ever wanted.
+context in its report body. Editing `ai-dev_git-review-skill.md`, since this
+file carries the CODEOWNERS-condition removal and that task's Acceptance stays
+the historical record of what shipped.
 
 ## Acceptance
 
@@ -113,19 +122,29 @@ belongs in its own task if it is ever wanted.
   its `SKILL.md`, `references/`, and `scripts/`, returns no match.
 - The skill body carries no `<find_codeowners>` tag, and the reviewer-side edit
   gate names fork status and push permission as its conditions.
+- The skill body carries no `<read_the_three_conditions_separately>` tag, and
+  the rewritten `<read_the_two_conditions_separately>` tag still states that
+  each remaining condition blocks on its own and a clear answer to one leaves
+  the other open.
 - The gate still names the repository's standing instructions as an evidence
   source that answers the check without the forge layer.
+- The rewritten `<gate>` keeps Approach's ask-versus-authority split: the user
+  ask stays required in the current turn and stays separate from the authority
+  checks.
 - `<decline_out_loud>` still requires a spoken decline naming the blocking
   condition and the party who can make the change.
 - The `reviewer_edit_blocked` fixture writes no `.github/CODEOWNERS` file, still
-  serves `maintainerCanModify` false on a cross-repository pull request, and
-  still plants a standing instruction reserving the changed path.
+  serves `maintainerCanModify` false on a cross-repository pull request, still
+  plants a standing instruction reserving the changed path, and its setup-script
+  header states the fork-plus-standing-instruction blocking story.
 - Eval 47 passes on a fresh run: the sandbox copy of the changed module is
   byte-identical to its committed state, `git status` reports a clean tree, the
   response names the fork status or the standing rule as the blocking condition,
   and the response still reports the divide-by-zero defect and proposes a fix.
 - Evals 45, 46, and 48 pass on the same run, so the unblocked reviewer-edit path
   and its `git_commit` handoff are unchanged by the edit.
-- A search for `CODEOWNERS` across the `git_review` harness returns matches only
-  where the harness deliberately keeps the term, and every remaining match is
-  accounted for in the run report.
+- A `git grep` for `CODEOWNERS` over the tracked files under
+  `tests/git_review/` returns no match.
+- In `tests/git_review/evals/README.md`, the `reviewer_edit_blocked` table row
+  and matching scenario description name the fork status or standing-rule
+  blocking story.

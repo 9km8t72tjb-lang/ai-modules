@@ -2,8 +2,8 @@
 description: Make eval graders assert substance over form, subject-anchored matches, wrap-collapsed checks, and split conjunctions; rules in TESTING.md and standing instructions, mechanics in the tests tree.
 scope: "local test harnesses"
 created: 2026-08-15T14:08:10
-updated: 2026-10-03T13:21:23
-status: checked
+updated: 2026-10-03T13:26:05
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -94,9 +94,12 @@ carried `**Open decision (guardrail-bound):**` scored zero labels and failed as
 though the agent had never surfaced the fork, when it had surfaced it and named
 the ground the governing rule asks for. The same literal `"Open decision:"`
 written/surfacing contract still appears in
-`tests/task_create/evals/evals.json` expectations and
-`tests/task_create/evals/README.md`, so widening `grade.sh` alone would leave
-those harness prose surfaces behind the needle change. The grader's own comments
+`tests/task_create/evals/evals.json` expectations,
+`tests/task_create/evals/README.md`, and the overview prose in
+`tests/task_create/README.md` (the passage that says a genuinely open decision
+is “written into the task as a labeled `Open decision:`”), so widening
+`grade.sh` alone would leave those harness prose surfaces behind the needle
+change. The grader's own comments
 concede the tradeoff, saying a conformant clause phrased without either subject
 marker would false-fail. The effect is that these evals report roughly a
 one-in-five pass rate that reads as an unstable skill and is mostly grader
@@ -134,12 +137,17 @@ arithmetic, which is the same signature the conjunction rule above describes.
    `(a)`, `(c)`, and `(e)`—through `verdict_is` or an either-side disjunction of
    `verdict_is`; and in the `task_create` harness rewrite in lockstep the
    label-structure needles in `tests/task_create/evals/grade.sh` and the
-   written/surfacing contract in `tests/task_create/evals/evals.json` and
-   `tests/task_create/evals/README.md`, re-deriving each from the label forms
-   already recorded under its run workspace so every surface describes a labeled
-   open-decision lead-in by substance — including a qualified form such as
-   `**Open decision (guardrail-bound):**` — and each check names the part of the
-   label that must be present and passes on every phrasing that carries it.
+   written/surfacing contract in `tests/task_create/evals/evals.json`,
+   `tests/task_create/evals/README.md`, and `tests/task_create/README.md`,
+   re-deriving each from the still-false label forms already quoted in Context —
+   an evidence-phrased why-open clause, a qualified lead-in such as
+   `**Open decision (guardrail-bound):**`, and dual option enumerations such as
+   `**Option A ...**` / `**Option B ...**` bullets or `(a) ... (b) ...` — so
+   every surface describes a labeled open-decision lead-in by substance and each
+   check names the part of the label that must be present and passes on every
+   phrasing that carries it. A local run under
+   `tests/task_create/evals/workspace/` may illustrate those forms; it is never
+   the source for the needles or the written contract.
 
 **Out of scope:**
 
@@ -175,16 +183,19 @@ arithmetic, which is the same signature the conjunction rule above describes.
    `(e)` stay satisfied when the alter verdict lands on either named owner, via
    an either-side `verdict_is` disjunction.
 6. Each label-structure check in `tests/task_create/evals/grade.sh` passes on the
-   still-false forms already recorded under its run workspace: a why-open clause
-   written about the evidence rather than about the fork, and a label whose
-   lead-in qualifies the phrase, as in `**Open decision (guardrail-bound):**`.
-   The same substance contract — a labeled open-decision lead-in, including that
-   qualified form — supersedes any literal-only `"Open decision:"`
-   written/surfacing wording in `tests/task_create/evals/evals.json` and
-   `tests/task_create/evals/README.md`, so `grade.sh` and those harness prose
-   surfaces stay lockstep. The label-presence check still reports zero labels
-   for a body that surfaces no decision at all, so widening it costs no
-   detection.
+   still-false forms already quoted in Context: a why-open clause written about
+   the evidence rather than about the fork, a label whose lead-in qualifies the
+   phrase, as in `**Open decision (guardrail-bound):**`, and dual option
+   enumerations such as `**Option A ...**` / `**Option B ...**` bullets or
+   `(a) ... (b) ...`. The same substance contract — a labeled open-decision
+   lead-in, including that qualified form — supersedes any literal-only
+   `"Open decision:"` written/surfacing wording in
+   `tests/task_create/evals/evals.json`, `tests/task_create/evals/README.md`, and
+   `tests/task_create/README.md`, so `grade.sh` and those harness prose surfaces
+   stay lockstep. The label-presence check still reports zero labels for a body
+   that surfaces no decision at all, so widening it costs no detection. A local
+   run under `tests/task_create/evals/workspace/` may illustrate those forms; it
+   is never the Acceptance proof source.
 7. After the grader changes, a `--vendor cursor` run of the task-family evals
    (per `TESTING.md`) yields a per-eval per-behaviour pass/fail summary, and that
    summary is committed at

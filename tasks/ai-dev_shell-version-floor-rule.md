@@ -2,7 +2,7 @@
 description: Give harness_portability a concrete shell interpreter floor: why bundled scripts target bash 3.2, the verified bash 4+ constructs to avoid with their substitutes, and the non-login PATH trap.
 scope: plugins/ai_dev/skills/harness_portability
 created: 2026-09-18T19:48:56
-updated: 2026-09-18T19:48:56
+updated: 2026-10-03T14:55:53
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -43,7 +43,7 @@ Record the dated, sourced evidence in the repository's wiki through the wiki ski
 
 **Out of scope:**
 
-- Rewriting `deployment/deployment.sh` onto the floor, which the sibling task [bash 3.2 floor](deployment_bash-32-floor.md) owns.
+- Rewriting `deployment/deployment.sh` onto the floor, which the sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) owns.
 - Renaming this skill, which an archived deferred task already weighed and parked.
 - Auditing the other bundled scripts for conformance. Each already passes a bash 3.2 syntax check and uses no construct above the floor, so this task adds the rule rather than a migration.
 

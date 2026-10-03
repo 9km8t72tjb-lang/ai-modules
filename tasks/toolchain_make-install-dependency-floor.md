@@ -2,7 +2,7 @@
 description: Turn make install into environment preparation: declare the runtime and development tool floor in one file, report and install what is missing or too old, and free the name from the deploy alias.
 scope: "repo toolchain"
 created: 2026-09-18T13:48:56
-updated: 2026-09-18T15:32:27
+updated: 2026-10-03T14:55:53
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,7 +21,7 @@ The outcome to judge the target by is the fresh start: a clone of this repositor
 
 ## Context
 
-The runtime floor is about to become interesting rather than incidental. Once the deploy script runs under the stock interpreter, delivered by the sibling task [bash 3.2 floor](deployment_bash-32-floor.md), every tool it needs at run time resolves to a binary the operating system already ships: the interpreter itself, plus `jq`, `perl`, and the standard file and text utilities. That makes the runtime floor satisfiable with no installation at all on a stock machine, which is a property worth asserting and keeping rather than leaving as an accident. This task's runtime check is what turns it into a checked property, and it depends on that sibling landing first to be true.
+The runtime floor is about to become interesting rather than incidental. Once the deploy script runs under the stock interpreter, delivered by the sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md), every tool it needs at run time resolves to a binary the operating system already ships: the interpreter itself, plus `jq`, `perl`, and the standard file and text utilities. That makes the runtime floor satisfiable with no installation at all on a stock machine, which is a property worth asserting and keeping rather than leaving as an accident. This task's runtime check is what turns it into a checked property, and it depends on that sibling landing first to be true.
 
 The development floor is not stock. `make lint` needs `markdownlint` and `shellcheck`, neither of which ships with the operating system, alongside `jq`, which does. The test harnesses additionally reach for `python3`, `node`, and the agent CLI used to drive the skill evals. The repository's README states in prose that the lint targets use these tools and suggests a package manager on macOS, which is guidance a reader follows by hand rather than a declaration a target can act on.
 

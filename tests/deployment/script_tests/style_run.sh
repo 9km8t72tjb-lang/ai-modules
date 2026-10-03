@@ -12,6 +12,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 DEPLOY_SCRIPT="${REPO_ROOT}/deployment/deployment.sh"
+# Invoke the deploy script on the stock bash the floor targets.
+DEPLOY_BASH="/bin/bash"
 DEPLOY_LOG="${REPO_ROOT}/deployment/deployed_artefacts.log"
 STYLE_SRC="${REPO_ROOT}/styles/natural-language.md"
 SCRATCH="$(mktemp -d)"
@@ -73,10 +75,11 @@ plugin_count="$(grep -c "output-styles" plugins/*/.claude-plugin/plugin.json 2>/
 output_style_dirs="$(find plugins -type d -name 'output-styles' 2>/dev/null || true)"
 [[ -z "$output_style_dirs" ]] || fail "no plugin directory may contain output-styles/"
 
-help_out="$("$DEPLOY_SCRIPT" --help)"
+help_out="$("$DEPLOY_BASH" "$DEPLOY_SCRIPT" --help)"
 printf '%s\n' "$help_out" | grep -q 'style' || fail "--help does not list style type"
 grep -q 'STYLE_MAP\|style:<name>' "$DEPLOY_SCRIPT" || true
-grep -q 'declare -A STYLE_MAP' "$DEPLOY_SCRIPT" || fail "STYLE_MAP not declared"
+grep -q 'declare -a STYLE_MAP=()' "$DEPLOY_SCRIPT" ||
+  fail "STYLE_MAP should be an indexed key|value table"
 grep -n 'merge_json_key()' -A80 "$DEPLOY_SCRIPT" | grep -q 'lookup_logged_prior\|@absent' ||
   fail "first-write prior recording must live inside merge_json_key"
 
@@ -89,7 +92,7 @@ mkdir -p "$HOME_DIR/.claude"
 printf '%s\n' '{"outputStyle":"home-prior"}' > "$HOME_DIR/.claude/settings.json"
 
 # --- Global dry-run: two actions, resolved under scratch HOME ---
-global_dry="$(HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --global --type style --target claude --dry-run)"
+global_dry="$(HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target claude --dry-run)"
 printf '%s\n' "$global_dry" | grep -q "${HOME_DIR}/.claude/output-styles/natural-language.md" ||
   fail "global dry-run missing style file copy into user output-styles"
 printf '%s\n' "$global_dry" | grep -q "${HOME_DIR}/.claude/settings.json" ||
@@ -102,7 +105,7 @@ merge_count="$(printf '%s\n' "$global_dry" | grep -c 'would-merge.*settings.json
   fail "global dry-run should report copy + merge for one style"
 
 # --- Project dry-run: same two actions against project .claude, no home writes ---
-project_dry="$(HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --dry-run)"
+project_dry="$(HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --dry-run)"
 printf '%s\n' "$project_dry" | grep -q "${PROJECT_DIR}/.claude/output-styles/natural-language.md" ||
   fail "project dry-run missing style file copy"
 printf '%s\n' "$project_dry" | grep -q "${PROJECT_DIR}/.claude/settings.json" ||
@@ -112,7 +115,7 @@ if printf '%s\n' "$project_dry" | grep -q "${HOME_DIR}/.claude/"; then
 fi
 
 # --- Real project-dir deploy ---
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
 assert_file "$PROJECT_DIR/.claude/output-styles/natural-language.md"
 cmp -s "$STYLE_SRC" "$PROJECT_DIR/.claude/output-styles/natural-language.md" ||
   fail "project deploy style file not byte-identical to repo source"
@@ -122,7 +125,7 @@ jq -e '.outputStyle == "home-prior"' "$HOME_DIR/.claude/settings.json" >/dev/nul
   fail "project deploy mutated home settings"
 
 # --- Redeploy: single log entry per artefact, same settings value ---
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
 file_log_count="$(grep -cF "${PROJECT_DIR}/.claude/output-styles/natural-language.md"$'\t' "$DEPLOY_LOG" || true)"
 key_log_count="$(grep -cF "${PROJECT_DIR}/.claude/settings.json[outputStyle]"$'\t' "$DEPLOY_LOG" || true)"
 assert_eq "$file_log_count" "1" "expected one log line for style file after redeploy"
@@ -131,7 +134,7 @@ jq -e '.outputStyle == "natural-language"' "$PROJECT_DIR/.claude/settings.json" 
   fail "redeploy changed outputStyle"
 
 # --- Project uninstall restores @absent (no prior key) ---
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --uninstall >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --uninstall >/dev/null
 [[ ! -e "$PROJECT_DIR/.claude/output-styles/natural-language.md" ]] ||
   fail "uninstall left style file"
 if jq -e 'has("outputStyle")' "$PROJECT_DIR/.claude/settings.json" >/dev/null 2>&1; then
@@ -146,14 +149,14 @@ jq -e '.outputStyle == "home-prior"' "$HOME_DIR/.claude/settings.json" >/dev/nul
 # --- Prior restore: existing non-deployed value survives deploy+uninstall ---
 mkdir -p "$PROJECT_DIR/.claude"
 printf '%s\n' '{"outputStyle":"Explanatory","other":1}' > "$PROJECT_DIR/.claude/settings.json"
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
 jq -e '.outputStyle == "natural-language"' "$PROJECT_DIR/.claude/settings.json" >/dev/null ||
   fail "deploy with prior did not set natural-language"
 # Second deploy must keep first prior (Explanatory), not the live natural-language
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
 prior_field="$(awk -F'\t' -v p="${PROJECT_DIR}/.claude/settings.json[outputStyle]" '$1==p{print $5; exit}' "$DEPLOY_LOG")"
 assert_eq "$prior_field" '"Explanatory"' "first-write prior must stay Explanatory across redeploy"
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --uninstall >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --uninstall >/dev/null
 jq -e '.outputStyle == "Explanatory"' "$PROJECT_DIR/.claude/settings.json" >/dev/null ||
   fail "uninstall did not restore original Explanatory prior"
 if grep -qF "${PROJECT_DIR}/.claude/settings.json[outputStyle]" "$DEPLOY_LOG" 2>/dev/null; then
@@ -162,20 +165,20 @@ fi
 
 # --- Single-deploy then uninstall restores prior (scalar path) ---
 printf '%s\n' '{"outputStyle":"Learning"}' > "$PROJECT_DIR/.claude/settings.json"
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --uninstall >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --uninstall >/dev/null
 jq -e '.outputStyle == "Learning"' "$PROJECT_DIR/.claude/settings.json" >/dev/null ||
   fail "uninstall did not restore Learning prior"
 
 # --- Global real deploy into scratch HOME ---
 rm -f "$DEPLOY_LOG"
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --global --type style --target claude --clear-backups >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target claude --clear-backups >/dev/null
 assert_file "$HOME_DIR/.claude/output-styles/natural-language.md"
 cmp -s "$STYLE_SRC" "$HOME_DIR/.claude/output-styles/natural-language.md" ||
   fail "global deploy style file not byte-identical"
 jq -e '.outputStyle == "natural-language"' "$HOME_DIR/.claude/settings.json" >/dev/null ||
   fail "global deploy did not set outputStyle"
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --global --type style --target claude --uninstall >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target claude --uninstall >/dev/null
 
 # --- Legacy four-field path[key] still strips ---
 rm -f "$DEPLOY_LOG"
@@ -184,14 +187,14 @@ printf '%s\n' '{"outputStyle":"keep-me","hooks":{}}' > "$legacy_settings"
 printf '%s\t%s\t%s\t%s\n' \
   "${legacy_settings}[outputStyle]" "claude" "style" "styles/natural-language.md" \
   > "$DEPLOY_LOG"
-dry_legacy="$(HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --uninstall --type style --target claude --dry-run)"
+dry_legacy="$(HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --type style --target claude --dry-run)"
 printf '%s\n' "$dry_legacy" | grep -q 'would-strip' ||
   fail "legacy four-field dry-run should report strip without fifth field"
 # Restore log for real uninstall (dry-run keeps entries)
 printf '%s\t%s\t%s\t%s\n' \
   "${legacy_settings}[outputStyle]" "claude" "style" "styles/natural-language.md" \
   > "$DEPLOY_LOG"
-HOME="$HOME_DIR" "$DEPLOY_SCRIPT" --uninstall --type style --target claude >/dev/null
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --type style --target claude >/dev/null
 if jq -e 'has("outputStyle")' "$legacy_settings" >/dev/null 2>&1; then
   fail "legacy four-field uninstall should strip the key"
 fi
@@ -254,8 +257,10 @@ jq -e '.keep == true' "$nested_target" >/dev/null ||
   # shellcheck source=/dev/null
   source "$DEPLOY_SCRIPT"
   parse_deployment_conf
-  [[ "${STYLE_MAP[claude]:-}" == "natural-language" ]] ||
-    fail "STYLE_MAP[claude] should be natural-language from deployment.conf"
+  style_for_claude="$(table_get "claude" "${STYLE_MAP[@]}")" ||
+    fail "table_get on STYLE_MAP should yield natural-language for claude"
+  [[ "$style_for_claude" == "natural-language" ]] ||
+    fail "table_get on STYLE_MAP should yield natural-language for claude"
 )
 
 printf 'Style deployment regression passed\n'

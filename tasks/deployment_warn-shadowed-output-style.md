@@ -2,7 +2,7 @@
 description: Warn on a style deploy when a settings file the run can read shadows the outputStyle just written, and state the override caveat on every global run for the repos it cannot read.
 scope: deployment
 created: 2026-08-10T11:56:32
-updated: 2026-09-18T19:54:01
+updated: 2026-10-03T14:55:53
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,7 +21,7 @@ The split exists because silence has to stay meaningless: a run that inspected o
 
 The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise.
 
-The sibling task [bash 3.2 floor](deployment_bash-32-floor.md) rewrites the same arm's `STYLE_MAP` lookup into an indexed-array read, so whichever of the two lands second builds on the other's shape rather than the one quoted here.
+The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) rewrites the same arm's `STYLE_MAP` lookup into an indexed-array read, so whichever of the two lands second builds on the other's shape rather than the one quoted here.
 
 `REPO_ROOT` is this repository's own checkout, not the operator's working directory. It starts from the script's own location and walks up until it finds a directory containing `plugins/`, under the comment beginning `Discover REPO_ROOT by walking up from SCRIPT_DIR`, so it resolves to the same checkout on every run whatever the cwd is. Anything keyed on it therefore inspects one fixed repository, which is why the global arm below is framed as a check of this checkout rather than as a scan of wherever the operator happens to be.
 

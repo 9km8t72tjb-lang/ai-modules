@@ -2,9 +2,11 @@
 description: Rewrite deployment.sh to run under the stock macOS bash 3.2, guard the floor with a lint check and a bash-3.2 test run, fix two mapfile graders, and state the floor in the deploy README.
 scope: deployment
 created: 2026-09-18T19:48:56
-updated: 2026-10-03T13:20:29
-status: checked
+updated: 2026-10-03T14:55:53
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Bring deployment.sh and its harness onto the stock bash 3.2 floor
@@ -41,7 +43,7 @@ Static enforcement has to be built rather than configured. The Makefile's `lint-
 
 ## Approach
 
-Replace each associative array with an indexed array of `key|value` entries and an exact string comparison, keeping the existing `|` convention that `DISALLOW_MAP` already uses in its own keys. Compare each entry's key part against the lookup key with `[[ ... == ... ]]` rather than testing membership by pattern-matching a delimited accumulator string, so a directory path containing a space, a newline, or the delimiter itself keeps behaving as it does today. For the three sets, replace the `+x` membership probe with a small helper that scans the array and returns success on an exact hit; for the two tables, replace the subscript read with the same scan returning the value part. Keep `ASSET_FOLDERS` as a literal list of `folder|type` entries so the iteration site keeps reading as a table.
+Replace the five associative arrays with indexed arrays, distinguishing the three sets from the two tables. Encode `DISALLOW_MAP`, `cleared_roots`, and `backed_up` as indexed arrays of their bare former keys — for `DISALLOW_MAP` that keeps the existing `tool|pattern` strings and the append form `${current_tool}|${disallowed}` unchanged — and encode `ASSET_FOLDERS` and `STYLE_MAP` as indexed arrays of `key|value` entries, keeping `ASSET_FOLDERS` a literal `folder|type` list so its iteration site still reads as a table. Compare with exact `[[ ... == ... ]]` scans rather than testing membership by pattern-matching a delimited accumulator string, so a directory path containing a space, a newline, or the delimiter itself keeps behaving as it does today. For the three sets, replace the `+x` membership probe with a small helper that scans `"${array[@]}"` and returns success on an exact hit; never iterate `"${!array[@]}"` for those sets. For the two tables, replace the subscript read with the same scan returning the value part after the first `|`. Rewrite `is_disallowed`'s pattern loop that today iterates `"${!DISALLOW_MAP[@]}"` so it iterates the indexed entries `"${DISALLOW_MAP[@]}"` and recovers tool and pattern by splitting each entry on the first `|`.
 
 Replace both case-modification comparisons with a bracket-class glob, `[[ "$bname" == [Rr][Ee][Aa][Dd][Mm][Ee]* ]]`, which bash 3.2 supports and which needs no global shell option. The `nocasematch` shell option would also work and is deliberately left aside, because it changes matching for every comparison in its scope rather than the one being fixed.
 
@@ -57,8 +59,8 @@ Rewrite the shell-requirement passage of `deployment/README.md` in place so it s
 
 - Declaring a bash 4 floor and failing fast instead of rewriting. Every other tool the script needs already resolves to a stock macOS binary, so a declared floor would leave the script unusable in exactly the shells that motivated this task while the rewrite removes the dependency outright.
 - Re-executing the script under a newer bash discovered elsewhere on the machine. This keeps the bash-4 constructs alive behind interpreter-discovery logic and still fails where no newer bash is installed.
-- Encoding the shell floor as a rule inside the portability skill, which the sibling task [shell version floor rule](ai-dev_shell-version-floor-rule.md) owns.
-- A `make` target that installs missing tooling, which the sibling task [make install dependency floor](toolchain_make-install-dependency-floor.md) owns.
+- Encoding the shell floor as a rule inside the portability skill, which the sibling task [shell version floor rule](../ai-dev_shell-version-floor-rule.md) owns.
+- A `make` target that installs missing tooling, which the sibling task [make install dependency floor](../toolchain_make-install-dependency-floor.md) owns.
 
 ## Acceptance
 

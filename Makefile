@@ -69,9 +69,44 @@ lint-json:
 	@printf '\n== json ($(words $(JSON_FILES)) files) ==\n'
 	@for f in $(JSON_FILES); do jq empty "$$f" || exit 1; done && echo "ok"
 
+# Bash 3.2 floor scanned by lint-sh over SH_FILES. The recipe names each
+# greppable token: declare -A, ${var^^}, ${var,,}, mapfile, readarray,
+# declare -n, wait -n, read -N, shopt -s globstar, ${var@Q}, &>>, ;;&,
+# coproc, [[ -v, EPOCHSECONDS, printf '%(fmt)T'.
 lint-sh:
 	@printf '\n== shell ($(words $(SH_FILES)) files) ==\n'
-	@shellcheck $(SH_FILES)
+	@# declare -A ${var^^} ${var,,} mapfile readarray declare -n wait -n read -N shopt -s globstar ${var@Q} &>> ;;& coproc [[ -v EPOCHSECONDS printf '%(fmt)T'
+	@rc=0; \
+	shellcheck $(SH_FILES) || rc=1; \
+	status=0; \
+	floor_hit() { \
+	  label="$$1"; pattern="$$2"; \
+	  for f in $(SH_FILES); do \
+	    if grep -nE -H -e "$$pattern" "$$f" >/dev/null 2>&1; then \
+	      printf 'bash 3.2 floor: %s: %s\n' "$$f" "$$label"; \
+	      grep -nE -H -e "$$pattern" "$$f"; \
+	      status=1; \
+	    fi; \
+	  done; \
+	}; \
+	floor_hit 'declare -A' 'declare -A'; \
+	floor_hit '$${var^^}' '\$\{[^}]*\^\^'; \
+	floor_hit '$${var,,}' '\$\{[^}]*,,'; \
+	floor_hit 'mapfile' '(^|[^[:alnum:]_])mapfile([^[:alnum:]_]|$$)'; \
+	floor_hit 'readarray' '(^|[^[:alnum:]_])readarray([^[:alnum:]_]|$$)'; \
+	floor_hit 'declare -n' 'declare -n([[:space:]]|$$)'; \
+	floor_hit 'wait -n' 'wait -n([[:space:]]|$$)'; \
+	floor_hit 'read -N' 'read -N([[:space:]]|$$)'; \
+	floor_hit 'shopt -s globstar' 'shopt[[:space:]]+-s[[:space:]].*globstar'; \
+	floor_hit '$${var@Q}' '\$\{[^}]*@Q'; \
+	floor_hit '&>>' '&>>'; \
+	floor_hit ';;&' ';;&'; \
+	floor_hit 'coproc' '(^|[^[:alnum:]_])coproc([^[:alnum:]_]|$$)'; \
+	floor_hit '[[ -v' '\[\[[[:space:]]+-v([[:space:]]|$$)'; \
+	floor_hit 'EPOCHSECONDS' '(^|[^[:alnum:]_])EPOCHSECONDS([^[:alnum:]_]|$$)'; \
+	floor_hit "printf '%(fmt)T'" '%[(][^)]*[)]T'; \
+	[ "$$status" -eq 0 ] || rc=1; \
+	exit $$rc
 
 fix: fix-md ## Auto-fix lint issues where possible (markdown only).
 	@echo

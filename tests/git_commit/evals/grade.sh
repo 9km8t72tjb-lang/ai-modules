@@ -218,7 +218,10 @@ esac
 
 tmpdir="${TMPDIR:-/tmp}"
 tmpdir="${tmpdir%/}"
-mapfile -t stragglers < <(find "$tmpdir" -maxdepth 1 -name 'git_commit_context.*' -newer "$marker" 2>/dev/null)
+stragglers=()
+while IFS= read -r line || [[ -n "${line:-}" ]]; do
+  stragglers+=("$line")
+done < <(find "$tmpdir" -maxdepth 1 -name 'git_commit_context.*' -newer "$marker" 2>/dev/null)
 if (( ${#stragglers[@]} == 0 )); then
   pass=$((pass+1))
   printf '  PASS  no git_commit_context.* stragglers in %s (post-commit cleanup ran)\n' "$tmpdir"
