@@ -2,7 +2,7 @@
 description: Give git_checkout and git_refresh the same vendor-aware Pattern A eval runner the other harnesses ship, so an eval sweep reaches their behavioral evals.
 scope: "local test harnesses"
 created: 2026-09-05T02:10:57
-updated: 2026-10-03T13:01:20
+updated: 2026-10-04T22:11:10
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -54,14 +54,19 @@ how `tests/lib/eval_cache.py` computes a key. This task consumes that helper
 through `source_roots_for()` rather than changing it, so the two impose no order
 on each other.
 
+[The shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md)
+is the helper both new runners import so they do not land as another sequential
+copy of `tests/git_commit/evals/run.py`.
+
 ## Approach
 
-Take `tests/git_commit/evals/run.py` as the reference implementation, since its
-harness is the closest in shape: a small eval set, per-eval fixtures staged by
-`setup.sh`, a `grade.sh` that reads the post-run sandbox, and a vendor-aware
-`run.py` that imports `tests/lib/vendor.py` and `tests/lib/eval_cache.py`. Carry
-over that structure rather than inventing a second one, so a future change to
-the shared runner shape lands in one recognisable form across the tree.
+Once that shared helper exists, both new `evals/run.py` files import it.
+Until it lands, take the git_commit runner as the shape reference: a small
+eval set, per-eval fixtures staged by `setup.sh`, a `grade.sh` that reads the
+post-run sandbox, and a vendor-aware loop over `tests/lib/vendor.py` and
+`tests/lib/eval_cache.py`. Either path ships `--workers` defaulting to
+`vendor.DEFAULT_PARALLEL_WORKERS` (4) with per-job `TMPDIR`, because these
+runners must not enter the tree as a new sequential copy.
 
 For each of the two harnesses, add `evals/stage.sh` that stages one fixture and
 prints `printf %q`-quoted `name=value` lines for the sandbox path, the skill
@@ -102,7 +107,7 @@ to its own session.
   arguments runs every eval in that harness's `evals.json` and prints a graded
   summary naming each eval id and its verdict, and
   `python3 tests/git_refresh/evals/run.py --vendor cursor` does the same for its
-  evals.
+  evals. Both commands accept `--workers` defaulting to 4.
 - Re-running either command with unchanged inputs replays every verdict from the
   cache and spawns no worker, and re-running with `--force` spawns a worker for
   each eval and refreshes the stored verdict.
