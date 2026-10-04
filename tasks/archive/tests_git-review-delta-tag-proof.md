@@ -29,7 +29,7 @@ The harness runner is already vendor-aware (`tests/git_review/evals/run.py` via 
 
 ## Approach
 
-Rewrite the fixture so each unit the Acceptance bullet labeled `Delta eval:` in [ai-dev_git-review-skill.md](../ai-dev_git-review-skill.md) enumerates has one unambiguous evidence home (a prior finding, a new helper, or a prose concession), and each tag follows from the evidence alone:
+Rewrite the fixture so each unit the Acceptance bullet labeled `Delta eval:` in [ai-dev_git-review-skill.md](ai-dev_git-review-skill.md) enumerates has one unambiguous evidence home (a prior finding, a new helper, or a prose concession), and each tag follows from the evidence alone:
 
 - f1 is fixed in the tree, so it reads closed.
 - f2 is claimed fixed in an author reply while the tree still carries it, so it reads open.

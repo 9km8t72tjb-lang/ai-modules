@@ -72,7 +72,7 @@ The specific drift each rule allows:
   was advertised as a trailing offer.
 
 The report shape was always meant to be part of the contract: the origin task
-[ai-dev_git-review-skill.md](../ai-dev_git-review-skill.md) records under **A human
+[ai-dev_git-review-skill.md](ai-dev_git-review-skill.md) records under **A human
 acts on the output, so its shape is part of the contract** that the skill pins
 the headings and evidence set. What it pinned was the heading set and each
 section's contents; the prose form was left to the unread template. This task

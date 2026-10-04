@@ -69,7 +69,7 @@ standing rules is that general form, and hardcoding one forge configuration file
 into an authority gate is a narrow restatement of it.
 
 The task that shipped this skill,
-[ai-dev_git-review-skill.md](../ai-dev_git-review-skill.md), is the co-edit
+[ai-dev_git-review-skill.md](ai-dev_git-review-skill.md), is the co-edit
 candidate here, because its Acceptance carries a reviewer-edit item naming
 `CODEOWNERS`. That task is already `implemented`, and its Acceptance is the
 record of what shipped rather than a live rule governing future work.

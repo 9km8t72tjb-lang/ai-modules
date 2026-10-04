@@ -17,7 +17,7 @@ Eval 18 in the `git_review` harness passes only for a run that reads the whole c
 
 ## Context
 
-The parent long-file acceptance item Goal refers to is in `tasks/ai-dev_git-review-skill.md` and begins `On a fixture whose diff includes a defect near the end of a file several thousand lines long`.
+The parent long-file acceptance item Goal refers to is in `tasks/archive/ai-dev_git-review-skill.md` and begins `On a fixture whose diff includes a defect near the end of a file several thousand lines long`.
 
 The fixture `tests/git_review/evals/fixtures/deep_file_defect/setup.sh` writes the same helper block on the base and the branch through `plant_long_file` in `tests/git_review/evals/fixtures/_common.sh`, then appends a `summarize()` function whose body carries `# Defect: an empty list divides by zero here rather than returning 0.`. The resulting diff is about ten lines, so finding the defect proves the diff was read, not the file, and the comment names the defect outright. The `18)` case in `tests/git_review/evals/grade.sh` checks for `summarize`, a zero or empty mention, and `closing_answer_is yes`.
 
