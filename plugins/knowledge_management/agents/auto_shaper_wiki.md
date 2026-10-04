@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.4
+version: 1.11.5
 model: inherit
 background: false
 effort: high
@@ -776,6 +776,19 @@ affect the same file so each file is opened, read, and rewritten once.
     that were Read earlier; re-Read each of those files after the
     `git mv` before applying the link Edits.
   </fix_workflow>
+
+  <page_bodies_carry_knowledge>
+    When rewriting a page body, keep only the load-bearing knowledge
+    the page is about: entries, facts, and content. Lead with one
+    short sentence naming what the page is for, then stop. Put
+    page-convention definitions, entry-anatomy explanations,
+    canon-kind clauses, and lint-sanction prose in `SCHEMA.md`
+    (page conventions and the `## Lint` acceptance store) or in the
+    audit `log.md` entry — never in an ordinary page body.
+    Carve-out: `SCHEMA.md`, `index.md`, and synthesis page types
+    (`summary`, `query`, `comparison`) may carry organising prose,
+    because that is their load-bearing content.
+  </page_bodies_carry_knowledge>
 
   <two_pass_remediation>
 

@@ -30,6 +30,7 @@ wiki/layer2/AS-*/
 wiki/layer2/L2-*/
 wiki/layer2/WI-*/
 wiki/layer2/WU-*/
+wiki/layer2/MP-*/
 
 # --- Python bytecode --------------------------------------------------------
 __pycache__/

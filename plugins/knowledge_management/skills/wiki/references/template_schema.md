@@ -39,6 +39,13 @@ rules below read in the vocabulary of the wiki they govern.
   the owner rather than restating. Settle ownership by asking which page a
   reader would correct when the detail changes: that page owns the fact, and
   every other page that touches it links there.
+- **Keep ordinary page bodies to load-bearing knowledge.** Lead with one short
+  sentence naming what the page is for, then the entries and facts.
+  Page-convention definitions, entry-anatomy explanations, canon-kind clauses,
+  and lint-sanction prose belong in this schema (or in an audit `log.md`
+  entry), not in an ordinary page body. Carve-out: this file, `index.md`, and
+  synthesis types (`summary`, `query`, `comparison`), whose organising prose is
+  their load-bearing content.
 - **Cite each source in the channel its object calls for.** This is an
   LLM-first wiki, so the object being attributed picks the channel. A source
   the wiki captured at `raw/<kind>/<slug>.md` is cited inline next to the claim

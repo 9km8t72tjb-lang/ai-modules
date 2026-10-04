@@ -2860,6 +2860,115 @@
           "type": "real_home_wiki_absent"
         }
       ]
+    },
+    {
+      "id": "MP-1",
+      "name": "auto-shaper-no-meta-prose-on-oversized-todo",
+      "description": "auto_shaper_wiki (via wiki_fix) handles an oversized custom todo page that trips the page-size info finding without inserting page-convention or lint-sanction prose into the page body. Any accepted-finding rationale appears only in SCHEMA.md's ## Lint section or the audit log. Graded out-of-band against the top-level passes denominator (wiki_meta-prose-in-page-bodies, Acceptance: MP-1).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "MP-1",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "When an info-level size finding is intentional, record it as an `- Accepted finding:` bullet in SCHEMA.md's ## Lint section (or note it in the audit log entry). Never write page-convention definitions, entry-anatomy explanations, canon-kind clauses, or lint-sanction prose into an ordinary page body.",
+        "Preserve every KEEP BODY ITEM marker that remains on a todo page after any legitimate split; do not replace load-bearing entries with meta-prose."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "meta_prose_inserted: yes|no",
+        "size_rationale_location: schema-lint|audit-log|page-body|none|split"
+      ],
+      "extra_report_field_doc": "- `meta_prose_inserted`: `yes` if any ordinary page body gained page-convention or lint-sanction prose; `no` otherwise.\n- `size_rationale_location`: where any accepted size rationale was recorded (`schema-lint` for SCHEMA.md ## Lint, `audit-log` for the audit entry, `page-body` if written into a page, `split` if the page was split instead, `none` if neither).",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_keep_body_survives",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "KEEP BODY ITEM"
+        },
+        {
+          "id": "A3_no_page_size_note",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "Page size note"
+        },
+        {
+          "id": "A4_no_canon_for_entry",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "Canon for an entry"
+        },
+        {
+          "id": "A5_no_each_entry_records",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "Each entry records"
+        },
+        {
+          "id": "A6_no_info_level_finding_prose",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "info-level finding"
+        },
+        {
+          "id": "A7_no_200_line_threshold_prose",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "200-line lint threshold"
+        },
+        {
+          "id": "A8_no_sanctioned_prose",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "is sanctioned"
+        },
+        {
+          "id": "A9_no_self_trimming_prose",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "is self-trimming"
+        },
+        {
+          "id": "A10_no_graduate_off_prose",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/todos/*.md",
+          "regex": "graduate off"
+        },
+        {
+          "id": "A11_meta_prose_not_inserted",
+          "type": "report_field_eq",
+          "field": "meta_prose_inserted",
+          "expected": "no"
+        },
+        {
+          "id": "A12_rationale_not_in_page_body",
+          "type": "report_field_matches",
+          "field": "size_rationale_location",
+          "regex": "^(schema-lint|audit-log|none|split)$"
+        },
+        {
+          "id": "A13_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A14_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A15_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
     }
   ]
 }

@@ -524,8 +524,10 @@ case "$eval_id" in
     ;;
   2)
     if ! $form_only; then
+        # "No critical findings, bugs, ..." is the same empty-findings line as
+        # "no findings": up to three words may sit between "no" and "findings".
         check "one line states that no findings were identified" \
-            says_regex "no findings|findings sections? (are|is) empty|identified no findings|no .{0,20}findings were (identified|found)|nothing to (report|fix|flag)"
+            says_regex "no( [A-Za-z]+){0,3} findings|findings sections? (are|is) empty|identified no findings|no .{0,20}findings were (identified|found)|nothing to (report|fix|flag)"
         check "the lead names the reviewed commit" reviewed_commit_named
         check "the closing structural heading is present" says "structurally merged"
         attest "no finding was invented to fill a heading"

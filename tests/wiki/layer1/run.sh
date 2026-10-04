@@ -3232,6 +3232,96 @@ PY
     $ok
 }
 
+# L73: body carrying a meta-prose / lint-sanction phrase -> info meta-prose.
+l73_lint_meta_prose_phrase() {
+    local wiki; wiki=$(stage_fresh_wiki l73)
+    customize_taxonomy "$wiki"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    write_valid_concept_page "$wiki" companion
+    add_index_entry_concept "$wiki" companion
+    # Cross-link so neither page is an orphan; keep the meta phrase in body.
+    python3 - "$wiki/concepts/widget.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "Placeholder for widget used by the lint regression harness.",
+    "Placeholder for widget used by the lint regression harness.\n\n"
+    "Page size note: this backlog is sanctioned past the 200-line lint threshold.\n\n"
+    "See also [companion](companion.md).",
+)
+p.write_text(text)
+PY
+    python3 - "$wiki/concepts/companion.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "Placeholder for companion used by the lint regression harness.",
+    "Placeholder for companion used by the lint regression harness.\n\n"
+    "See also [widget](widget.md).",
+)
+p.write_text(text)
+PY
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_lint_finding "meta-prose info" "$out" info "meta-prose" || ok=false
+    assert_finding_for_file "phrase on widget" "$out" info "meta-prose" "concepts/widget.md" || ok=false
+    $ok
+}
+
+# L74: non-synthesis page whose lead paragraph exceeds two sentences -> info.
+l74_lint_meta_prose_long_lead() {
+    local wiki; wiki=$(stage_fresh_wiki l74)
+    customize_taxonomy "$wiki"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    write_valid_concept_page "$wiki" companion
+    add_index_entry_concept "$wiki" companion
+    python3 - "$wiki/concepts/widget.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+# Three-sentence lead before any H2; no banned phrase, so only the lead heuristic fires.
+lead = (
+    "This page covers the widget default. It also records the migration "
+    "path from the legacy renderer. A third sentence keeps the lead over "
+    "the two-sentence limit."
+)
+text = text.replace(
+    "Placeholder for widget used by the lint regression harness.",
+    lead + "\n\nSee also [companion](companion.md).",
+)
+p.write_text(text)
+PY
+    python3 - "$wiki/concepts/companion.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "Placeholder for companion used by the lint regression harness.",
+    "Placeholder for companion used by the lint regression harness.\n\n"
+    "See also [widget](widget.md).",
+)
+p.write_text(text)
+PY
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_lint_finding "meta-prose lead info" "$out" info "meta-prose" || ok=false
+    assert_finding_for_file "long lead on widget" "$out" info "meta-prose" "concepts/widget.md" || ok=false
+    # Phrase heuristic must stay quiet on this fixture.
+    if printf '%s' "$out" | grep -F "meta-prose phrase" >/dev/null; then
+        log "    [unexpected phrase finding on lead-only fixture]"
+        ok=false
+    fi
+    $ok
+}
+
 ###############################################################################
 # compute_sha256.py scenarios
 ###############################################################################
@@ -3540,6 +3630,8 @@ scenario l69 "lint undeclared delete/replace warns"      l69_lint_undeclared_del
 scenario l70 "lint fenced declare is documentation"      l70_lint_fenced_declare_is_documentation
 scenario l71 "lint unmatched declare is live info"       l71_lint_unmatched_declare_is_live_info
 scenario l72 "lint declared per-slot isolation"          l72_lint_declared_per_slot_isolation
+scenario l73 "lint flags meta-prose phrase as info"      l73_lint_meta_prose_phrase
+scenario l74 "lint flags long lead paragraph as info"    l74_lint_meta_prose_long_lead
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

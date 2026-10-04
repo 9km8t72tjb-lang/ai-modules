@@ -1343,7 +1343,102 @@ stage_AS-21() {
     _baseline_skill_templates "$sb"
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21)
+stage_MP-1() {
+    # MP-1 (wiki_meta-prose-in-page-bodies): oversized custom `todo` page that
+    # trips the page-size info finding. After wiki_fix the page body must
+    # gain no meta-prose / sanction paragraph; any accepted-finding rationale
+    # lands only in SCHEMA.md's ## Lint section or the audit log.
+    local sb
+    sb=$(reset_sandbox MP-1)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    python3 - "$wiki/SCHEMA.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "type: entity | concept | comparison | query | summary | procedure",
+    "type: entity | concept | comparison | query | summary | procedure | todo",
+    1,
+)
+# Live taxonomy so the todo/concept page tags validate (no unused tags).
+text = text.replace(
+    "## Tag Taxonomy\n",
+    "## Tag Taxonomy\n\n- Domain: model, backlog\n",
+    1,
+)
+p.write_text(text)
+PY
+    mkdir -p "$wiki/todos" "$wiki/concepts"
+    cat > "$wiki/concepts/widget.md" <<'EOF'
+---
+title: widget
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+sources: []
+confidence: medium
+---
+
+# widget
+
+Companion concept for the backlog page. See also
+[backlog items](../todos/backlog-items.md).
+EOF
+    # Oversized todo page: load-bearing entries only, no meta/sanction prose.
+    python3 - "$wiki/todos/backlog-items.md" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+entries = "\n".join(
+    f"### Item {i}\n\n"
+    f"KEEP BODY ITEM {i}: Deliver the widget milestone {i} outcome.\n"
+    for i in range(1, 80)
+)
+path.write_text(
+    "---\n"
+    "title: backlog items\n"
+    "created: 2026-05-01\n"
+    "updated: 2026-05-01\n"
+    "type: todo\n"
+    "tags: [backlog]\n"
+    "sources: []\n"
+    "confidence: medium\n"
+    "---\n"
+    "\n"
+    "# backlog items\n"
+    "\n"
+    "Open delivery items for the widget programme. See also "
+    "[widget](../concepts/widget.md).\n"
+    "\n"
+    "## Open\n"
+    "\n"
+    + entries
+)
+PY
+    python3 - "$wiki/index.md" <<'PY'
+import sys, pathlib
+idx = pathlib.Path(sys.argv[1])
+text = idx.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n"
+    "- [widget](concepts/widget.md) — companion concept for the backlog\n",
+    1,
+)
+if "## Todos" not in text:
+    text = text.rstrip() + (
+        "\n\n## Todos\n\n"
+        "- [backlog items](todos/backlog-items.md) — open delivery items\n"
+    )
+idx.write_text(text if text.endswith("\n") else text + "\n")
+PY
+}
+
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 MP-1)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

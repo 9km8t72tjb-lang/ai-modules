@@ -2,8 +2,8 @@
 description: Add git_review to ai_dev with plugin, marketplace, README, and tests/git_review wiring; review a PR, branch, or uncommitted default-branch changes for approvability and mergeability.
 scope: plugins/ai_dev/skills
 created: 2026-09-03T10:33:44
-updated: 2026-09-05T21:26:04
-status: implemented
+updated: 2026-10-03T22:54:03
+status: audited
 design-extended: false
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -52,7 +52,7 @@ The failure was observed in a downstream wiki. One session ingested an operator 
 - A lint check for clean lint entries or unfolded entries. Every existing wiki holds settled clean-lint entries that append-only keeps, so the check would fire on history nobody may rewrite, and folding is an authoring judgement the committed file does not record.
 - Rewriting settled entries in any existing wiki, which stays the owner's editorial call.
 - A behavioural eval proving an agent folds entries and skips clean lint runs. This task does not ship that eval; Layer 1 scaffold and Layer 2 `wiki_fix` propagation are the proof surfaces.
-- Page-convention and lint-sanction prose in page bodies, owned by [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md). Both tasks add a page-body rule to `SKILL.md`, to the schema template's `## Conventions` and to the agent's `<remediate>`, so the task that lands second composes its rule beside the first.
+- Page-convention and lint-sanction prose in page bodies, owned by [wiki_meta-prose-in-page-bodies.md](archive/wiki_meta-prose-in-page-bodies.md). Both tasks add a page-body rule to `SKILL.md`, to the schema template's `## Conventions` and to the agent's `<remediate>`, so the task that lands second composes its rule beside the first.
 
 ## Acceptance
 

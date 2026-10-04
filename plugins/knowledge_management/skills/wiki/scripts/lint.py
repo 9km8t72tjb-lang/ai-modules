@@ -1303,6 +1303,103 @@ def check_page_size(wiki: Path) -> list[Issue]:
     return issues
 
 
+# Synthesis page types may carry organising prose; ordinary types may not.
+SYNTHESIS_TYPES = frozenset({"summary", "query", "comparison"})
+
+# Phrases that mark page-convention or lint-sanction prose misplaced in a body.
+META_PROSE_PHRASES: tuple[str, ...] = (
+    "Each entry records",
+    "Canon for an entry",
+    "Page size note",
+    "is sanctioned",
+    "is self-trimming",
+    "info-level finding",
+    "200-line lint threshold",
+    "graduate off",
+)
+
+_SENTENCE_SPLIT_RE = re.compile(r"[.!?]+(?:\s+|$)")
+
+
+def _lead_paragraph(body: str) -> tuple[str, int | None]:
+    """Return (lead paragraph text, 1-based start line) after an optional H1.
+
+    The lead is the first contiguous non-empty prose block before the next
+    heading or blank line. Returns ``("", None)`` when the body has no lead.
+    """
+    lines = body.splitlines()
+    i = 0
+    while i < len(lines) and not lines[i].strip():
+        i += 1
+    if i < len(lines) and lines[i].startswith("# "):
+        i += 1
+        while i < len(lines) and not lines[i].strip():
+            i += 1
+    if i >= len(lines):
+        return "", None
+    if lines[i].startswith("#"):
+        return "", None
+    start_line = i + 1  # body-relative; caller adjusts for frontmatter
+    para: list[str] = []
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip() or line.startswith("#"):
+            break
+        para.append(line.strip())
+        i += 1
+    return " ".join(para), start_line if para else None
+
+
+def _sentence_count(text: str) -> int:
+    parts = [p.strip() for p in _SENTENCE_SPLIT_RE.split(text.strip()) if p.strip()]
+    return len(parts)
+
+
+def check_meta_prose(wiki: Path) -> list[Issue]:
+    """Flag page-convention and lint-sanction prose in ordinary page bodies.
+
+    Two info-level heuristics:
+
+    - Lead paragraph longer than two sentences on a non-synthesis page
+      (``type`` outside ``summary`` / ``query`` / ``comparison``).
+    - Body text matching any phrase in ``META_PROSE_PHRASES``.
+
+    Special files stay outside ``iter_wiki_pages`` already.
+    """
+    issues: list[Issue] = []
+    for page in iter_wiki_pages(wiki):
+        text = page.read_text(encoding="utf-8")
+        fm, body = parse_frontmatter(text)
+        page_type = (fm or {}).get("type")
+        # Line numbers: count frontmatter lines so findings point into the file.
+        fm_offset = text[: text.find(body)].count("\n") if body else 0
+
+        if page_type not in SYNTHESIS_TYPES:
+            lead, lead_line = _lead_paragraph(body)
+            if lead and _sentence_count(lead) > 2:
+                abs_line = (fm_offset + lead_line) if lead_line else None
+                issues.append(Issue(
+                    SEV_INFO, "meta-prose", page,
+                    "lead paragraph exceeds two sentences — keep ordinary "
+                    "page bodies to load-bearing knowledge",
+                    line=abs_line,
+                ))
+
+        body_lines = body.splitlines()
+        for phrase in META_PROSE_PHRASES:
+            for idx, line in enumerate(body_lines):
+                if phrase in line:
+                    issues.append(Issue(
+                        SEV_INFO, "meta-prose", page,
+                        f"body carries meta-prose phrase {phrase!r} — "
+                        "route page conventions and lint sanctions to "
+                        "SCHEMA.md or the audit log",
+                        line=fm_offset + idx + 1,
+                    ))
+                    break  # one finding per phrase per page
+    return issues
+
+
 def check_log_rotation(wiki: Path) -> list[Issue]:
     log = wiki / "log.md"
     if not log.is_file():
@@ -2345,6 +2442,7 @@ def main() -> int:
         if taxonomy:
             issues.extend(check_unused_tags(wiki, taxonomy))
         issues.extend(check_page_size(wiki))
+        issues.extend(check_meta_prose(wiki))
         issues.extend(check_stale_content(wiki))
         issues.extend(check_quality_signals(wiki))
         issues.extend(check_custom_fields(wiki, custom_spec))
