@@ -1,13 +1,13 @@
 ---
-description: Rewrite agent_spinner's routing blocks to route by whether the user named the skill, add a recipe table to <selector>, retire three blocks, and add evals and a row check.
+description: Route agent_spinner by whether the user named it, in its routing blocks and description, add a recipe table to <selector>, retire three blocks, and add evals and checks.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T15:54:08
-updated: 2026-10-04T17:22:06
+updated: 2026-10-04T19:51:49
 status: open
 reported-by: Andreas Hoffmann
 ---
 
-# Route agent_spinner requests by whether the user named the skill: `<role>`, `<invocation_boundary>`, `<selector>`, and a recipe table
+# Route agent_spinner requests by whether the user named the skill: `<role>`, `<invocation_boundary>`, `<selector>`, a recipe table, and the description's routing sentence
 
 ## Goal
 
@@ -19,15 +19,15 @@ After this task, agent_spinner decides in one block who owns an ask, and in one 
 - When the user names agent_spinner for a job a family skill owns, the family's writer stays the only writer. The independent looks run at the orchestrator's level: a read-only finder before the writer, and a post-write check on every file the writer changes. Every repair a look raises returns to that writer as a scope the user approves.
 - The selector matches a shape first and then a recipe table. An ask that matches a shape and no recipe runs that shape from the body and says so.
 
-`<role>` names the ledger program, which keeps a run's records, and the run directory, where those records live. `<when_to_activate>` and `<worked_instances>` merge into `<invocation_boundary>`, and `<references>` retires. The rewritten blocks stay within the byte budgets Approach sets, the body ends 1,791 bytes smaller, and `SKILL.md` stays under the 25,000-byte check. Two new evals prove the explicit request, in which the user names the skill, and the no-recipe path, in which an ask matches a shape and no recipe. A static check ties the recipe table's rows to the recipe files one to one. Three existing evals re-run as regression guards, and the wiki concept page states the new routing.
+`<role>` names the ledger program, which keeps a run's records, and the run directory, where those records live. `<when_to_activate>` and `<worked_instances>` merge into `<invocation_boundary>`, and `<references>` retires. The rewritten blocks stay within the byte budgets Approach sets, the body ends 1,791 bytes smaller, and `SKILL.md` stays under the 25,000-byte check. Two new evals prove the explicit request, in which the user names the skill, and the no-recipe path, in which an ask matches a shape and no recipe. A static check ties the recipe table's rows to the recipe files one to one. Three existing evals re-run as regression guards, and the wiki concept page states the new routing. The description's routing sentence becomes conditional in the same way, and a trigger run shows that it still keeps sibling requests away and loads the skill when the user names it.
 
 ## Context
 
 - **Current state, read on 2026-10-04.** `plugins/ai_dev/skills/agent_spinner/SKILL.md` is version 1.0.1 and 21,616 bytes. Measured from opening tag through closing tag, `<role>` holds 603 bytes, `<when_to_activate>` 828, `<invocation_boundary>` 585, `<selector>` 1,066, `<references>` 479, and `<worked_instances>` 567. `<when_to_activate>` quotes example asks. Its routing sentence applies whether or not the user named the skill: "Route a request naming the task backlog to the `task_*` family and a request naming the wiki to `wiki_fix`." `<invocation_boundary>` says "Read `agent_spinner` for a request about running helpers in general, or for a job no shipped family owns." `<references>` is the only place SKILL.md names its four reference files. `<worked_instances>` lists four shipped skills and says they are not a "`agent_spinner_*` family roster". It replaced a `<family>` block, because skill_doctor, the repository's check-only skill auditor, counts the skills a `<family>` block lists as family members. With the replacement, skill_doctor stopped reading the four as members: today `python3 plugins/ai_dev/skills/skill_doctor/scripts/resolve_scope.py --root . --family agent_spinner` resolves exactly `agent_spinner`, with an empty `warnings` list.
 - **Checks that read these blocks.** In `tests/agent_spinner/script_tests/run.sh`, the CONTRACTS array lists the blocks the script requires, and it names none of `<role>`, `<when_to_activate>`, `<references>`, and `<worked_instances>`. The check "selector carries the residual smallest-covering rule" pins `smallest shape that covers it` inside `<selector>`, so that phrase must stay in the block. The checks "description routes task requests to the task_* family" and "description routes wiki requests to wiki_fix" read the frontmatter alone. The greps over the skill directory reach every block this task writes.
 - **Decisions this task implements.** On 2026-10-03 the owner approved routing that depends on whether the user named the skill. When the user names agent_spinner for a job a family skill owns, the family's writer stays the only writer, and the independent looks run at the orchestrator's level. Every repair a look raises returns to the family writer as a scope the user approves. That reverses the name-blind routing of [the archived spinner task](archive/ai-dev_agent-spinner-skill.md), which ignored whether the user named the skill. The reversal covers its `<invocation_boundary>` item "Read `agent_spinner` when the orchestration decision belongs to the orchestrator, meaning a request about running helpers in general or a job no shipped family owns". It also covers its Context sentence routing a request that names tasks or the wiki to that family. The archived task stays unedited as the decision record. The owner also approved that defects inside governed loops become family-owned tasks, where a governed loop is one a family skill runs under its own contract. As a result, the citation direction stays one-way: agent_spinner names the family skills, and no family skill cites agent_spinner.
+- **The description's routing sentence, measured on 2026-10-04.** The frontmatter `description:` routes the way the body does today. Its sentence beginning "Route a request naming the task backlog" sends every backlog or wiki request to that family, whether or not the user named the skill. The trigger runner, `tests/trigger_evals/run.py`, measured it with `claude` 2.1.226 and a `claude-sonnet-4-6` worker, three runs per query. The set was `tests/trigger_evals/agent_spinner.json` plus the two naming queries Approach adds, one naming agent_spinner on a task-family job and one on a wiki job. Each run used a scratch config directory holding a copy of the deployed skills with only agent_spinner's files swapped, so no deploy was needed. Two runs of today's description passed 4 and 3 of the eight `should_trigger: true` queries that name no skill, all eight `should_trigger: false` queries, and both naming queries. The conditional sentence Approach gives passed 4 of 8, all eight negatives, and both naming queries. The router therefore already loads the skill when the user names it, and the change aligns the description with `<invocation_boundary>` at no measured cost.
 - **Order.**
-  - Land this change in the same commit as [the description-recall task](ai-dev_agent-spinner-description-recall.md) or after it. The owner approved that order on 2026-10-03 for the clause that depends on naming the skill. The trigger runner, which tests whether a skill's description makes the router load it, reads the description alone. This body-only change therefore cannot move a trigger result, and the description-recall task's recorded trigger run stays the evidence under TESTING.md's `## Re-run Economy`.
   - [The run-ledger task](ai-dev_agent-spinner-run-ledger.md) lands first. Its Out of scope hands this task the `<role>` sentence naming `scripts/`, which holds true only once the ledger ships.
   - [The runner-modes task](tests_agent-spinner-runner-modes.md) lands first. A harness key is a per-eval setting that tells the eval runner how to stage a run. Its `agents` harness key stages the mock family agent that `explicit_spinner_on_family_job` needs. Its `needs_real_absence` key marks governed_stop as an eval whose behaviour rests on a real withheld tool.
   - [The judgement-containment task](ai-dev_agent-spinner-judgement-containment.md) lands after this one, so its additions meet the 25,000-byte check on the body this task has already cut. The order against the ledger-doctrine and checking-doctrine tasks is free. The ledger-doctrine task's `<start_here>` cites `<selector>` and `<invocation_boundary>` by name, and both blocks exist either way.
@@ -38,7 +38,7 @@ After this task, agent_spinner decides in one block who owns an ask, and in one 
 
 ### SKILL.md
 
-Rewrite `<role>`, `<invocation_boundary>`, and `<selector>` in place to this target text. Delete `<when_to_activate>`, `<references>`, and `<worked_instances>`, each with the blank line after it. Every other block and the frontmatter stay byte-identical.
+Rewrite `<role>`, `<invocation_boundary>`, and `<selector>` in place to this target text. Delete `<when_to_activate>`, `<references>`, and `<worked_instances>`, each with the blank line after it. Every other block stays byte-identical, and the frontmatter changes only as the next section gives.
 
 ```markdown
 <role>
@@ -74,6 +74,27 @@ A read-only diagnostic or a single judgement question is answered inline, takes 
 - **Superseded passages.** The rewrite removes "Read `agent_spinner` for a request about running helpers in general", "It owns one question", "Match orchestration weight to the ask before picking a mechanism", "Load a reference when the run needs its detail", and "family roster".
 - **Budget.** Measured from opening tag through closing tag, the target blocks hold `<role>` 355 bytes, `<invocation_boundary>` 935, and `<selector>` 1,053. The three deleted blocks free 1,880 bytes with their blank lines, so the body shrinks by 1,791 bytes. `SKILL.md` stays within run.sh's check labelled "SKILL.md under 25000 bytes", measured with `wc -c` at implementation time.
 
+### The description's routing sentence
+
+In the frontmatter `description:`, rewrite the sentence beginning "Route a request naming the task backlog" in place so it reads: "Route a request naming the task backlog to the task_* family and a request naming the wiki to wiki_fix, unless the user names agent_spinner, since those families are worked instances of this shape that keep their own contracts." Rewrap the folded block and leave every other word of the frontmatter unchanged.
+
+Add two `should_trigger: true` entries to `tests/trigger_evals/agent_spinner.json`: "use agent_spinner to run the readiness repair on tasks/api_rate-limit.md until task_check passes" and "with agent_spinner, fan the broken-link repair out across the five pages of my wiki".
+
+Measure the change in a scratch config directory, which needs no deploy. The empty `CLAUDE_SECURESTORAGE_CONFIG_DIR` keeps the stored login usable from that directory.
+
+```bash
+cfg=$(mktemp -d)
+cp -R ~/.claude/skills "$cfg/skills"
+rm -rf "$cfg/skills/agent_spinner"
+cp -R plugins/ai_dev/skills/agent_spinner "$cfg/skills/agent_spinner"
+CLAUDE_CONFIG_DIR="$cfg" CLAUDE_SECURESTORAGE_CONFIG_DIR= python3 tests/trigger_evals/run.py \
+  --eval-set tests/trigger_evals/agent_spinner.json --skill agent_spinner \
+  --skill-path plugins/ai_dev/skills/agent_spinner \
+  --model claude-sonnet-4-6 --runs-per-query 3 --timeout 45 --workers 6
+```
+
+In `tests/agent_spinner/RUNBOOK.md`, rewrite the paragraph beginning "The skill has to be deployed for the runner's deployed-mode path" in place so it names both routes: a deployed skill, and a scratch config directory that measures a source description without a deploy, with the commands above. Below it, record the 2026-10-04 measurements from Context and this task's run, each with its date, build, model, and counts.
+
 ### The one-to-one check
 
 Add a check labelled "selector recipe rows match references/recipes/ one to one" to the `# --- references ---` section of `tests/agent_spinner/script_tests/run.sh`. It reads `<selector>` from its line-start opening tag to its closing tag. Starting at the line-start tag keeps the inline `<selector>` citation in `<start_here>` out of the scan. The check collects the backticked file name in each data row's second cell. It passes when every named file exists under `references/recipes/`, no name appears twice, and every `*.md` file under `references/recipes/` has exactly one row. It also passes with no data row and no recipe directory, so it holds at this commit and at each recipe task's commit. It is a new check under TESTING.md's `## Test Integrity`.
@@ -95,7 +116,7 @@ Through the wiki skill family, rewrite the paragraph of `wiki/concepts/agent-del
 
 **Out of scope:**
 
-- The frontmatter description and its routing sentence, which [the description-recall task](ai-dev_agent-spinner-description-recall.md) owns.
+- Rewriting the rest of the description for recall. On 2026-10-04, rewrites that led with the purpose or anchored the triggers to the moment of spawning passed 3 and 2 of the eight queries that name no skill, against 3 and 4 for today's text. The queries that still miss load no skill at all, or the bundled code-review skill.
 - The recipe rows and the recipe files, which [the review-repair recipes task](ai-dev_agent-spinner-review-repair-recipes.md), [the rewrite-implement recipes task](ai-dev_agent-spinner-rewrite-implement-recipes.md), and [the decision-research recipes task](ai-dev_agent-spinner-decision-research-recipes.md) each add in one change.
 - The pointers to `references/role-prompts.md` in `<shapes>` and to `references/report-shapes.md` in `<judgement>`, which [the checking-doctrine task](ai-dev_agent-spinner-checking-doctrine.md) and [the judgement-containment task](ai-dev_agent-spinner-judgement-containment.md) own.
 - The concept page's list of what ships with the skill and its "Derived from" entry, which [the run-ledger task](ai-dev_agent-spinner-run-ledger.md) owns.
@@ -105,7 +126,10 @@ Through the wiki skill family, rewrite the paragraph of `wiki/concepts/agent-del
 - `<role>`, `<invocation_boundary>`, and `<selector>` read as their target text, and the selector's table holds its header and delimiter rows and no data row.
 - `grep -cE '^<(when_to_activate|references|worked_instances|family)>$'` on SKILL.md returns 0, and `grep -c` returns 0 for each superseded passage Approach lists.
 - Measured from opening tag through closing tag, `<role>` holds at most 355 bytes, `<invocation_boundary>` at most 935, and `<selector>` at most 1,053. The body below the frontmatter is at least 1,791 bytes smaller than at the parent commit, and `wc -c` reports `SKILL.md` under 25,000 bytes.
-- Apart from what the description-recall task changes when both land in one commit, the frontmatter is byte-identical to the parent commit's.
+- The frontmatter differs from the parent commit's only in the description's routing sentence, which reads as Approach gives it, and the description stays under 1,500 characters.
+- `tests/trigger_evals/agent_spinner.json` holds the two naming queries Approach gives as `should_trigger: true` entries.
+- A trigger run of the changed description, made with the scratch-config commands in Approach, passes all eight `should_trigger: false` queries and both naming queries. It also passes at least 3 of the eight `should_trigger: true` queries that name no skill, the lower of the two 2026-10-04 runs of today's text. A run below that is fixed inside this task by revising the routing sentence and measuring again.
+- The RUNBOOK paragraph that named only the deployed route now names both routes, and the RUNBOOK records the 2026-10-04 measurements and this task's run, each with its date, build, model, and counts.
 - `python3 plugins/ai_dev/skills/skill_doctor/scripts/resolve_scope.py --root . --family agent_spinner` resolves exactly `agent_spinner` with an empty `warnings` list.
 - `bash tests/agent_spinner/script_tests/run.sh` passes with the one-to-one check. The check fails on a scratch copy whose table names a recipe file that does not exist, and on a scratch copy holding a recipe file with no row.
 - Both evals exist in `evals.json` with their fixtures and grade.sh cases, each checking its named fact before any response marker, and each passes under TESTING.md's vendor rule. A failing eval is fixed in the component or the fixture before the commit, never by weakening its check.

@@ -2,8 +2,8 @@
 description: Rewrite agent_spinner's description so the router reaches it, measured against the recorded 1-of-8 recall baseline while holding its clean 8-of-8 boundary.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-09-16T14:58:00
-updated: 2026-09-16T19:58:00
-status: open
+updated: 2026-10-04T19:52:01
+status: deferred
 reported-by: Andreas Hoffmann
 ---
 
@@ -23,6 +23,8 @@ sibling family may start loading `agent_spinner` as a side effect of the
 rewrite.
 
 ## Context
+
+**Deferred on 2026-10-04.** Trigger runs that day tested this task's hypothesis directly. They used `claude` 2.1.226, a `claude-sonnet-4-6` worker, and three runs per query, each in a scratch config directory holding a copy of the deployed skills. Two runs of the current description passed 4 and 3 of the eight `should_trigger: true` queries and all eight `should_trigger: false` queries, so the 1-of-8 baseline below no longer describes the router. A rewrite that led with the purpose passed 3 of 8, and one that anchored the triggers to the moment of spawning passed 2 of 8. The ordering hypothesis is therefore not supported, and no tested rewrite beat the current text. The queries that still miss load no skill at all, or the bundled code-review skill. The routing sentence this task owned moved to [the routing task](../ai-dev_agent-spinner-routing.md), which measured its conditional form at 4 of 8 with every negative and both queries naming the skill held.
 
 `plugins/ai_dev/skills/agent_spinner/SKILL.md` ships the description under
 review. The skill body itself is out of scope here; only the frontmatter
@@ -58,7 +60,7 @@ the hypothesis this task tests rather than a settled cause.
 *deployed* copy under the harness skills directory rather than the repo
 source, so a description edit needs a deploy before it can be measured. That
 deploy is gated on the user by the standing repo rules.
-[task-family_audit-select-description-repair](archive/task-family_audit-select-description-repair.md)
+[task-family_audit-select-description-repair](task-family_audit-select-description-repair.md)
 is the archived precedent for repairing a description against a recorded
 pre-edit baseline, and its measurement shape is the one to follow.
 
