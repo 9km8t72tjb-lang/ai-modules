@@ -1,7 +1,7 @@
 ---
 title: Instruction-defect classes
 created: 2026-08-15
-updated: 2026-08-30
+updated: 2026-10-04
 type: concept
 tags: [skill, agent, authoring, verification-gap, experiment]
 sources: []
@@ -146,6 +146,9 @@ carries.
 - [Agent-delegated automation](agent-delegated-automation.md), for the verifier
   and single-writer mechanisms that carry a property the instruction only
   invokes.
+- [Orchestration failure families](orchestration-failure-families.md), for
+  failures measured in orchestrated helper runs. They include rules a run ignored
+  while they sat in its context, and rules that caused the failure themselves.
 
 ## Derived from
 

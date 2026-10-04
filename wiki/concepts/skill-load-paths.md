@@ -1,10 +1,11 @@
 ---
 title: Skill load paths
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-04
 checked: 2026-08-13
 type: concept
 tags: [skill, discovery, frontmatter, portability, claude, codex]
+sources: [raw/notes/delegation-probes-2026-10-04.md]
 confidence: high
 ---
 
@@ -100,6 +101,13 @@ regular file or exceeds <N> byte limit`, `Multiple skill files found`, and
 `Failed to load skill from`. That message family, and the one-mebibyte
 plugin-skill byte limit it names, belong to the Claude Code load path above.
 Codex's tooling resolves the exact uppercase `SKILL.md` spelling.
+
+A live probe of build 0.160.0 on 4 October 2026 watched how a project skill
+behaves at run time ([probes](../raw/notes/delegation-probes-2026-10-04.md)).
+The probe trusted the project for that run with
+`-c 'projects."<dir>".trust_level="trusted"'`. Codex then discovered and loaded
+a skill at `.agents/skills/<name>/SKILL.md` in the project, and the model read
+the skill's `SKILL.md` through a shell `cat` command.
 
 ## Open questions
 

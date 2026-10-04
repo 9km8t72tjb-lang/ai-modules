@@ -1,10 +1,10 @@
 ---
 title: Agent definition portability
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-10-04
 type: concept
-tags: [agent, frontmatter, portability, claude, codex, opencode, antigravity, verification-gap]
-sources: []
+tags: [agent, frontmatter, portability, claude, codex, cursor, opencode, antigravity, verification-gap]
+sources: [raw/notes/agent-delegation-host-observations-2026-09.md, raw/notes/delegation-probes-2026-10-04.md]
 confidence: medium
 ---
 
@@ -86,20 +86,57 @@ stating what an empty array grants.
 
 ### Read-only roles need native levers plus a body contract
 
-Each harness has its own lever. Claude uses a `tools:` allowlist of read-only
-tools. Cursor uses `readonly: true`. Codex uses `sandbox_mode = "read-only"` in
-the generated TOML, with the caveat that its read-only semantics gate command
-execution behind approval, so a role needing `git log` may pause for
-confirmation. Antigravity needs both halves, a `tools` array holding only
-read-only names and `commandExecutionPolicy` set to `off`, or to `sandbox` where
+Each harness has its own role-level lever, which confines one role rather than a
+whole session, and whether it holds depends on the host and the role's mode.
+Antigravity needs both halves of its lever: a `tools` array holding only
+read-only names, and `commandExecutionPolicy` set to `off`, or to `sandbox` where
 the role still needs contained execution. OpenCode uses a `permission` object
 with `edit: deny`, plus `bash: deny` where no shell is needed, because its `edit`
-key gates all file modification.
+key gates all file modification. Runs have observed only the levers below.
 
-The prompt-level prohibition stays in the agent body as the universal floor.
+| Host and lever | Mode | Observed reach | Source |
+| --- | --- | --- | --- |
+| Claude Code, a `tools:` allowlist in the role file | print mode under `--permission-mode bypassPermissions`, build 2.1.226 | A role listing `Read, Grep, Glob` ran with exactly those tools. When it tried to write a file or run a shell command, it found no tool for either. | [probes](../raw/notes/delegation-probes-2026-10-04.md), 4 October 2026 |
+| Cursor, `readonly: true` in the role file | IDE | The helper ran in chat mode with the shell still callable. | [transcripts](../raw/notes/agent-delegation-host-observations-2026-09.md), 17 and 26 September 2026 |
+| Cursor, `readonly: true` in the role file | print mode under `--force`, CLI 2026.10.01 | The role ran in ask mode, and both its file write and its shell command were refused, with no file created. | [probes](../raw/notes/delegation-probes-2026-10-04.md), 4 October 2026 |
+| Cursor, `readonly` set on the Task call | print mode under `--force`, CLI 2026.10.01 | The call recorded no read-only field (`mode: TASK_MODE_UNSPECIFIED`), and the helper wrote its file and ran its shell command. | [probes](../raw/notes/delegation-probes-2026-10-04.md), 4 October 2026 |
+| Codex, `sandbox_mode = "read-only"` in the role TOML | `codex exec`, codex-cli 0.160.0 | The role still wrote a file and ran a shell command. It did so under a parent run with `--dangerously-bypass-approvals-and-sandbox`, and again under `-s workspace-write -c approval_policy="never"`. | [probes](../raw/notes/delegation-probes-2026-10-04.md), 4 October 2026 |
+
+A read-only role on Codex therefore rests on its body contract alone. A claim
+about Cursor's `readonly` names the mode it was observed in. The prompt-level
+prohibition stays in the agent body as the universal floor.
 Frontmatter enforcement binds only where the agent actually spawns as a separate
 agent, while the body contract also governs harnesses that degrade the role to
 inline execution.
+
+A launcher can also confine a whole session from the command line, and a test
+runner takes that route. An orchestrator already running inside a session cannot
+set those flags for the helpers it spawns, so it confines a helper through the
+role-level levers above. That is why agent_spinner draws only on the table above,
+while the table below serves the test runner. Every row below was observed on
+4 October 2026 ([probes](../raw/notes/delegation-probes-2026-10-04.md)). The
+Claude Code rows other than plan mode ran under
+`--permission-mode bypassPermissions`, and every Cursor row ran under `--force`
+and `--sandbox disabled`.
+
+| Host | Session lever | Observed reach |
+| --- | --- | --- |
+| Claude Code 2.1.226 | `--tools Read,Grep,Glob` | Left exactly those tools, a clean read-only session. |
+| Claude Code 2.1.226 | `--disallowedTools Edit,Write,NotebookEdit` | Removed file writing. |
+| Claude Code 2.1.226 | `--disallowedTools Bash` | Removed the shell and added dedicated `Glob` and `Grep` tools. |
+| Claude Code 2.1.226 | `--permission-mode plan` | Blocked project writes and restricted the shell to read-only use. It still wrote a plan file into the user's real `~/.claude/plans/` directory, which makes it unfit for evals. |
+| Cursor CLI 2026.10.01 | deny entry `Shell(touch)` or `Shell(*)` in the permission file | Refused the shell call, inside a spawned helper as well. |
+| Cursor CLI 2026.10.01 | deny entry `Write(**)`, `Write(**/*)`, or `Write(*)` in the permission file | Refused the edit call, inside a spawned helper as well. |
+| Cursor CLI 2026.10.01 | `--mode ask` | Blocked nothing: the file write and the shell both succeeded. |
+| Cursor CLI 2026.10.01 | `--mode plan` | Refused edits to non-markdown files and left the shell callable. |
+| codex-cli 0.160.0 | `-s read-only` | Blocked both patch writes and shell writes for the whole session. |
+
+A worker under either Cursor mode could still run shell commands, although the
+CLI's help calls both modes read-only. A tool denied to a Claude Code session
+stays denied inside its helpers, as
+[Claude Code delegation surfaces](claude-delegation-surfaces.md) records. The
+[Cursor page](../entities/cursor.md) records where the permission file lives and
+how it behaves with and without `--trust`.
 
 ### Inheritance by omission, and where a pin belongs
 

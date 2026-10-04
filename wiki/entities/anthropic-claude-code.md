@@ -1,10 +1,10 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-10-02
+updated: 2026-10-04
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
-sources: []
+sources: [raw/notes/delegation-probes-2026-10-04.md]
 confidence: high
 ---
 
@@ -56,6 +56,13 @@ project `settings.json` with a trailing comma left its `outputStyle` unapplied
 and printed nothing, which the CLI's own help also states for print mode. Both
 were observed on 2 October 2026 against build 2.1.226 on one machine, with a
 marker style whose reply token showed whether the style had loaded.
+
+On 4 October 2026 a print-mode session of build 2.1.226 in a scratch repository
+listed the user's deployed `auto_*` roles and skills at startup, so they reach a
+sandboxed session as well. A worker given a scratch `CLAUDE_CONFIG_DIR`, with
+`CLAUDE_SECURESTORAGE_CONFIG_DIR` set to the empty string and the test runner's
+`_claude_worker_env()` environment, authenticated. It listed only the built-in
+roles and skills ([probes](../raw/notes/delegation-probes-2026-10-04.md)).
 
 ### Standing instruction files
 
@@ -115,6 +122,12 @@ Since version 2.1.198 a subagent inherits the parent session's extended-thinking
 state and effort level, with a frontmatter `effort` key acting as a per-agent
 override. Releases before 2.1.198 spawn subagents without extended thinking
 whatever the frontmatter says.
+
+### Delegation to helpers
+
+[Claude Code delegation surfaces](../concepts/claude-delegation-surfaces.md)
+covers how the Workflow and Agent tools delegate, how the shell tool handles
+waits and searches, and the print-mode flags a headless worker relies on.
 
 ### File-edit read state
 

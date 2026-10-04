@@ -1,10 +1,10 @@
 ---
 title: OpenAI Codex
 created: 2026-08-08
-updated: 2026-10-01
+updated: 2026-10-04
 type: entity
 tags: [codex, skill, agent, hook, plugin, system-prompt, frontmatter, discovery, verification-gap]
-sources: []
+sources: [raw/notes/delegation-probes-2026-10-04.md]
 confidence: high
 ---
 
@@ -26,7 +26,9 @@ source rather than on observation. On 13 August 2026 an installed CLI was found
 and read directly: `codex-cli 0.147.0-alpha.6.5`, shipped inside the ChatGPT
 desktop application bundle rather than on `PATH`. The skill-loading facts read
 from it are on [skill load paths](../concepts/skill-load-paths.md). The
-configuration claims were not re-checked against it.
+configuration claims were not re-checked against it. Live probes of `codex exec`
+on build 0.160.0 ran on 4 October 2026, and the passages that rest on them carry
+that date ([probes](../raw/notes/delegation-probes-2026-10-04.md)).
 Re-verify before relying on any of them.
 
 ## Key facts and dates
@@ -48,25 +50,37 @@ Project `.codex/` layers load only for a trusted project. An instructions file
 wired through a project configuration does nothing until the user trusts that
 project, and the skip is silent rather than reported. A relative path inside a
 project configuration resolves against the `.codex/` directory holding that
-`config.toml`.
+`config.toml`. A launcher can trust a project for a single run with
+`-c 'projects."<dir>".trust_level="trusted"'`. The probes of 4 October 2026
+trusted their projects that way, and the project roles and skill they staged
+then loaded ([probes](../raw/notes/delegation-probes-2026-10-04.md)).
 
 ### Skill loading and the bundled binary
 
 The skill load path read out of the installed CLI on 13 August 2026 is on
-[skill load paths](../concepts/skill-load-paths.md) beside Claude's. Finding the
-binary is itself the first fact: it ships inside the ChatGPT desktop application
-at a fixed bundle path (`ChatGPT.app/Contents/Resources/codex` on macOS), so a
-`PATH` lookup, a package manager listing, and a shell `which` all miss an
-installed Codex, which the instructions-slot section below already warns about
-for `codex debug models`.
+[skill load paths](../concepts/skill-load-paths.md) beside Claude's, with the
+project skill discovery a probe observed on 4 October 2026. Finding the binary is
+itself the first fact. It ships inside the ChatGPT desktop application rather
+than on `PATH`. For build 0.160.0 on macOS it sits at
+`ChatGPT.app/Contents/Resources/codex-cli/bin/codex`, and the account was signed
+in through ChatGPT (4 October 2026,
+[probes](../raw/notes/delegation-probes-2026-10-04.md)). A `PATH` lookup, a
+package manager listing, and a shell `which` all miss an installed Codex, which
+the instructions-slot section below already warns about for `codex debug models`.
 
 ### Agent roles
 
-Codex registers spawnable roles only from standalone TOML files under
-`~/.codex/agents/` or `<repo>/.codex/agents/`. Required keys are `name`,
-`description`, and `developer_instructions`; optional keys are `model`,
-`model_reasoning_effort`, `sandbox_mode`, and `mcp_servers`. There is no
-per-agent tool allowlist.
+Codex registers spawnable roles only from standalone TOML files. Those are the
+user's `~/.codex/agents/*.toml` and, in a trusted project, the project's
+`.codex/agents/*.toml`. They sit beside the built-in roles `default`,
+`explorer`, and `worker`, as `codex exec` on build 0.160.0 showed on
+4 October 2026 ([probes](../raw/notes/delegation-probes-2026-10-04.md)).
+Required keys are `name`, `description`, and `developer_instructions`; optional
+keys are `model`, `model_reasoning_effort`, `sandbox_mode`, and `mcp_servers`.
+There is no per-agent tool allowlist. Setting `sandbox_mode = "read-only"` did
+not make a spawned role read-only, as
+[agent definition portability](../concepts/agent-definition-portability.md)
+records beside the other hosts' levers.
 
 The plugin schema carries no agent component, so a plugin-bundled Markdown agent
 lands in the plugin cache without ever becoming a spawnable role. Generating TOML
@@ -79,8 +93,31 @@ out at `xhigh` on current first-party models; `max` and `ultra` are accepted onl
 by preview models, and an unsupported pin surfaces as API errors on the child
 agent's turns rather than as a clamp.
 
-Built-in roles include `default`, `explorer`, and `worker`, which is worth
-knowing when checking what actually registered.
+### Delegation to helpers
+
+On build 0.160.0, `codex exec` exposes built-in sub-agent tools:
+`collaboration.spawn_agent`, `wait_agent`, `send_message`, `list_agents`,
+`interrupt_agent`, and `followup_task`. It also exposes the goal tools
+`create_goal`, `get_goal`, and `update_goal`. Passing `--disable multi_agent`
+did not stop spawning (4 October 2026,
+[probes](../raw/notes/delegation-probes-2026-10-04.md)).
+
+### Headless runs through codex exec
+
+A test runner drives Codex through `codex exec`, and the probes of 4 October
+2026 recorded how that works on build 0.160.0
+([probes](../raw/notes/delegation-probes-2026-10-04.md)).
+`codex exec --json --dangerously-bypass-approvals-and-sandbox -C <dir> <prompt>`
+runs one turn, and `codex exec ... resume <thread_id> <prompt>` resumes it. The
+events are `thread.started`, carrying `thread_id`; `turn.started`;
+`item.started` and `item.completed`, carrying the item types `agent_message`,
+`command_execution`, `file_change`, and `collab_tool_call`; and
+`turn.completed`, carrying `usage`. The stream listed only the `wait`
+collaboration call as an item, with empty receiver ids. It held no spawn item,
+yet the spawned helper's file appeared. A session started with `-s read-only` is
+confined as a whole, as
+[agent definition portability](../concepts/agent-definition-portability.md)
+records among the session-level levers.
 
 ### The single instructions slot
 

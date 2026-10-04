@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-10-03
+updated: 2026-10-04
 type: concept
 tags: [skill, repo-structure, authoring, claude, verification-gap]
 sources: []
@@ -93,7 +93,10 @@ user's standing instructions and under the user's style, which confounds any eva
 whose subject is prose. A sandbox outside the home directory and any repository,
 with the worker started under `--setting-sources project,local`, keeps those out
 while a style staged in the sandbox still loads
-([Claude output style selection](claude-output-style-selection.md)). A malformed
+([Claude output style selection](claude-output-style-selection.md)). The user's
+deployed roles and skills also reach a sandboxed worker. A worker given a
+scratch configuration directory listed only the built-in ones
+([Anthropic Claude Code](../entities/anthropic-claude-code.md)). A malformed
 sandbox settings file fails silently, so a run that depends on a staged style
 proves the style loaded before it measures anything. The backlog carries the
 work to isolate the existing prose harness and to build a style harness this way.

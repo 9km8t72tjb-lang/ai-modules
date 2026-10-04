@@ -794,3 +794,78 @@ Recorded the dated evidence behind the bash 3.2 floor now carried by the
 - procedures/deciding-where-knowledge-belongs.md: See Also link to the new page
   as the worked skill-versus-wiki split.
 - index.md: Concepts entry for the new page; page count to 33.
+
+## [2026-10-04 12:32] ingest | Agent spinner run evidence and agent delegation host observations, September 2026
+
+Imported the two anonymized raw notes captured today from a private research
+archive, `raw/notes/agent-spinner-run-evidence-2026-09.md` and
+`raw/notes/agent-delegation-host-observations-2026-09.md`. The run evidence got
+a page of its own, the Claude Code delegation observations got a concept page,
+and each other dated host observation went to the page that owns its subject.
+
+- concepts/orchestration-failure-families.md (new: run classes and a case
+  register under neutral labels, the 23 failure families with their counts and
+  doctrine values, the base rates, the mechanisms observed together, and a
+  recipe table with the raw note's families column; it calls the recipes
+  proposed, and its confidence paragraph names the claims that cap it)
+- concepts/claude-delegation-surfaces.md (new: the Workflow and Agent tool
+  delegation, shell-tool, and print-mode passages, each citing its raw note
+  inline, with the analyst-only list flagged as partial)
+- entities/anthropic-claude-code.md (points at the new delegation page)
+- entities/cursor.md (dated delegation, delivery, isolation, context-load,
+  continuation, hook-event, agent-shell, and print-mode CLI observations, the
+  observed reach of `readonly`, the lint-gate limit as a dated workstation
+  condition, and the planned probes in its verification gaps)
+- concepts/interpreter-and-tool-path-portability.md (the stock bash and python3
+  as the bundled-script floor, the absent timeout commands, an observed
+  confirmation of the PATH trap, and two zsh constructs that misfire in commands
+  an agent runs directly)
+- concepts/agent-definition-portability.md (Cursor's `readonly` lever points at
+  its observed reach)
+- concepts/agent-delegated-automation.md (the read-only property as per-harness
+  levers beside the gate's stamp write, an open question on how the relay capped
+  the verifiers in three governed runs, and a link to the new evidence page)
+- concepts/instruction-defect-classes.md (a link to the new evidence page)
+- index.md (two new concept entries, adjusted summaries, 35 pages)
+
+## [2026-10-04 13:12] lint | 0 blocking, 1 warn, 2 info
+
+The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` and the
+size info on `concepts/verification-surfaces.md` are pre-existing. The size info
+on `entities/cursor.md` came with the 12:32 import, and its split is left for a
+human to weigh.
+
+## [2026-10-04 15:12] ingest | Delegation probes of Claude Code, Cursor, and Codex, 4 October 2026
+
+Imported today's live probe results as one raw note that keeps the sub-agent
+facts agent_spinner relies on apart from the CLI facts that serve the test
+runner, and placed each fact on the page that owns its subject.
+
+- raw/notes/delegation-probes-2026-10-04.md (new: both fact groups with their
+  builds, plus the probe flags read from the run metadata)
+- concepts/agent-definition-portability.md (two dated tables, role-level levers
+  by host and mode and session-level levers, replacing the superseded Codex
+  approval caveat)
+- concepts/claude-delegation-surfaces.md (the print-mode spawn surface, observed
+  flag behaviour with resume and stream-json events, narrowed open questions)
+- entities/cursor.md (print-mode roles, tools, Task record, delivery, goal tools,
+  permission file, resume, and stream events; the builds comparison and the
+  verification gaps rewritten, the deny-entry question settled)
+- entities/anthropic-claude-code.md (deployed roles and skills reaching a
+  sandboxed session, and the scratch configuration directory that kept them out)
+- entities/openai-codex.md (binary path corrected to
+  `Contents/Resources/codex-cli/bin/codex`, per-run project trust, role sources,
+  sub-agent and goal tools, headless runs through `codex exec`)
+- concepts/skill-load-paths.md (a Codex project skill found under `.agents/skills/`)
+- concepts/verification-surfaces.md (deployed roles and skills among what a
+  worker inherits)
+- index.md (seven summaries refreshed)
+
+## [2026-10-04 15:13] lint | 0 blocking, 1 warn, 3 info
+
+The narrow post-ingest lint exited 0, and markdownlint passed on every file the
+ingest touched. The `boilerplate` warn on `log.md` is pre-existing. The size info on
+`concepts/verification-surfaces.md` is pre-existing, the one on
+`entities/cursor.md` came with the 12:32 import and grew with this one, and the
+one on `entities/openai-codex.md` is new with this ingest. Both entity splits
+are left for a human to weigh.

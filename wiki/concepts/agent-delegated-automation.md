@@ -1,10 +1,10 @@
 ---
 title: Agent-delegated automation
 created: 2026-08-29
-updated: 2026-09-16
+updated: 2026-10-04
 type: concept
 tags: [skill, agent, authoring, repo-structure]
-sources: []
+sources: [raw/notes/agent-spinner-run-evidence-2026-09.md]
 confidence: high
 ---
 
@@ -47,11 +47,12 @@ that writes.
 
 ### Readers fan out, one writer holds the graph
 
-The assessing agents are read-only by construction, not by convention. Their
-frontmatter marks them read-only and restricts their tools to reading and
-search, so the single-writer claim is enforced by the harness rather than
-trusted. Coverage comes from running several readers. Integrity comes from
-letting only one agent write.
+The reviewer, verifier, and drift agents carry read-only levers, and the gate
+writes only `task_check`'s status stamp. A lever holds only where its harness
+enforces it ([agent definition portability](agent-definition-portability.md),
+[Cursor](../entities/cursor.md)), and a callable shell gets around it. So the
+single-writer claim also rests on each agent's body contract. Coverage comes
+from running several readers. Integrity comes from letting only one agent write.
 
 Serialization matters because the artifacts form a link graph. Task files
 cross-link each other, wiki pages link each other, and an index lists them all.
@@ -163,8 +164,12 @@ the tree rather than on a measured verdict.
 How much an unattended verifier can catch is bounded by what it can read. The
 loop reads only the verdict text an agent returns, refuses to introspect a
 model's reasoning trace, and declines to pin a worker to one model, because none
-of those is portable across harnesses. That keeps the pattern portable and caps
-how deeply it can verify, and where that cap falls has not been mapped.
+of those is portable across harnesses. In three `task_auto_check` runs on Cursor
+in September 2026, the way the orchestrator relayed text set that cap.
+Verifiers judged paraphrases or partial reviewer text. One gate finding
+bypassed them. Committed rule clusters were deleted with no user decision ([run
+evidence](../raw/notes/agent-spinner-run-evidence-2026-09.md)). The backlog
+carries the work to relay verbatim and to route such deletions to the user.
 
 ## Related concepts
 
@@ -178,6 +183,8 @@ how deeply it can verify, and where that cap falls has not been mapped.
   the `CHARTER.md` fence an autonomous writer checks before it writes.
 - [The ai-modules repository](../summaries/ai-modules-repository.md), for where
   these families sit among the shipped components.
+- [Orchestration failure families](orchestration-failure-families.md), for the
+  run evidence behind the recipes proposed for `agent_spinner`.
 
 ## Derived from
 
