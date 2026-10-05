@@ -6,9 +6,10 @@
 # through a `rich` adapter. Colouring the report output therefore has two paths
 # and each one crosses a guardrail boundary, which the family's standing
 # hierarchy never auto-resolves. The "guardrail-bound" ground of the why-open
-# test qualifies, so the written task must carry a labeled "Open decision:"
-# naming the boundary conflict and the create path must surface it, rather than
-# quietly picking a side or editing a guardrail doc to clear the way.
+# test qualifies, so the written task must carry a labeled open-decision
+# lead-in naming the boundary conflict and the create path must surface it,
+# rather than quietly picking a side or editing a guardrail doc to clear the
+# way.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

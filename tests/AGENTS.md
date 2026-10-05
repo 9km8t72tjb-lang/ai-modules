@@ -91,7 +91,8 @@ Cursor default is **4 concurrent jobs** (`tests/lib/vendor.py`
 `DEFAULT_PARALLEL_WORKERS`) on wiki layer 2 and `language_humanizer`.
 Pass `--workers 1` to serialize. Pattern A runners stay sequential:
 `git_commit` (shared TMPDIR), `git_review` (timeout), the `task_*`
-family (host `tasks/` fail-safe), `agent_spinner` (host `git status`),
+family (serial until their parallel-worker tasks land; the host guard
+ignores unrelated live backlog edits), `agent_spinner` (host `git status`),
 and `guardrail_audit` / `skill_doctor` until an isolation sweep proves
 them. Details stay in lockstep with `tests/CLAUDE.md`.
 

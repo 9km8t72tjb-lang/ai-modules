@@ -60,11 +60,11 @@ Treat `grading.txt` as the programmatic filesystem verdict and inspect
 `response.txt` for the `agent-attest` transcript expectations listed by
 the grader.
 
-Two operational caveats. The isolation check watches the real repo's
-`tasks/` tree for fixture-namespace files (`api_*.md`, the overturn
-snapshot's name) newer than the eval marker, so a concurrent session
-editing unrelated real tasks no longer trips it; a hit on a
-fixture-namespace file is a genuine sandbox escape. The repair-class scenarios (`repair_to_ready`,
+Two operational caveats. The isolation check compares the live `tasks/`
+tree to an isolated copy taken in the eval temp dir, and only for basenames
+the sandbox contains, so a concurrent session editing some other real task
+does not trip it. A fixture name that lands in the live tree is a sandbox
+escape. The repair-class scenarios (`repair_to_ready`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
 `immediate_ready_citations_overturn`) run the full
 nested-agent loop and take ~900 to 1500s solo, so pass `--timeout 1800` or
@@ -129,15 +129,16 @@ The isolation check missed it because it probed the real tree for fixture
 names only (`api_*.md` and one wiki filename). A worker that acts on a real
 task it was never told about matches no fixture name.
 
-`stage.sh` now writes `.real_tasks_manifest`, a sorted path inventory of the
-real `tasks/` tree, and `grade.sh` fails when that inventory changes. Paths
-rather than mtimes, so a concurrent session editing a real task in place stays
-legitimate while an appearing, vanishing or moved path does not. Verified
-against the observed shape: archiving a real task turns the check red.
+`stage.sh` now copies the host `tasks/` tree into the eval temp directory.
+`grade.sh` compares the live tree to that copy only for the sandbox's fixture
+names. A parallel session that archives or creates some other real task stays
+green. A fixture name that appears, moves, or changes in the live tree turns
+the check red.
 
-Treat a red there as a stop-everything signal, not a flaky eval. Restore the
-moved file before running anything else, and check `created` as well as
-`status`, since the close-out rewrote both.
+Treat a red on a fixture name as a stop-everything signal, not a flaky eval.
+Restore that file before running anything else. An archive of a real task the
+sandbox never named is outside this check, because that shape is also what a
+parallel backlog session does.
 
 ## Two runner gaps that produce misleading verdicts
 

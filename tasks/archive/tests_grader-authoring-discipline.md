@@ -2,9 +2,11 @@
 description: Make eval graders assert substance over form, subject-anchored matches, wrap-collapsed checks, and split conjunctions; rules in TESTING.md and standing instructions, mechanics in the tests tree.
 scope: "local test harnesses"
 created: 2026-08-15T14:08:10
-updated: 2026-10-03T13:26:05
-status: ready
+updated: 2026-10-05T10:35:44
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Grader-authoring discipline for the local eval harnesses
@@ -38,7 +40,7 @@ Four rules carry the work:
 ## Context
 
 The rules come from building the behavioural evals for
-[the backlog-coherence pass](archive/task-family_backlog-coherence-pass.md), where
+[the backlog-coherence pass](task-family_backlog-coherence-pass.md), where
 grader defects outnumbered product defects and cost more runs than the feature
 did. Five distinct grader bugs surfaced there, each of the shapes above: checks
 that demanded one side of a valid two-sided repair, one that required a full
@@ -152,7 +154,7 @@ arithmetic, which is the same signature the conjunction rule above describes.
 **Out of scope:**
 
 - Consolidating or relocating any harness directory, which
-  [the harness consolidation task](archive/task-family_test-harness-consolidation.md)
+  [the harness consolidation task](task-family_test-harness-consolidation.md)
   owns.
 - Changing the trigger-eval runner or its harness, a separate surface this task
   does not touch.

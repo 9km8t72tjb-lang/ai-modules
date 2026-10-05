@@ -8,10 +8,10 @@
 # retried forever. The base **Decide or label** evidence base cannot reach a
 # call resting on the user's own risk appetite, so the "insufficient evidence"
 # ground of the why-open test qualifies. The written task must carry exactly one
-# labeled "Open decision:" naming its options, a suggested default, and why the
-# evidence leaves it open, and the create path must surface it to the user in
-# its **Offer open-decision reconciliation** step rather than leaving it to rest
-# in the file alone.
+# labeled open-decision lead-in naming its options, a suggested default, and
+# why the evidence leaves it open, and the create path must surface it to the
+# user in its **Offer open-decision reconciliation** step rather than leaving
+# it to rest in the file alone.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

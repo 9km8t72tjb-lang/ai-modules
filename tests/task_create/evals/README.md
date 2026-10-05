@@ -27,8 +27,8 @@ written into the task body *and* surfaced to the user. Neither half proves the
 other, so the grader reads both.
 
 - The **written** half comes from the sandbox: the task file, its frontmatter,
-  its `Open decision:` label and the paragraph around it, and the guardrail docs
-  the run must leave untouched.
+  its labeled open-decision lead-in (bare or qualified) and the paragraph
+  around it, and the guardrail docs the run must leave untouched.
 - The **surfaced** half comes from the worker's captured `response.txt`.
   `run.py` exports `RESPONSE_FILE` when it calls the grader; a hand-run grade
   should export it too. When no response is readable, the surface checks FAIL

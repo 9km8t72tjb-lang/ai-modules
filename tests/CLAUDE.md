@@ -91,8 +91,11 @@ or blow their timeouts:
 
 - `git_commit` — `grade.sh` scans a shared `TMPDIR` for stragglers.
 - `git_review` — two workers contend for the model past the per-eval timeout.
-- `task`, `task_create`, `task_fix`, `task_auto_check` — host `tasks/`
-  mtime fail-safes, and the deep repair loops in `task_auto_check`.
+- `task`, `task_create`, `task_fix`, `task_auto_check` — still serial until
+  their parallel-worker tasks land. The host guard compares an isolated temp
+  copy and only the sandbox's fixture names, so an unrelated live backlog edit
+  no longer fails them. `task_auto_check` also keeps its deep repair loops
+  serial.
 - `agent_spinner` — brackets each eval with a host-checkout `git status`.
 - `guardrail_audit`, `skill_doctor` — still serial; no isolation sweep
   has proven concurrent evals yet.
@@ -148,28 +151,17 @@ LLM-sampling variance for cost; `--force` is the escape hatch when the
 variance is what you want. Unit + plumbing tests live in
 `tests/lib/test_eval_cache.py` (run `python3 tests/lib/test_eval_cache.py`).
 
-### Leave the repo's own `tasks/` and `wiki/` trees alone while a run is live
+### Host `tasks/` during a task-family run
 
-Every `task`-family eval carries the isolation fail-safe `no writes to the real
-repo's tasks/ tree`, graded as `find "$REPO_ROOT/tasks" -type f -newer
-"$marker"` against a per-eval marker `stage.sh` stamps at staging time. The
-check cannot tell an escaped worker from the operator, so **any** write to the
-backlog during a run fails every eval whose marker predates it, and the
-`wiki/` harness's `real_home_wiki_absent` fail-safe has the same reach over the
-wiki tree.
+Each task-family eval copies the host `tasks/` tree into its temp directory at
+stage time (`tests/lib/host_tasks_guard.sh`). The isolation checks compare the
+live tree to that copy only for basenames the sandbox itself contains. A
+parallel `task_auto_check`, or any other edit of a live task the sandbox does
+not name, stays outside the comparison. A fixture name that appears, moves, or
+is newer than the eval marker in the live tree still fails the eval.
 
-Measured on 2026-09-05: filing one task file mid-run failed `audit_clean` and
-`finish` in a sample that was otherwise clean, and the failure reads exactly
-like a sandbox escape until you compare the marker epochs against the file's
-mtime.
-
-So finish the run before filing tasks, editing the wiki, or touching anything
-those fail-safes watch. When a run has already been contaminated, confirm the
-cause by comparing each eval's `.eval_started_at` epoch against the mtime of
-whatever landed in the watched tree, then re-run only the evals whose marker
-predates that write. Keep the fail-safe as it is: it is the reason these
-harnesses can run on a real filesystem, and widening it to forgive operator
-writes would forgive a real escape too.
+The `wiki/` harness's `real_home_wiki_absent` fail-safe still watches the
+operator's wiki tree. Finish a wiki run before editing that tree.
 
 ### Cheap-first: probe an LLM-eval fixture before paying for the full loop
 

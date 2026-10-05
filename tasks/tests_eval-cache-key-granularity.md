@@ -55,7 +55,7 @@ that never enter the publishing or reviewer-edit stages at all; and a change to
 one grader `case` arm invalidated every eval that arm does not grade. Full suite
 runs went to verifying edits that only a minority of evals could reach.
 
-[The grader-authoring discipline task](tests_grader-authoring-discipline.md)
+[The grader-authoring discipline task](archive/tests_grader-authoring-discipline.md)
 governs how grader checks assert and shares the `grade.sh` edit surface. The two
 touch the same file for different reasons and impose no order on each other.
 [The git eval-runner parity task](tests_git-eval-runner-parity.md) adds runners

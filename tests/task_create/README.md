@@ -19,9 +19,9 @@ one that exercises the open-decision half of it.
 The rule under test says: settle silently every fork the ordered evidence base
 can settle, and treat a decision as genuinely open only when that evidence is
 insufficient or the fork is guardrail-bound. A genuinely open decision is then
-handled twice over: written into the task as a labeled `Open decision:`
-carrying its options, a suggested default, and the why-open clause, *and*
-surfaced to the user.
+  handled twice over: written into the task as a labeled open-decision lead-in
+  (bare or qualified) carrying its options, a suggested default, and the
+  why-open clause, *and* surfaced to the user.
 
 - **`reconcile-recorded`**: every tier agrees, so no label may appear. The
   fixture mirrors the observed failure the tightening closes: an authoring

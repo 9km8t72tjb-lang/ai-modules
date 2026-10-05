@@ -2,8 +2,8 @@
 description: "Isolate the language_humanizer eval worker and judge from host instructions through a shared tests/lib helper, re-measure on Cursor, and keep Claude isolation as compatibility."
 scope: tests
 created: 2026-10-02T12:56:51
-updated: 2026-10-03T13:01:20
-status: open
+updated: 2026-10-04T22:33:13
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -12,12 +12,11 @@ reported-by: Andreas Hoffmann
 ## Goal
 
 The `language_humanizer` behavioural harness measures the skill alone. Its worker
-and its judge run free of the host machine's user-level settings and standing
-instruction files outside the sandbox. The isolation lives in a shared helper
-under `tests/lib/`, beside the shared vendor wiring, so other runners can adopt
-it without re-deriving it. A fresh five-pass measurement of the three scenarios
-under isolation runs on `--vendor cursor` per `TESTING.md`, and the Claude vendor
-path keeps the same isolation contract as compatibility.
+and its judge run under the Isolation contract in Context. The isolation lives in
+a shared helper under `tests/lib/`, beside the shared vendor wiring, so other
+runners can adopt it without re-deriving it. A fresh five-pass measurement of the
+three scenarios under that contract runs on `--vendor cursor` per `TESTING.md`,
+and the Claude vendor path keeps the same helper contract as compatibility.
 
 ## Context
 
@@ -45,11 +44,28 @@ path keeps the same isolation contract as compatibility.
   runs. This task's proof and re-measurement therefore use Cursor. Claude remains
   available through the same helper for compatibility and for harnesses that
   exercise Claude-only product surfaces such as output-style loading.
+- **Isolation contract.** The helper keeps each worker and judge free of host
+  standing-instruction files reached through the worker's cwd and ancestry walk
+  by staging under a fresh system-temp root outside the home directory and any
+  git repository. The Claude branch returns
+  `["--setting-sources", "project,local"]`. The Cursor branch returns `[]`
+  because the isolated root is the isolatable surface for `agent -p`. Cursor User
+  Rules (settings-stored, not project files; see `### The user rule is not a
+  file` on `wiki/entities/cursor.md`) and deployed user-level skills (same page,
+  under agent definitions; 4 October 2026 probe) remain residual platform limits
+  outside this helper. Claude inheritance evidence stays on the wiki pages named
+  under Why isolation matters.
 - **Existing shared wiring.** `tests/lib/vendor.py` is the shared worker
   abstraction. Document the new helper beside the vendor / worker-auth passages
   in `tests/CLAUDE.md` and keep `tests/AGENTS.md` in lockstep where that guide
-  mirrors them. The helper's standalone unit tests follow the pattern of
-  `tests/lib/test_worker_io.py` and `tests/lib/test_vendor.py`.
+  mirrors them. In the same docs pass, rewrite the universal skill path-read rule
+  that today assumes a staged copy under each eval's `artefacts/` beside the
+  sandbox (`### Skill and agent loading` in `tests/AGENTS.md`, and the matching
+  artefacts sentence under `### Model policy` in `tests/CLAUDE.md`) into one
+  canonical rule that also covers a harness that copies the skill into an
+  isolated sandbox and path-reads that copy. The helper's standalone unit tests
+  follow the pattern of `tests/lib/test_worker_io.py` and
+  `tests/lib/test_vendor.py`.
 - **The skill under test.** `evals/stage.sh` points `skill_path` at
   `plugins/ai_editorial/skills/language_humanizer/SKILL.md`. That file ships on
   the `init-ai-editorial-plugin` branch and is absent from `main`, so every
@@ -66,17 +82,16 @@ path keeps the same isolation contract as compatibility.
      git repository.
    - A function that returns vendor-specific worker arguments that keep host
      instruction sources out: for Claude, `["--setting-sources", "project,local"]`;
-     for Cursor, the argument set that achieves the same isolation for
-     `agent -p` (or an empty extra-arg list when the isolated root alone is
-     enough). Callers pass the resolved vendor.
-   - A module docstring that states what the isolation keeps out, that Cursor is
-     the preferred measurement vendor, and that the Claude argument branch exists
-     for compatibility and Claude-only product surfaces. Point at the wiki pages
+     for Cursor, `[]` (see Isolation contract). Callers pass the resolved vendor.
+   - A module docstring that states the Isolation contract in Context (isolatable
+     surface and residual Cursor platform limits), that Cursor is the preferred
+     measurement vendor, and that the Claude argument branch exists for
+     compatibility and Claude-only product surfaces. Point at the wiki pages
      named in Context for the Claude inheritance evidence.
 2. **Add `tests/lib/test_worker_isolation.py`**, a standalone script in the style
    of `test_worker_io.py`, covering the create-root refusal's refused cases, a
    fresh temporary root accepted, and the vendor-specific argument helper for
-   both vendors.
+   both vendors (Claude list unchanged; Cursor returns `[]`).
 3. **Run each pass outside the repository.** In `run_pass`, stage the sandbox
    under an isolated root from the helper, copy the skill file under test into
    that sandbox, and point the worker prompt at the copy, so that the worker
@@ -91,11 +106,20 @@ path keeps the same isolation contract as compatibility.
    that temporary root after the call.
 5. **Document the isolation.** Add a `### Worker isolation` section to
    `tests/CLAUDE.md` beside the vendor / worker-auth passages, naming the helper,
-   the Cursor-first measurement posture, and the Claude-compat argument branch;
-   keep `tests/AGENTS.md` in lockstep where it mirrors that policy. Rewrite the
-   passages of the harness `README.md` and `RUNBOOK.md` that describe where a
-   pass runs, so that they say the live sandbox sits under the system temporary
-   directory and is copied into `workspace/` afterwards.
+   the Cursor-first measurement posture, the Claude-compat argument branch, and
+   that residual Cursor platform limits in the Isolation contract stay outside
+   the helper; keep `tests/AGENTS.md` in lockstep where it mirrors that policy.
+   In that same docs pass, rewrite the universal skill path-read passages so one
+   canonical rule remains: workers path-read the skill under test from a staged
+   copy that sits outside any graded tree — either under the eval's `artefacts/`
+   directory beside the sandbox, or inside an isolated sandbox when the harness
+   copies the skill there (as this harness does) — and never from a graded tree.
+   Apply that rewrite at `### Skill and agent loading` in `tests/AGENTS.md` and
+   at the matching artefacts sentence under `### Model policy` in
+   `tests/CLAUDE.md`, keeping the two guides lockstep. Rewrite the passages of
+   the harness `README.md` and `RUNBOOK.md` that describe where a pass runs, so
+   that they say the live sandbox sits under the system temporary directory and
+   is copied into `workspace/` afterwards.
 6. **Re-measure on Cursor.** On a checkout that carries the skill file, run the
    three scenarios under isolation over the harness's five-pass denominator with
    `--vendor cursor`, keeping the harness's measurement contract for a scenario
@@ -112,15 +136,19 @@ path keeps the same isolation contract as compatibility.
 - Proving Claude output-style loading, which
   [styles_natural-language-connected-prose.md](styles_natural-language-connected-prose.md)
   owns as a Claude product surface that reuses this helper.
+- Turning off Cursor User Rules or deployed user-level skills, which the
+  Isolation contract names as residual platform limits outside this helper.
 - Deciding what becomes of the earlier, unisolated results, which the comparison
   hands to the user.
 
 ## Acceptance
 
 - `python3 tests/lib/test_worker_isolation.py` passes, with the two refused roots
-  and the accepted temporary root covered, and the helper's module docstring
-  names what the isolation keeps out, the Cursor-first measurement posture, and
-  the two wiki pages behind the Claude inheritance evidence.
+  and the accepted temporary root covered, the Cursor argument branch returning
+  `[]`, and the helper's module docstring naming the Isolation contract in
+  Context (isolatable surface and residual Cursor platform limits), the
+  Cursor-first measurement posture, and the two wiki pages behind the Claude
+  inheritance evidence.
 - `run.py` and `judge.py` both import the helper for every vendor they spawn, the
   worker and judge calls use the helper's arguments for the resolved vendor, and
   neither starts a worker or a judge call from a directory the create-root
@@ -137,7 +165,13 @@ path keeps the same isolation contract as compatibility.
   Cursor-first posture and Claude-compat branch, `tests/AGENTS.md` stays lockstep
   where it mirrors that policy, and the harness `README.md` and `RUNBOOK.md`
   describe the isolated staging, with no passage left saying that a pass runs
-  inside `workspace/`.
+  inside `workspace/`. The same docs pass leaves one canonical skill path-read
+  rule in `tests/AGENTS.md` `### Skill and agent loading` and the matching
+  artefacts sentence under `tests/CLAUDE.md` `### Model policy`: a staged copy
+  outside any graded tree, either under the eval's `artefacts/` beside the
+  sandbox or inside an isolated sandbox when the harness copies the skill there,
+  with no remaining passage that mandates `artefacts/`-beside-sandbox as the
+  only path-read location.
 - `results/` holds the isolated five-pass Cursor run of all three scenarios, and
   `results/isolation-comparison.md` sets each scenario's per-assertion rates
   beside those of the latest non-regrade `results/run-*` that reports that

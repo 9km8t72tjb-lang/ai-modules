@@ -40,6 +40,8 @@ start_epoch="$(cat "$marker")"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
+# shellcheck source=../../lib/host_tasks_guard.sh
+. "$HERE/../../lib/host_tasks_guard.sh"
 LINT="$REPO_ROOT/plugins/ai_dev/skills/task/scripts/lint.py"
 TASKS="$proj/tasks"
 RESPONSE="${RESPONSE_FILE:-$target/../response.txt}"
@@ -81,9 +83,35 @@ lint_archive_no_blocking() { python3 "$LINT" "$TASKS" --include-archive >/dev/nu
 # word reads the unwrapped text.
 unwrapped() { tr '\n' ' ' < "$1" | tr -s ' '; }
 
-# label_window <file> -> the unwrapped text from the "Open decision:" label to
-# the next '## ' heading (or EOF), so options/default/why-open evidence is
-# attributed to the label itself rather than to anything anywhere in the body.
+# collapse_prose_wraps <path> -> the file with hard-wrapped prose joined,
+# while headings, blank lines, and list items stay on their own lines so a
+# label window can still start at a lead-in and stop at the next heading.
+collapse_prose_wraps() {
+  awk '
+    /^## / || /^---$/ || /^[[:space:]]*[-*][[:space:]]/ || /^[[:space:]]*$/ || /^[[:space:]]*[0-9]+\.[[:space:]]/ {
+      if (hold != "") print hold
+      hold = ""
+      print
+      next
+    }
+    {
+      if (hold == "") hold = $0
+      else hold = hold " " $0
+    }
+    END { if (hold != "") print hold }
+  ' "$1"
+}
+
+# open_decision_lead_in matches a labeled open-decision lead-in by substance:
+# the bare form "Open decision:" and a qualified form such as
+# "**Open decision (guardrail-bound):**". The colon may follow a parenthetical
+# qualifier; a body with no such lead-in still counts as zero.
+OPEN_DECISION_LEAD_IN_PLAIN='Open decision([[:space:]]*\([^)]*\))?[[:space:]]*:'
+
+# label_window <file> -> the unwrapped text from a labeled open-decision
+# lead-in to the next '## ' heading (or EOF), so options/default/why-open
+# evidence is attributed to the label itself rather than to anything anywhere
+# in the body.
 #
 # The containing section, not the label's first paragraph, is the right window.
 # A conformant label is a multi-block structure — the labeled sentence, then an
@@ -91,13 +119,17 @@ unwrapped() { tr '\n' ' ' < "$1" | tr -s ' '; }
 # paragraph-bounded window sees only the first of those and fails a label that
 # carries every part the rule requires. Same boundary the task-family harness
 # uses to extract an **Out of scope:** block.
-label_lines() { awk '/Open decision:/{f=1} /^## /{f=0} f' "$1"; }
+label_lines() {
+  collapse_prose_wraps "$1" \
+    | awk '/Open decision([[:space:]]*\([^)]*\))?[[:space:]]*:/{f=1} /^## /{f=0} f'
+}
 label_window() { label_lines "$1" | tr '\n' ' ' | tr -s ' '; }
 
 # enum_count <file> -> how many alternatives the label enumerates, read from
 # whichever enumeration form the author used: bullet lines, "Option A"/"Option
-# B" markers, or inline "(a)"/"(b)" markers. Takes the largest of the three
-# rather than summing, so one bullet reading "- **Option A**" counts once.
+# B" markers (including bold `**Option A ...**` lead-ins), or inline
+# "(a)"/"(b)" markers. Takes the largest of the three rather than summing, so
+# one bullet reading "- **Option A**" counts once.
 #
 # Structure, not vocabulary. Earlier passes of this grader asserted a
 # particular phrasing of a particular option and failed conformant labels that
@@ -107,40 +139,42 @@ enum_count() {
   local w bullets opts alpha
   bullets=$(label_lines "$1" | grep -cE '^[[:space:]]*[-*][[:space:]]')
   w=$(label_window "$1")
-  opts=$(grep -oiE 'option [a-z0-9]\b' <<<"$w" | sort -uf | wc -l | tr -d ' ')
+  opts=$(grep -oiE '\*{0,2}option[[:space:]]+[a-z0-9]' <<<"$w" | sort -uf | wc -l | tr -d ' ')
   alpha=$(grep -oE '\([a-d1-4]\)' <<<"$w" | sort -u | wc -l | tr -d ' ')
   printf '%s\n' "$bullets" "$opts" "$alpha" | sort -rn | head -1
 }
 
-# why_open_clause <file> -> the label carries a clause about the FORK being
-# open, not merely reason language somewhere in the window.
+# why_open_clause <file> -> the label carries a clause saying why the fork is
+# open. Match the part that must be present: a clause about the fork, the
+# decision, the evidence, or the user's call — not a particular phrasing.
 #
-# Anchoring on the subject matters. A bare reason-connective search matches
+# Anchoring on that subject keeps a bare reason-connective search from matching
 # "Suggested default: (a) stateless, because it keeps this task scoped ..." —
-# the default explaining itself — and so passes a label whose why-open clause
-# was deleted outright. The rule requires a clause saying why *this fork* is
-# genuinely open, so the check looks for that subject: an explicit "Why open"
-# lead-in, or a sentence whose subject is the fork or the decision.
-#
-# The tradeoff is deliberate. A conformant clause phrased without either
-# subject marker would false-fail here; the operator then reads the label in
-# grading.txt, and evals.json's expectations carry the judgement of whether the
-# clause is true. Erring toward a check that can be missed beats one that
-# cannot be failed.
+# the default explaining itself — and so passing a label whose why-open clause
+# was deleted outright. Evidence-phrased clauses ("the evidence base does not
+# settle it", "this is the user's call") satisfy the same part.
 why_open_clause() {
-  window_has "$1" 'why open|why it is open|why this is open|open because|genuinely open|this fork|the fork (is|rests|remains|stays)|this decision (is|rests|remains|stays)|the decision (is|rests|remains|stays)|left (for|to) the user|user-owned'
+  window_has "$1" 'why open|why it is open|why this is open|open because|genuinely open|this fork|the fork (is|rests|remains|stays)|this decision (is|rests|remains|stays)|the decision (is|rests|remains|stays)|left (for|to) the user|user-owned|user.?s call|evidence (base )?(does not|cannot|fails to|will not) settle|evidence.*(silent|insufficient)|tiers.*(silent|do not settle|cannot settle)|does not settle'
 }
 window_has() { label_window "$1" | grep -qiE -- "$2"; }
 
-# open_decision_count <file> -> how many "Open decision:" labels the body has.
-open_decision_count() { grep -co 'Open decision:' "$1" 2>/dev/null || echo 0; }
-has_no_open_decision() { ! grep -q 'Open decision:' "$1"; }
+# open_decision_count <file> -> how many labeled open-decision lead-ins the
+# body has, including a qualified lead-in. A body that surfaces no decision
+# still reports zero.
+open_decision_count() {
+  local n
+  n="$(collapse_prose_wraps "$1" | grep -cioE "$OPEN_DECISION_LEAD_IN_PLAIN" || true)"
+  printf '%s\n' "${n:-0}"
+}
+has_no_open_decision() { [[ "$(open_decision_count "$1")" -eq 0 ]]; }
 has_one_open_decision() { [[ "$(open_decision_count "$1")" -eq 1 ]]; }
 
 # Surface half of the dual obligation: the user-facing turn is readable and
 # carries the decision plus the resolve-now / defer offer step 9 makes.
 response_readable() { [[ -s "$RESPONSE" ]]; }
-response_has() { response_readable && grep -qiE -- "$1" "$RESPONSE"; }
+response_has() {
+  response_readable && unwrapped "$RESPONSE" | grep -qiE -- "$1"
+}
 response_surfaces_decision() { response_has 'open decision'; }
 # The surface is an ask, not a mention: the turn names a suggested path and
 # hands the choice back. Match the substance rather than step 9's literal
@@ -157,9 +191,12 @@ file_untouched() {
   [[ -f "$f" ]] && [[ -z "$(find "$f" -newer "$marker" 2>/dev/null)" ]]
 }
 
-# Isolation fail-safe: the real repo's tasks/ must be untouched.
+# Isolation fail-safe: fixture names from this sandbox stay clear of the host
+# tasks tree. The baseline is the isolated copy stage.sh took in the eval temp
+# dir. A parallel edit of some other live task is outside the comparison.
 no_real_repo_writes() {
-  [[ -z "$(find "$REPO_ROOT/tasks" -type f -newer "$marker" 2>/dev/null)" ]]
+  host_fixture_writes_clean "$target" "$REPO_ROOT" "$TASKS" "$marker" \
+    && host_fixture_copy_clean "$target" "$REPO_ROOT" "$TASKS"
 }
 
 # --- universal ---------------------------------------------------------------
@@ -200,7 +237,7 @@ case "$eval_id" in
         unwrapped "$f" | grep -qiE 'TESTING\.md|standing repo rule|standing repo rules|testing guardrail|standing gate'
       }
       copied_rule_absent() {
-        ! grep -Fq 'Leave the production import where it is' "$f"
+        ! unwrapped "$f" | grep -Fq 'Leave the production import where it is'
       }
       check "the created task carries NO labeled open decision"        has_no_open_decision "$f"
       check "the body records the settled stubbing mechanism"          records_stub_mechanism
@@ -223,7 +260,7 @@ case "$eval_id" in
       names_both_options() { window_has "$f" 'disabl' && [[ "$(enum_count "$f")" -ge 2 ]]; }
       names_a_default() { window_has "$f" 'default|suggest|recommend|starting point'; }
       carries_why_open() { why_open_clause "$f"; }
-      check "exactly one labeled \"Open decision:\" in the body" has_one_open_decision "$f"
+      check "exactly one labeled open-decision lead-in in the body" has_one_open_decision "$f"
       check "the label names both options"                      names_both_options
       check "the label names a suggested default"               names_a_default
       check "the label carries a why-open clause"               carries_why_open
@@ -250,7 +287,7 @@ case "$eval_id" in
       carries_why_open() {
         why_open_clause "$f" && window_has "$f" 'CHARTER|ARCHITECTURE|guardrail|boundary'
       }
-      check "exactly one labeled \"Open decision:\" in the body" has_one_open_decision "$f"
+      check "exactly one labeled open-decision lead-in in the body" has_one_open_decision "$f"
       check "the label names the guardrail boundary in play"     names_boundary_conflict
       check "the label names both crossing paths (rich / ANSI)"  names_both_paths
       check "the label carries a guardrail-bound why-open clause" carries_why_open

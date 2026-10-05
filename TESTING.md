@@ -6,25 +6,45 @@ evidence that a shipped component works.
 
 ## Test Design Principles
 
-- **Assert the behaviour, not its wording.** A check names the property that
-  must hold and passes on every phrasing and placement that satisfies it.
-  Prose is the most variable surface an agent produces, so a grader that pins
-  one sentence fails correct work and reads as a regression.
+These four rules are the canonical grader-authoring requirements. A grader
+written against them fails only when the behaviour under test is genuinely
+wrong, and a failing eval names which behaviour broke.
+
+- **Assert substance, not surface form.** A check names the property that must
+  hold and passes on every phrasing and placement that satisfies it. Where a
+  rubric permits two repair shapes, the check accepts both. Prose is the most
+  variable surface an agent produces, so a grader that pins one sentence fails
+  correct work and reads as a regression.
+- **Anchor a structured match to its subject.** A check reading a structured
+  report field matches the record whose subject is the item under test. A bare
+  name match also hits that name inside another record's prose, so subject
+  anchoring keeps the grade on the right record.
+- **Read prose with wraps collapsed.** A check matching more than one word
+  reads the text with hard wraps removed. A wrap falling mid-phrase makes a
+  line-based match miss text that is present.
+- **Split a long conjunction.** An eval asserting many independent behaviours
+  reports per-behaviour results, so one slip localises instead of failing the
+  whole eval and hiding what still holds.
+
+Sibling principles that are not part of that four-rule set:
+
+- **Drop negations when scoring a named move.** A run that names a move in
+  order to say it did not take that move must not score as having taken it.
 - **Prefer a filesystem fact over a claim.** Grade what a run left behind, such
   as a file's bytes, a roster line, or a written brief, before grading what the
   run said about itself. Reach for a response check only where no artifact
   carries the property.
-- **Read prose with wraps collapsed and negations dropped.** A hard wrap
-  falling mid-phrase hides text that is present, and a run that names a move in
-  order to say it did not take that move must not score as having taken it.
 - **State the fail branch.** A check proves the failure case fails, not only
   that the hoped-for direction passes. A fixture that cannot fail measures
   nothing.
 - **Stage a sandbox per scenario.** Every harness operates on a fresh temporary
   tree, never on the working checkout. A harness that runs a component against
-  a real filesystem carries an explicit escape guard, such as a canary tree
-  outside the sandbox and a `git status` of the host checkout, so an escape
-  fails the scenario that caused it rather than passing unnoticed.
+  a real filesystem carries an explicit escape guard: a copy of the watched
+  tree in the eval's temporary directory, compared only for the names the
+  sandbox itself contains, or a `git status` of the host checkout where that
+  status is the signal. An escape of those watched names fails the scenario
+  that caused it. A parallel edit of some other live file stays outside the
+  comparison.
 
 ## Test Organization
 

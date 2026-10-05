@@ -75,6 +75,8 @@ target="$(cd "$target" && pwd)"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
+# shellcheck source=../../lib/host_tasks_guard.sh
+. "$HERE/../../lib/host_tasks_guard.sh"
 SKILLS="$REPO_ROOT/plugins/ai_dev/skills"
 
 skill_for() { printf '%s/%s/SKILL.md' "$SKILLS" "$1"; }
@@ -310,7 +312,10 @@ sandbox_proj="$target/proj"
 skill_path="$(skill_for "$skill_name")"
 
 # Marker = run-start epoch. grade.sh reads it for created-timestamp
-# tolerance and "nothing newer outside the sandbox" isolation checks.
+# tolerance. The isolation baseline is a temp copy of the host tasks tree,
+# compared later only for this sandbox's fixture names.
+snapshot_isolated_host_tasks "$target" "$REPO_ROOT"
+record_sandbox_task_names "$target" "$sandbox_proj/tasks"
 date +%s > "$target/.eval_started_at"
 
 printf 'sandbox_proj=%s\n' "$(printf %q "$sandbox_proj")"

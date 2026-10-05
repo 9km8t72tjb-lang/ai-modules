@@ -7,8 +7,9 @@ For the full design, see `README.md`. This is the operator's quick-ref.
 All harness logic lives under `tests/task/`. The skills under test are
 read-only to the harness. Fixtures stage their own sandboxes and never
 patch the deployed or source skills. Every behavioral eval also asserts
-an isolation fail-safe (no writes to the real repo's `tasks/` tree), so
-the suite is safe to run on the operator's real filesystem.
+an isolation fail-safe (the sandbox's fixture names stay clear of the host
+`tasks/` tree, measured against a temp copy), so a parallel edit of some
+other live task does not fail the suite.
 
 ## Common commands
 

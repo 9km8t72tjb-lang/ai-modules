@@ -42,6 +42,8 @@ target="$(cd "$target" && pwd)"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
+# shellcheck source=../../lib/host_tasks_guard.sh
+. "$HERE/../../lib/host_tasks_guard.sh"
 SKILL_MD="$REPO_ROOT/plugins/ai_dev/skills/task_fix/SKILL.md"
 
 case "$eval_id" in
@@ -68,12 +70,11 @@ skill_name="task_fix"
 skill_path="$SKILL_MD"
 
 date +%s > "$target/.eval_started_at"
-# Inventory of the real repo's tasks tree, for grade.sh's escape check. A
-# name-scoped mtime probe misses an escape that moves or closes out a real task
-# the worker never heard of, which is exactly what one observed run did. Paths,
-# not mtimes: a concurrent session editing a real task in place is legitimate
-# and must not false-positive, while an appearing or vanishing path is not.
-(cd "$REPO_ROOT" && find tasks -type f -name '*.md' | sort) > "$target/.real_tasks_manifest"
+# Isolated copy of the host tasks tree. Grade compares the live tree to this
+# copy only for the sandbox's fixture names, so a parallel session that moves
+# some other real task does not fail the check.
+snapshot_isolated_host_tasks "$target" "$REPO_ROOT"
+record_sandbox_task_names "$target" "$sandbox_proj/tasks"
 
 
 printf 'sandbox_proj=%s\n' "$(printf %q "$sandbox_proj")"

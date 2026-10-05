@@ -174,6 +174,28 @@ don't bring up new harnesses under Pattern B.
   by the local `run.py` wrapper, with hermetic unit tests for the
   detector under `script_tests/`.
 
+## Grader mechanics
+
+The durable grader-authoring rules live in `TESTING.md`
+`## Test Design Principles`. This section records the harness-level shape those
+rules take in the committed graders under `tests/`.
+
+- **Property-named checks, every satisfying phrasing.** A check names the
+  property under test and accepts every phrasing and placement that satisfies
+  it. Where a rubric permits two repair shapes, the check is a disjunction over
+  both shapes rather than a pin to one wording.
+- **Wrap-collapsed matching.** Graders that match more than one word of prose
+  expose a shared helper (`unwrapped` / `unwrapped_file`) that collapses hard
+  wraps to spaces, and every such check reads through that helper.
+- **Subject-anchored structured fields.** A check on a structured report field
+  (for example a `verdict:` line) matches the record whose subject is the item
+  under test (`verdict_line` / `verdict_is`), never a bare name appearing inside
+  another record's prose. When either of two named owners may carry the verdict,
+  the check is an either-side `verdict_is` disjunction.
+- **Per-behaviour reporting.** An eval that asserts many independent behaviours
+  prints PASS/FAIL per behaviour so one slip localises; the eval's overall exit
+  status still fails when any behaviour fails.
+
 ## Adding a harness for a new skill
 
 1. Create `tests/<skill_name>/` with Pattern A's layout.

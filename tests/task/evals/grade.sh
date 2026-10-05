@@ -34,6 +34,8 @@ start_epoch="$(cat "$marker")"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
+# shellcheck source=../../lib/host_tasks_guard.sh
+. "$HERE/../../lib/host_tasks_guard.sh"
 LINT="$REPO_ROOT/plugins/ai_dev/skills/task/scripts/lint.py"
 TASKS="$proj/tasks"
 
@@ -99,14 +101,22 @@ body_unchanged() {
 # that file is the graded surface for the assess-phase verdicts.
 REPORT="$proj/coherence-report.md"
 
+# unwrapped_file <path> -> the file with hard wraps collapsed. Task bodies are
+# hard-wrapped prose, so a line-based grep for a multi-word phrase silently
+# misses it when the wrap falls mid-phrase ("so it must\nfollow the rename").
+# Any check matching more than one word must read the unwrapped text.
+unwrapped_file() { tr '\n' ' ' < "$1" | tr -s ' '; }
+
 report_present() { [[ -s "$REPORT" ]]; }
-rep_has() { grep -qiE -- "$1" "$REPORT"; }
+rep_has() { unwrapped_file "$REPORT" | grep -qiE -- "$1"; }
 # rep_near <anchor-regex> <regex> [window] -> <regex> appears within <window>
 # lines of an <anchor-regex> hit, so evidence is attributed to its own task
-# rather than to anything anywhere in the report.
+# rather than to anything anywhere in the report. The window is wrap-collapsed
+# before the phrase match so a hard wrap mid-phrase cannot hide present text.
 rep_near() {
   local anchor="$1" re="$2" win="${3:-10}"
-  grep -iE -A"$win" -B"$win" -- "$anchor" "$REPORT" 2>/dev/null | grep -qiE -- "$re"
+  grep -iE -A"$win" -B"$win" -- "$anchor" "$REPORT" 2>/dev/null \
+    | tr '\n' ' ' | tr -s ' ' | grep -qiE -- "$re"
 }
 # selected_has / selected_lacks -> membership of the report's `selected:` line.
 selected_line() { grep -i '^ *selected:' "$REPORT" | head -1; }
@@ -121,11 +131,6 @@ verdict_line() { grep -iE "^ *verdict: *$1" "$REPORT" | head -1; }
 verdict_is() { verdict_line "$1" | grep -qiE -- "$2"; }
 # No tracked file changed — the sharp assertion for an assess-only run.
 tracked_unmodified() { [[ -z "$(git -C "$proj" diff --name-only HEAD 2>/dev/null)" ]]; }
-# unwrapped_file <path> -> the file with hard wraps collapsed. Task bodies are
-# hard-wrapped prose, so a line-based grep for a multi-word phrase silently
-# misses it when the wrap falls mid-phrase ("so it must\nfollow the rename").
-# Any check matching more than one word must read the unwrapped text.
-unwrapped_file() { tr '\n' ' ' < "$1" | tr -s ' '; }
 # section_unchanged <rel-path> <heading> -> that one section is byte-identical to
 # the committed seed, so a surfaced-not-applied candidate can be proven.
 section_unchanged() {
@@ -164,11 +169,12 @@ updated_bumped() {
   [[ -n "$e" ]] && (( e >= start_epoch - 120 ))
 }
 
-# Isolation fail-safe: the real repo's tasks/ must be untouched.
+# Isolation fail-safe: fixture names from this sandbox stay clear of the host
+# tasks tree. The baseline is the isolated copy stage.sh took in the eval temp
+# dir. A parallel edit of some other live task is outside the comparison.
 no_real_repo_writes() {
-  local hits
-  hits="$(find "$REPO_ROOT/tasks" -type f -newer "$marker" 2>/dev/null)"
-  [[ -z "$hits" ]]
+  host_fixture_writes_clean "$target" "$REPO_ROOT" "$TASKS" "$marker" \
+    && host_fixture_copy_clean "$target" "$REPO_ROOT" "$TASKS"
 }
 
 suite_passes() {
@@ -223,7 +229,7 @@ case "$eval_id" in
       # Acceptance contract: task-specific gates only — the named generic
       # project gates must not appear as acceptance items.
       acceptance_task_specific() {
-        local acc; acc="$(sed -n '/^## Acceptance/,$p' "$f")"
+        local acc; acc="$(sed -n '/^## Acceptance/,$p' "$f" | tr '\n' ' ' | tr -s ' ')"
         [[ -n "$acc" ]] && ! grep -qiE 'make lint|dry.run|full test suite' <<<"$acc"
       }
       check "description fits the ~180-char budget (<=200)"     description_within_budget
@@ -250,10 +256,12 @@ case "$eval_id" in
         && ! -e "$proj/FEATURES.md" && ! -e "$proj/TESTING.md" ]]
     }
     harness_docs_present() { [[ -f "$proj/CLAUDE.md" && -f "$proj/AGENTS.md" ]]; }
-    created_task_has() { [[ -f "${open_files[0]}" ]] && grep -qiE "$1" "${open_files[0]}"; }
+    created_task_has() {
+      [[ -f "${open_files[0]}" ]] && unwrapped_file "${open_files[0]}" | grep -qiE "$1"
+    }
     copied_rule_absent() {
       [[ -f "${open_files[0]}" ]] \
-        && ! grep -Fq 'Use Make plus POSIX shell for repo automation.' "${open_files[0]}"
+        && ! unwrapped_file "${open_files[0]}" | grep -Fq 'Use Make plus POSIX shell for repo automation.'
     }
     cites_repo_rules() { created_task_has 'standing repo rule|standing repo rules|repo rule|repo rules|standing project instruction|standing instruction'; }
     check "fixture has CLAUDE.md and AGENTS.md"                  harness_docs_present
@@ -269,7 +277,9 @@ case "$eval_id" in
   standing_rules_check)
     f="$TASKS/build_packaging-smoke.md"
     status_checked() { [[ "$(fm_field "$f" status)" == "checked" ]]; }
-    copied_rule_still_present() { grep -Fq 'Use Make plus POSIX shell for repo automation.' "$f"; }
+    copied_rule_still_present() {
+      unwrapped_file "$f" | grep -Fq 'Use Make plus POSIX shell for repo automation.'
+    }
     check "status stamped checked for the restated-rule finding" status_checked
     check "task_check preserved body content while reporting"     copied_rule_still_present
     note_agent_attest "response has a Restated standing rules issue that cites the base <body> corollary as the rule source"
@@ -279,8 +289,12 @@ case "$eval_id" in
   standing_rules_check_control)
     f="$TASKS/build_packaging-smoke.md"
     status_ready() { [[ "$(fm_field "$f" status)" == "ready" ]]; }
-    citation_present() { grep -qiE 'standing repo rules|repo rules|standing project instruction|standing instruction' "$f"; }
-    copied_rule_absent() { ! grep -Fq 'Use Make plus POSIX shell for repo automation.' "$f"; }
+    citation_present() {
+      unwrapped_file "$f" | grep -qiE 'standing repo rules|repo rules|standing project instruction|standing instruction'
+    }
+    copied_rule_absent() {
+      ! unwrapped_file "$f" | grep -Fq 'Use Make plus POSIX shell for repo automation.'
+    }
     check "status stamped ready for the cited-rule control" status_ready
     check "control task cites the standing/repo rules"      citation_present
     check "control task does not copy the standing rule"    copied_rule_absent
@@ -335,7 +349,7 @@ case "$eval_id" in
     a_still_ready()       { [[ "$(fm_field "$a" status)" == "ready" ]]; }
     a_no_implemented_by() { [[ -z "$(fm_field "$a" implemented-by)" ]]; }
     b_present_open()      { [[ -f "$b" && "$(fm_field "$b" status)" == "open" ]]; }
-    render_untouched()    { grep -q 'COLORS = {' "$proj/src/render.py"; }
+    render_untouched()    { unwrapped_file "$proj/src/render.py" | grep -q 'COLORS = {'; }
     check "gate stopped: sandbox git tree unchanged (no code edit)"  git_tree_clean
     check "task A left status ready (gate made no status change)"    a_still_ready
     check "task A has no implemented-by stamp"                       a_no_implemented_by
@@ -470,7 +484,7 @@ case "$eval_id" in
     # re-anchored to a stable label; the target file stays referenced.
     linepointer_reanchored() {
       local f="$TASKS/api_linepointer.md"
-      [[ -f "$f" ]] && ! grep -qiE 'line [0-9]+' "$f" && grep -q 'api_good' "$f"
+      [[ -f "$f" ]] && ! unwrapped_file "$f" | grep -qiE 'line [0-9]+' && grep -q 'api_good' "$f"
     }
     check "blocking findings driven to zero in archive mode"      lint_archive_no_blocking
     check "legacy archived status migrated to finished"           legacy_migrated
@@ -541,8 +555,8 @@ case "$eval_id" in
       local u e; u="$(fm_field "$f" updated)"; e="$(iso_epoch "$u")"
       [[ -n "$e" ]] && (( e >= start_epoch - 120 && e <= start_epoch + 1800 ))
     }
-    window_recorded()  { grep -qiE '24[[:space:]-]?h(our)?' "$f"; }
-    overlap_recorded() { grep -qiE '1[[:space:]-]?h(our)?|60[[:space:]-]?min|one[[:space:]-]hour' "$f"; }
+    window_recorded()  { unwrapped_file "$f" | grep -qiE '24[[:space:]-]?h(our)?'; }
+    overlap_recorded() { unwrapped_file "$f" | grep -qiE '1[[:space:]-]?h(our)?|60[[:space:]-]?min|one[[:space:]-]hour'; }
     # Rewrite in place: both unsettled placeholders are superseded, not
     # left standing beside the newly recorded decisions.
     tbd_superseded()   { ! grep -qi 'TBD' "$f"; }
@@ -586,11 +600,17 @@ case "$eval_id" in
       [[ -n "$e" ]] && (( e >= start_epoch - 120 && e <= start_epoch + 1800 ))
     }
     # 1 accepted: the unverifiable item is replaced by the concrete check.
-    accepted_applied() { grep -qi '429' "$f" && ! grep -qi 'works properly' "$f"; }
+    accepted_applied() {
+      grep -qi '429' "$f" && ! unwrapped_file "$f" | grep -qi 'works properly'
+    }
     # 2 rejected: the Goal sentence stays byte-identical.
-    rejected_untouched() { grep -qF 'Protect the public API from abusive clients.' "$f"; }
+    rejected_untouched() {
+      unwrapped_file "$f" | grep -qF 'Protect the public API from abusive clients.'
+    }
     # 3 modified: the user's instruction wins over the report's suggestion.
-    modified_won() { grep -q 'docs/api.md' "$f" && ! grep -q 'src/api/server.py' "$f"; }
+    modified_won() {
+      grep -q 'docs/api.md' "$f" && ! grep -q 'src/api/server.py' "$f"
+    }
     git_modified() {
       git -C "$proj" ls-files --error-unmatch tasks/api_rate-limit.md >/dev/null 2>&1 \
         && [[ -n "$(git -C "$proj" status --porcelain tasks/api_rate-limit.md)" ]]
@@ -615,7 +635,13 @@ case "$eval_id" in
     # grep the files directly (not `cat ... | grep -q`): under `set -o
     # pipefail` a matching `grep -q` closes the pipe early, cat dies with
     # SIGPIPE, and the pipeline reports failure on a real match.
-    covers() { grep -qiE "$1" "$TASKS"/*.md 2>/dev/null; }
+    covers() {
+      local f
+      for f in "$TASKS"/*.md; do
+        unwrapped_file "$f" | grep -qiE "$1" && return 0
+      done
+      return 1
+    }
     several_tasks() { [[ -f "${open_files[0]}" ]] && (( ${#open_files[@]} >= 2 )); }
     section_pooling() { covers 'pgbouncer|connection pool'; }
     section_replica() { covers 'read replica|replica lag|replication'; }
@@ -646,7 +672,9 @@ case "$eval_id" in
     src="$proj/notes/session-cache-bug.md"
     open_files=( "$TASKS"/*.md )
     one_task() { [[ -f "${open_files[0]}" && ${#open_files[@]} -eq 1 ]]; }
-    has() { [[ -f "${open_files[0]}" ]] && grep -qiE "$1" "${open_files[0]}"; }
+    has() {
+      [[ -f "${open_files[0]}" ]] && unwrapped_file "${open_files[0]}" | grep -qiE "$1"
+    }
     repro_kept()      { has 'race condition|two tabs'; }
     culprit_kept()    { has 'sessioncache'; }
     constraint_kept() { has 'backward.compat|re-login|on-disk session'; }
@@ -663,8 +691,8 @@ case "$eval_id" in
   check_boundary_contradiction)
     f="$TASKS/cli_json-output-flag.md"
     status_checked() { [[ "$(fm_field "$f" status)" == "checked" ]]; }
-    out_of_scope_preserved() { grep -Fq '**Out of scope:**' "$f"; }
-    yaml_body_preserved() { grep -Fq 'report --yaml' "$f"; }
+    out_of_scope_preserved() { unwrapped_file "$f" | grep -Fq '**Out of scope:**'; }
+    yaml_body_preserved() { unwrapped_file "$f" | grep -Fq 'report --yaml'; }
     check "status stamped checked for the boundary contradiction" status_checked
     check "read-only stamp: the **Out of scope:** block is preserved" out_of_scope_preserved
     check "read-only stamp: the conflicting --yaml acceptance is preserved" yaml_body_preserved
@@ -675,7 +703,7 @@ case "$eval_id" in
   check_boundary_clean)
     f="$TASKS/cli_exit-code-on-error.md"
     file_present() { [[ -f "$f" ]]; }
-    no_out_of_scope_block() { ! grep -Fq '**Out of scope:**' "$f"; }
+    no_out_of_scope_block() { ! unwrapped_file "$f" | grep -Fq '**Out of scope:**'; }
     task_check_ran() { local s; s="$(fm_field "$f" status)"; [[ "$s" == "checked" || "$s" == "ready" ]]; }
     check "control fixture carries no **Out of scope:** block" no_out_of_scope_block
     check "the checked task file is still present"              file_present
@@ -688,8 +716,10 @@ case "$eval_id" in
     a="$TASKS/report_colored-lines.md"
     a_still_ready()       { [[ "$(fm_field "$a" status)" == "ready" ]]; }
     a_no_implemented_by() { [[ -z "$(fm_field "$a" implemented-by)" ]]; }
-    theme_untouched()     { grep -Fq 'return text' "$proj/src/theme.py"; }
-    report_untouched()    { grep -Fq 'format_line(line) for line in lines' "$proj/src/report.py"; }
+    theme_untouched()     { unwrapped_file "$proj/src/theme.py" | grep -Fq 'return text'; }
+    report_untouched()    {
+      unwrapped_file "$proj/src/report.py" | grep -Fq 'format_line(line) for line in lines'
+    }
     check "backstop held: sandbox git tree unchanged (no crossing edit)"   git_tree_clean
     check "task left status ready (backstop made no status change)"        a_still_ready
     check "task has no implemented-by stamp"                               a_no_implemented_by
@@ -704,7 +734,7 @@ case "$eval_id" in
     add="$TASKS/calc_add-function.md"
     subt="$TASKS/calc_subtract-function.md"
     add_works()      { ( cd "$proj" && python3 -c "from mathutils.calc import add; import sys; sys.exit(0 if add(2,3)==5 else 1)" ); }
-    sub_still_stub() { grep -Fq 'sub is not implemented yet' "$calc"; }
+    sub_still_stub() { unwrapped_file "$calc" | grep -Fq 'sub is not implemented yet'; }
     test_exists()    { [[ -n "$(find "$proj/tests" -name 'test_*.py' 2>/dev/null)" ]]; }
     add_implemented() {
       [[ -f "$add" ]] \
@@ -733,7 +763,7 @@ case "$eval_id" in
     check "the new task lints clean (no broken deferral link, valid form)"    lint_no_blocking
     if one_open_task; then
       f="${open_files[0]}"
-      has_out_of_scope() { grep -Fq '**Out of scope:**' "$f"; }
+      has_out_of_scope() { unwrapped_file "$f" | grep -Fq '**Out of scope:**'; }
       # Extract the Out of scope block: the **Out of scope:** label line itself
       # (so an inline "**Out of scope:** <entries>" block is captured, not just
       # a multi-line label-then-bullets block) plus every following line up to
@@ -766,8 +796,10 @@ case "$eval_id" in
     rel="tasks/build_packaging-smoke.md"
     f="$proj/$rel"
     status_checked() { [[ "$(fm_field "$f" status)" == "checked" ]]; }
-    guardrail_entry_preserved() { grep -Fq 'never passes a manifest that lacks a required field' "$f"; }
-    meta_note_preserved() { grep -Fq 'is not an exclusion' "$f"; }
+    guardrail_entry_preserved() {
+      unwrapped_file "$f" | grep -Fq 'never passes a manifest that lacks a required field'
+    }
+    meta_note_preserved() { unwrapped_file "$f" | grep -Fq 'is not an exclusion'; }
     check "status stamped checked for the miscategorized-exclusion finding" status_checked
     check "read-only stamp: the guardrail entry is preserved in the body"    guardrail_entry_preserved
     check "read-only stamp: the meta not-an-exclusion note is preserved"     meta_note_preserved
@@ -784,10 +816,10 @@ case "$eval_id" in
     f="$proj/$rel"
     status_ready() { [[ "$(fm_field "$f" status)" == "ready" ]]; }
     genuine_exclusions_preserved() {
-      grep -Fq 'Type validation of the manifest field values' "$f" \
-        && grep -Fq 'A CI workflow that runs the new target on every push' "$f"
+      unwrapped_file "$f" | grep -Fq 'Type validation of the manifest field values' \
+        && unwrapped_file "$f" | grep -Fq 'A CI workflow that runs the new target on every push'
     }
-    no_meta_note() { ! grep -Fq 'is not an exclusion' "$f"; }
+    no_meta_note() { ! unwrapped_file "$f" | grep -Fq 'is not an exclusion'; }
     check "status stamped ready for the genuine-exclusions control" status_ready
     check "control block still holds only work-not-done rejections" genuine_exclusions_preserved
     check "control fixture carries no meta not-an-exclusion note"   no_meta_note
@@ -801,9 +833,13 @@ case "$eval_id" in
     rel="tasks/build_packaging-smoke.md"
     f="$proj/$rel"
     status_checked() { [[ "$(fm_field "$f" status)" == "checked" ]]; }
-    gate_rule_seeded() { grep -Fq 'Run `make lint` and resolve every finding' "$proj/CLAUDE.md"; }
+    gate_rule_seeded() {
+      unwrapped_file "$proj/CLAUDE.md" | grep -Fq 'Run `make lint` and resolve every finding'
+    }
     no_charter() { [[ ! -e "$proj/CHARTER.md" ]]; }
-    waiver_entry_preserved() { grep -Fq "The repo's lint gate for this change" "$f"; }
+    waiver_entry_preserved() {
+      unwrapped_file "$f" | grep -Fq "The repo's lint gate for this change"
+    }
     check "status stamped checked for the rule-waiving exclusion"      status_checked
     check "fixture sanity: the root CLAUDE.md states the lint gate"     gate_rule_seeded
     check "fixture sanity: no CHARTER.md (ordinary standing-rule path)" no_charter
@@ -821,8 +857,12 @@ case "$eval_id" in
     rel="tasks/build_packaging-smoke.md"
     f="$proj/$rel"
     status_ready() { [[ "$(fm_field "$f" status)" == "ready" ]]; }
-    carveout_rule_seeded() { grep -Fq 'The lint surface skips everything under `fixtures/`' "$proj/CLAUDE.md"; }
-    carveout_entry_preserved() { grep -Fq 'Hand-formatting the generated manifest fixtures' "$f"; }
+    carveout_rule_seeded() {
+      unwrapped_file "$proj/CLAUDE.md" | grep -Fq 'The lint surface skips everything under `fixtures/`'
+    }
+    carveout_entry_preserved() {
+      unwrapped_file "$f" | grep -Fq 'Hand-formatting the generated manifest fixtures'
+    }
     check "status stamped ready for the carve-out control"              status_ready
     check "fixture sanity: the root rule provides the fixtures carve-out" carveout_rule_seeded
     check "fixture sanity: the gate is satisfiable (Makefile lint target)" grep -q '^lint:' "$proj/Makefile"
@@ -900,9 +940,11 @@ case "$eval_id" in
     # The repair shape names ONE owner and leaves the other verify-only, so the
     # alter verdict legitimately lands on either side — requiring it on a
     # named side would fail a correct resolution that picked the other owner.
+    # Match each candidate through verdict_is so a name inside another record's
+    # prose cannot satisfy or defeat the check.
+    alter_on_either() { verdict_is "$1" 'alter' || verdict_is "$2" 'alter'; }
     check "(a) the double-owned severity_label edit is an alter finding" \
-      bash -c 'grep -iE "^ *verdict:" "'"$REPORT"'" \
-        | grep -iE "tool_severity-label-(rename|docstring)" | grep -qi alter'
+      alter_on_either tool_severity-label-rename tool_severity-label-docstring
     check "(a) the report names both owners of that one edit" \
       rep_near 'tool_severity-label-rename' 'severity-label-docstring'
     check "(a) the report names the shared edit as the evidence" \
@@ -917,8 +959,7 @@ case "$eval_id" in
     # license task, or couple the change to the exception task that owns its
     # precondition. Requiring a named side would fail the second shape.
     check "(c) the re-blocking finding is an alter finding" \
-      bash -c 'grep -iE "^ *verdict:" "'"$REPORT"'" \
-        | grep -iE "tool_(missing-license-finding|loop-exception)" | grep -qi alter'
+      alter_on_either tool_missing-license-finding tool_loop-exception
     check "(c) the report ties it to the loop exception it re-blocks" \
       rep_near 'tool_missing-license-finding' 'loop-exception|clean bar|clean-bar|SEV_WARN'
     # (d) a rule enumerating fewer sites than it implies.
@@ -928,7 +969,7 @@ case "$eval_id" in
       rep_near 'tool_check-docstring-sweep' 'license_check|docstring_check|encoding_check'
     # (e) two siblings answering one severity question oppositely.
     check "(e) the opposed posture is an alter finding" \
-      bash -c 'grep -iE "^ *verdict:" "'"$REPORT"'" | grep -iE "tool_(path|glob)-check-severity" | grep -qi alter'
+      alter_on_either tool_path-check-severity tool_glob-check-severity
     check "(e) the report names both sides of the posture split" \
       rep_near 'tool_path-check-severity' 'glob-check-severity|SEV_INFO|posture|opposite|inconsist'
     # (f) a genuinely underdetermined fork: labeled, with options and a path.
@@ -974,8 +1015,8 @@ case "$eval_id" in
           rb="$(grep -ni "register-path-check" <<<"$sec" | head -1 | cut -d: -f1)"
           [[ -n "$ra" && -n "$rb" ]] && (( ra <= rb ))
         else
-          grep -iE "register-path-check" "'"$REPORT"'" \
-            | grep -qiE "after .*severity-registry|severity-registry.*(first|lands)|prerequisite"
+          tr "\n" " " < "'"$REPORT"'" | tr -s " " \
+            | grep -qiE "register-path-check.*(after .*severity-registry|severity-registry.*(first|lands)|prerequisite)|severity-registry.*(first|lands).*register-path-check"
         fi'
     check "the backlog still lints clean in archive mode" lint_archive_no_blocking
     note_agent_attest "the response carries the same assessment section, with the mode used ('inline' or 'escalated') for the mechanical pass and no third mode token for coherence"
@@ -1014,15 +1055,17 @@ case "$eval_id" in
       bash -c '! diff -q <(git -C "'"$proj"'" show HEAD:tasks/tool_missing-license-finding.md) \
         "'"$TASKS"'/tool_missing-license-finding.md" >/dev/null'
     check "(c) the repair records the clean-bar reason or couples the sibling" \
-      grep -qiE 'loop-exception|clean bar|clean-bar|SEV_INFO|accepted' "$TASKS/tool_missing-license-finding.md"
+      bash -c 'tr "\n" " " < "'"$TASKS"'/tool_missing-license-finding.md" | tr -s " " \
+        | grep -qiE "loop-exception|clean bar|clean-bar|SEV_INFO|accepted"'
     # (d) the enumeration completed to the rule's real site set.
     # (d) A selector over the package closes the short sweep at least as well as
     # a full enumeration, and the base count-stable rule prefers it, so accept
     # either. What must be gone is the two-item subset standing as the site list.
     check "(d) the short sweep is completed by enumeration or by a selector" \
       bash -c 'f="'"$TASKS"'/tool_check-docstring-sweep.md";
+        unwrapped_file() { tr "\n" " " < "$1" | tr -s " "; };
         { grep -q license_check "$f" && grep -q docstring_check "$f" && grep -q encoding_check "$f"; } \
-        || grep -qiE "(every|each|all) modules? under tool/checks|that (currently )?lacks? one" "$f"'
+        || unwrapped_file "$f" | grep -qiE "(every|each|all) modules? under tool/checks|that (currently )?lacks? one"'
     # (e) The lens names two dispositions and reconciling the tier is the first
     # of them, so compare the tiers before looking for a recorded reason — an
     # earlier version checked only for the reason and rejected the reconcile.
@@ -1057,14 +1100,16 @@ case "$eval_id" in
     check "the report was written to coherence-report.md"      report_present
     check "the run reports the inline writer mode"             rep_has 'inline'
     check "no auto_shaper_task escalation ran" \
-      bash -c '! grep -qi "auto_shaper_task report\|tree shaping complete" "'"$REPORT"'"'
+      bash -c '! tr "\n" " " < "'"$REPORT"'" | tr -s " " \
+        | grep -qiE "auto_shaper_task report|tree shaping complete"'
     # The two accepted staleness repairs land.
     check "(b) the stale anchor is refreshed to the shipped helper" \
       bash -c 'f="'"$TASKS"'/tool_clean-bar-note.md"; ! grep -q unreachable_clean_bar "$f" \
         && grep -q reachable_clean_bar "$f"'
     check "(b) updated bumped on the anchor-refresh file" updated_bumped tool_clean-bar-note.md
     check "(k) the additive Out of scope note landed" \
-      grep -Fq '**Out of scope:**' "$TASKS/tool_summary-line.md"
+      bash -c 'tr "\n" " " < "'"$TASKS"'/tool_summary-line.md" | tr -s " " \
+        | grep -Fq "**Out of scope:**"'
     check "(k) updated bumped on the note file"          updated_bumped tool_summary-line.md
     # The change-significance rule: (k) keeps its ready status.
     check "(k) the ready task stays ready after the additive note" \

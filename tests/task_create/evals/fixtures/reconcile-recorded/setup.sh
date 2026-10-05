@@ -8,8 +8,8 @@
 # the archived precedent task took that same path, and the code shows the
 # module-scope import that forces it. No tier is against it, so the fork is a
 # reconciliation, not an open decision: the written task must carry no
-# "Open decision:" at all and must record the settled path, citing the standing
-# rule rather than copying it.
+# labeled open-decision lead-in at all and must record the settled path,
+# citing the standing rule rather than copying it.
 #
 # This mirrors the observed failure the rule tightening closes — an authoring
 # session that labeled an evidence-settled test-reachability fork as its open

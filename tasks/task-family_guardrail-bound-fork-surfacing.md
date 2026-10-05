@@ -86,7 +86,7 @@ eval's recorded history reads as flaky because two failure causes were mixed
 under one verdict.
 
 **Out of scope:** Widening the grader's label needles, which
-[the grader-authoring discipline task](tests_grader-authoring-discipline.md)
+[the grader-authoring discipline task](archive/tests_grader-authoring-discipline.md)
 owns and which this task depends on only for reading its own re-measurement
 cleanly.
 
@@ -102,7 +102,7 @@ label** without copying the full Decide or label procedure, so one canonical
 procedure remains.
 
 After [the grader-authoring discipline
-task](tests_grader-authoring-discipline.md) Acceptance entry whose lead-in is
+task](archive/tests_grader-authoring-discipline.md) Acceptance entry whose lead-in is
 "Each label-structure check in the `task_create` grader" holds, five consecutive
 draws of the `guardrail-bound-surface` eval, run with `--no-cache` so each is an
 independent sample, produce both a labelled open decision naming the guardrail

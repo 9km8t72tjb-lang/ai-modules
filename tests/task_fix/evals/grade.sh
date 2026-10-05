@@ -35,6 +35,8 @@ fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
+# shellcheck source=../../lib/host_tasks_guard.sh
+. "$HERE/../../lib/host_tasks_guard.sh"
 LINT="$REPO_ROOT/plugins/ai_dev/skills/task/scripts/lint.py"
 TASKS="$proj/tasks"
 RESPONSE="${RESPONSE_FILE:-$target/../response.txt}"
@@ -130,20 +132,20 @@ disposition_line() {
 }
 
 no_real_repo_writes() {
-  local hits
-  hits="$(find "$REPO_ROOT/tasks" -type f -name 'api_*.md' -newer "$marker" 2>/dev/null)"
-  [[ -z "$hits" ]]
+  # Fixture names from this sandbox, compared with the isolated copy taken at
+  # stage. A concurrent session editing some other real task stays outside
+  # the comparison. A host tasks/api_*.md file newer than the marker still fails
+  # when that name is one this sandbox staged.
+  host_fixture_writes_clean "$target" "$REPO_ROOT" "$TASKS" "$marker"
 }
 
 # --- universal ---------------------------------------------------------------
 
-# no_real_tasks_moved -> the real repo's tasks tree holds exactly the paths it
-# held at stage time. Catches an escape that archives, creates, renames or
-# deletes a real task, which the fixture-name probe above cannot see.
+# no_real_tasks_moved -> fixture-named paths and bytes still match the isolated
+# copy taken at stage. A parallel session that moves some other real task
+# changes the live tree and leaves this check green.
 no_real_tasks_moved() {
-  local manifest="$target/.real_tasks_manifest"
-  [[ -s "$manifest" ]] || return 0
-  diff -q "$manifest" <(cd "$REPO_ROOT" && find tasks -type f -name '*.md' | sort) >/dev/null
+  host_fixture_copy_clean "$target" "$REPO_ROOT" "$TASKS"
 }
 
 check "isolation: no writes to the real repo's tasks/ tree" no_real_repo_writes

@@ -134,9 +134,9 @@ and the isolation fail-safe.
 state: files created/moved, status transitions, `git mv` tracking, link
 re-pointing, a clean re-lint, a green test suite, and the
 created-timestamp tolerance. It also asserts the **isolation fail-safe**
-on every eval: *no writes to the real repo's `tasks/` tree*. It is the same
-load-bearing guard the `wiki/` Layer 2 harness uses to justify running on
-the operator's real filesystem.
+on every eval: fixture names from the sandbox stay clear of the host
+`tasks/` tree, measured against the temp copy `stage.sh` took. An unrelated
+edit of some other live task stays outside that comparison.
 
 The six `fix_coherence*` evals extend that with one more graded surface:
 their prompts ask the agent to write its report to

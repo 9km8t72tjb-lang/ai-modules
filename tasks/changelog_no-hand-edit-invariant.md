@@ -2,8 +2,8 @@
 description: Move the "changelog is committed-history-derived, never hand-edited" invariant into the update_changelog skill so the artifact owns it, then remove the duplicated standing repo rule.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-21T13:25:38
-updated: 2026-09-05T21:26:04
-status: open
+updated: 2026-10-04T22:54:31
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -40,9 +40,8 @@ the skill states it.
   points at. That task's run-scope corollary now ships as the skill's
   `<run_scope>` clause, and this task owns the general invariant the corollary
   specializes.
-- Motivating case: session `07a4d5ec`, where an agent hand-wrote entries for
-  uncommitted working-tree changes and they had to be reverted, the failure this
-  invariant prevents.
+- Motivating case: an agent hand-wrote entries for uncommitted working-tree
+  changes and they had to be reverted, the failure this invariant prevents.
 - The standing repo rule is also the always-in-context guard for an agent doing
   unrelated work in this repo, who never loads the skill. Removing it is therefore
   gated on the skill carrying the invariant: until the skill states it, the repo
@@ -50,12 +49,14 @@ the skill states it.
 
 ## Approach
 
-- Add a `<source_of_truth>` clause to the skill's `<policy>` block stating
-  positively: the changelog records committed git history only; every entry is
-  produced by running the skill over commits; the operator persists it by
-  committing the skill's output; the file is never hand-authored or hand-edited.
-  Frame the guardrail (never hand-edit) alongside the action (run the skill, commit
-  its output).
+- Add a new `<source_of_truth>` sibling under the skill's `<policy>` block for
+  changelog provenance, leaving the existing `<workflow_authority>` clause
+  unchanged as the authority for `/update_changelog` workflow, output format, and
+  entry style. The new clause states positively: the changelog records committed
+  git history only; every entry is produced by running the skill over commits; the
+  operator persists it by committing the skill's output; the file is never
+  hand-authored or hand-edited. Frame the guardrail (never hand-edit) alongside
+  the action (run the skill, commit its output).
 - Reflect the invariant in `<objective>` as a brief provenance mention naming
   committed git history as the sole source, and keep the never-hand-edit
   prohibition and the commit-the-output mechanics in the `<source_of_truth>` clause
@@ -70,11 +71,15 @@ the skill states it.
   the portable artifact now owns it. Run this removal only once the skill change is
   in place. The repo rule is the interim always-on home and stays until then.
 
-Non-goals: leave the day-section output format, the `prepare_changelog_day.sh`
-script, and the date-enumeration logic unchanged (the incremental-day-boundaries
-task owns enumeration); do not touch existing `CHANGELOG.md` content; per the
-standing repo rules, leave any version bump to commit time rather than recording it
-here.
+**Out of scope:**
+
+- Changing the day-section output format.
+- Changing the `prepare_changelog_day.sh` script.
+- Changing the date-enumeration logic; that work belongs to
+  [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md).
+- Editing existing `CHANGELOG.md` content.
+- Recording a version bump in this change; the standing repo rules leave any
+  version bump to commit time rather than recording it here.
 
 ## Acceptance
 
@@ -83,6 +88,10 @@ here.
   hand-authored or hand-edited, and committing the skill's output is how it is
   persisted. (Today `<run_scope>` covers only committed-history run scope; the
   hand-edit prohibition and output-persistence mechanics appear nowhere.)
+- The existing `<workflow_authority>` clause still states the skill is the source
+  of truth for `/update_changelog` workflow, output format, and entry style, and
+  the provenance invariant lives in a separate `<source_of_truth>` sibling rather
+  than by renaming, merging into, or replacing that clause.
 - The `<objective>` names committed git history as the sole source of changelog
   content.
 - The invariant is stated once in the skill: the `<source_of_truth>` clause is
@@ -95,4 +104,7 @@ here.
   still states it.
 - Reading the skill alone, without this repo's standing instructions, tells an
   operator the changelog comes from committed history and must not be hand-edited.
-- The day-section output format and first-run behavior are unchanged.
+- `git diff` shows no change to the day-section output format, first-run
+  behavior, or date-enumeration logic in the skill; no change to
+  `scripts/prepare_changelog_day.sh`; and no change to existing
+  `CHANGELOG.md` content.
