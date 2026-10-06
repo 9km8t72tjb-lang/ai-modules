@@ -149,4 +149,6 @@ On the first write of a JSON key through `merge_json_key`, the previous value is
 
 ## Platform Notes
 
-The script runs on Bash 3.2, the stock macOS interpreter at `/bin/bash`. A `#!/usr/bin/env bash` shebang resolves to that build whenever a non-login shell's `PATH` carries no newer Bash, which is how an agent harness runs it. It relies on standard Unix tools (`cp -a`, `sort`, `mktemp`) plus `jq` and `perl` on macOS and Linux. Windows requires a compatible Unix-like environment such as WSL.
+The script runs on Bash 3.2, the stock macOS interpreter at `/bin/bash`. A `#!/usr/bin/env bash` shebang resolves to that build whenever a non-login shell's `PATH` carries no newer Bash, which is how an agent harness runs it. It relies on standard Unix tools (`cp`, `sort`, `mktemp`) plus `jq`, `perl`, and `rsync` on macOS and Linux. The script aborts at startup if `jq`, `perl`, or `rsync` is missing from `PATH`, naming the binary. Windows requires a compatible Unix-like environment such as WSL.
+
+Global backups still copy each activated target tree wholesale (config, session logs, and artefacts). They run `rsync -rlptgo` so sockets, FIFOs, and device nodes are omitted, and they treat rsync exit 24 (a source file that vanished during the copy) as success rather than aborting the deploy.

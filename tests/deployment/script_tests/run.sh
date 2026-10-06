@@ -271,6 +271,63 @@ assert_file "$DIRTY_DEST/SKILL.md"
 assert_no_bytecode "$DIRTY_DEST"
 [[ ! -e "$DIRTY_DEST/scripts/stale.pyc" ]] || fail "redeploy left a stale .pyc in place"
 
+# ---------------------------------------------------------------------------
+# Backup copy skips sockets and FIFOs instead of aborting.
+# ---------------------------------------------------------------------------
+BACKUP_HOME="${SCRATCH}/backup-home"
+mkdir -p "$BACKUP_HOME/.claude/kept dir"
+printf 'keep\n' > "$BACKUP_HOME/.claude/kept dir/notes.txt"
+printf 'target\n' > "$BACKUP_HOME/.claude/real.txt"
+ln -s "real.txt" "$BACKUP_HOME/.claude/link.txt"
+mkfifo "$BACKUP_HOME/.claude/live.pipe"
+python3 -c 'import socket, sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' \
+  "$BACKUP_HOME/.claude/ipc.sock"
+
+HOME="$BACKUP_HOME" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude --type style >/dev/null
+
+shopt -s nullglob
+backup_dirs=("$BACKUP_HOME"/.claude_*)
+shopt -u nullglob
+[[ ${#backup_dirs[@]} -eq 1 ]] || fail "expected one ~/.claude_<timestamp> backup, got ${#backup_dirs[@]}"
+bak="${backup_dirs[0]}"
+assert_file "$bak/kept dir/notes.txt"
+assert_contains "$bak/kept dir/notes.txt" '^keep$'
+assert_file "$bak/real.txt"
+[[ -L "$bak/link.txt" ]] || fail "backup dropped the symlink"
+[[ "$(readlink "$bak/link.txt")" == "real.txt" ]] || fail "backup symlink target changed"
+[[ ! -e "$bak/ipc.sock" ]] || fail "backup copied the socket"
+[[ ! -p "$bak/live.pipe" && ! -e "$bak/live.pipe" ]] || fail "backup copied the FIFO"
+
+# ---------------------------------------------------------------------------
+# Startup gate names jq, perl, and rsync when PATH lacks them.
+# ---------------------------------------------------------------------------
+link_cmd() {
+  local dest_dir="$1" name="$2"
+  ln -s "$(command -v "$name")" "$dest_dir/$name"
+}
+
+assert_startup_requires() {
+  local missing="$1"
+  shift
+  local tool_dir out rc=0
+  tool_dir="$(mktemp -d "${SCRATCH}/tools.XXXXXX")"
+  link_cmd "$tool_dir" dirname
+  local present
+  for present in "$@"; do
+    link_cmd "$tool_dir" "$present"
+  done
+  out="$(PATH="$tool_dir" HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --dry-run 2>&1)" || rc=$?
+  [[ "$rc" -ne 0 ]] || fail "deploy dry-run succeeded without $missing"
+  printf '%s\n' "$out" | grep -Fq "$missing is required for deployment" ||
+    fail "missing $missing did not name $missing in: $out"
+}
+
+assert_startup_requires jq perl rsync
+assert_startup_requires perl jq rsync
+assert_startup_requires rsync jq perl
+
 printf 'OpenCode deployment regression passed\n'
 printf 'Antigravity deployment regression passed\n'
 printf 'Python bytecode exclusion regression passed\n'
+printf 'Backup skip of sockets and FIFOs regression passed\n'
+printf 'Startup gate for jq, perl, and rsync regression passed\n'

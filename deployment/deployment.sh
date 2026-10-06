@@ -33,6 +33,8 @@ set -euo pipefail
 #   basename(target_dir). The caller can override <name> when the basename
 #   isn't tool-distinctive — e.g. VS Code's user-prompts dir on macOS and
 #   OpenCode's ~/.config/opencode config dir both have generic basenames.
+#   jq, perl, and rsync are required at startup: the script aborts with a
+#   named-binary message when any one is missing from PATH.
 #
 # Usage:
 #   ./deployment.sh                              # show usage and examples
@@ -590,11 +592,15 @@ if [[ "$GLOBAL_MODE" != true && -z "$PROJECT_DIR" ]]; then
   fi
 fi
 
-# jq is required for JSON-merge hook deployment (Claude Code settings.json)
-if ! command -v jq &>/dev/null; then
-  echo "Error: jq is required but not installed." >&2
-  exit 1
-fi
+# jq, perl, and rsync are the non-stock extras the rest of this script calls.
+# A PATH lookup here fails before any copy or merge, with the missing name.
+for _required_cmd in jq perl rsync; do
+  if ! command -v "$_required_cmd" >/dev/null 2>&1; then
+    echo "Error: $_required_cmd is required for deployment but was not found on PATH." >&2
+    exit 1
+  fi
+done
+unset _required_cmd
 
 # ---------------------------------------------------------------------------
 # App targets: id|label|base_dir
@@ -1812,6 +1818,27 @@ clear_old_backups_for_app_dir() {
   eval "$_old_nullglob"
 }
 
+# Copy a live config tree for backup without aborting on uncopyable nodes.
+#
+# Both Samba rsync and openrsync treat -a as archive plus devices/specials
+# (-D). Using -rlptgo is archive without -D, so sockets, FIFOs, and device
+# nodes are omitted. Samba rsync uses exit 24 when a source file vanishes
+# mid-copy (live sqlite WAL/SHM); that is treated as success. Current macOS
+# ships openrsync as /usr/bin/rsync; Linux typically ships Samba rsync.
+copy_tree_for_backup() {
+  local source="$1"
+  local dest="$2"
+  local rc=0
+
+  mkdir -p "$dest"
+  rsync -rlptgo "$source/" "$dest/" || rc=$?
+  if [[ "$rc" -eq 0 || "$rc" -eq 24 ]]; then
+    return 0
+  fi
+  err "backup-copy" "rsync exited $rc copying $source to $dest"
+  return 1
+}
+
 clear_backups_for_active_targets() {
   declare -a cleared_roots=()
   for target in "${APP_TARGETS[@]}"; do
@@ -1862,7 +1889,7 @@ backup_app_dir() {
     return 0
   fi
 
-  cp -a "$app_dir" "$backup_dir"
+  copy_tree_for_backup "$app_dir" "$backup_dir"
   ok "backup" "$backup_dir"
   SUMMARY_BACKUPS=$((SUMMARY_BACKUPS + 1))
 }
