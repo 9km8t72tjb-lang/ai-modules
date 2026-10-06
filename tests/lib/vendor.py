@@ -27,6 +27,9 @@ CLAUDE_ONLY = {
         "this harness exercises Claude output-style behavior that Cursor does "
         "not expose"
     ),
+    "natural_language": (
+        "this harness exercises Claude output-style selection"
+    ),
 }
 
 _VENDOR_ROOTS = {

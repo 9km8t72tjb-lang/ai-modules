@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-10-04
+updated: 2026-10-05
 type: concept
 tags: [skill, repo-structure, authoring, claude, verification-gap]
 sources: []
@@ -79,7 +79,7 @@ inherited (or model-free) keeps grading as capable as the session paying for it.
 
 This practice is recorded in `tests/CLAUDE.md` and `tests/AGENTS.md` and encoded
 in `tests/lib/vendor.py`. Claude-only surfaces (`trigger_evals`, output-style
-deploy tests) reject `--vendor cursor` until a Cursor equivalent exists.
+deploy tests, `natural_language`) reject `--vendor cursor` until a Cursor equivalent exists.
 
 ### A worker inherits the host's instructions unless it is isolated
 

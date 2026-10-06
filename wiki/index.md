@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-04 | Total pages: 35
+> Last updated: 2026-10-05 | Total pages: 35
 
 ## Entities
 
@@ -22,7 +22,7 @@
 - [Antigravity global configuration roots](concepts/antigravity-global-roots.md): the two artefact classes that split across its three products, what that costs a global deploy, and the output tree that is not a root.
 - [Antigravity tool vocabulary](concepts/antigravity-tool-vocabulary.md): the two incomplete name lists, the missing canonical registry, and why a wrong name hangs instead of failing.
 - [Claude Code delegation surfaces](concepts/claude-delegation-surfaces.md): how the Workflow and Agent tools delegated to helpers in desktop sessions in September 2026, the pool's ceiling on helpers running at once and its queue, schema-bound returns, resume and stop, completion notices that carry the result, the spawn surface print mode offered in probes of October 2026, the shell tool and its grep function, and the print-mode CLI flags a headless worker relies on, with their observed behaviour and stream events.
-- [Claude output style selection](concepts/claude-output-style-selection.md): the `outputStyle` key and its precedence, a headless worker honouring a project selection, the interactive routes that all write local scope, next-message switching, the retired and restored command, and the desktop route.
+- [Claude output style selection](concepts/claude-output-style-selection.md): the `outputStyle` key and its precedence, a headless worker honouring a project selection on builds 2.1.226 and 2.1.289, the interactive routes that all write local scope, next-message switching, the retired and restored command, and the desktop route.
 - [Claude output styles](concepts/claude-output-styles.md): the two-layer system prompt and the append flag beside it, the two delivery modes, file locations, plugin bundling, and the four-key frontmatter the loader checks without enforcing.
 - [Foreign directory adoption](concepts/foreign-directory-adoption.md): which harnesses read another's config tree, why that is contamination rather than delivery, and the isolation switches.
 - [Guardrail documents as normative rules](concepts/guardrail-documents-as-rules.md): presence-gated lookup, optional adoption, the description misreading, the three paths to true, and the guarding/describing split.

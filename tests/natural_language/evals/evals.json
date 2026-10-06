@@ -1,0 +1,52 @@
+{
+  "skill_name": "natural-language",
+  "notes": "Each eval runs over a fixed denominator of passes (default 5) via run.py; the recorded per-scenario pass rate over that denominator is the deliverable. The bar is every assertion holding on every pass. There is no verdict cache. Mechanical expectations are graded by grade.py, qualitative ones by judge.py. Workers load styles/natural-language.md through Claude output-style selection.",
+  "evals": [
+    {
+      "id": "connected_rewrite",
+      "skill": "natural-language",
+      "path": "rewrite",
+      "passes": 5,
+      "prompt": "Rewrite draft.md so a reader follows the reasoning on the first read. Save only the rewritten document to delivered.md and leave draft.md unchanged.",
+      "expected_output": "The rewrite keeps every relation the draft states, opens each paragraph and the arithmetic section with its point, defines canary and shadow share in their first-use window, finishes at or below the draft's word count, and reads as connected prose.",
+      "files": [
+        "evals/fixtures/connected_rewrite/setup.sh"
+      ],
+      "expectations": [
+        "The delivered word count stays at or below the draft's.",
+        "No three consecutive sentences open with It, This, They, or Its.",
+        "The intake, review, and release series appears as a list or a colon series.",
+        "No em dash appears.",
+        "delivered.md exists.",
+        "draft.md is untouched.",
+        "The automated-check/client-library contrast is still stated.",
+        "Both reasons for holding the release are still stated.",
+        "The full-day advance condition is still stated.",
+        "The intake, review, and release signal inventory is still stated.",
+        "Canary is defined at its first use.",
+        "Each paragraph opens with its point.",
+        "The figures paragraph ties the fall from 40 errors to 6 to the claim that the quieter signal should decide.",
+        "The arithmetic section opens with the conclusion that the release can advance.",
+        "Shadow share has a referent at or before its first use.",
+        "The text reads as connected prose."
+      ]
+    },
+    {
+      "id": "chat_brevity",
+      "skill": "natural-language",
+      "path": "chat",
+      "passes": 5,
+      "prompt": "Answer the question in question.md. Use context.md. Write the answer as your reply.",
+      "expected_output": "The reply answers in the first sentence, stays at or under 120 words, carries no heading, and has no preamble, restatement, or closing recap.",
+      "files": [
+        "evals/fixtures/chat_brevity/setup.sh"
+      ],
+      "expectations": [
+        "response.txt runs to at most 120 words.",
+        "response.txt carries no heading line.",
+        "The answer sits in the first sentence.",
+        "response.txt carries no preamble, restatement, or closing recap."
+      ]
+    }
+  ]
+}

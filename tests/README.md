@@ -16,7 +16,7 @@ step whenever either changes.
 Behavioral runners share `tests/lib/vendor.py` and accept `--vendor {claude,cursor}`
 (default `claude`). Claude workers use the latest `sonnet` alias; Cursor workers
 use `auto` via `agent -p`. See `tests/CLAUDE.md` and `tests/AGENTS.md` for the
-full matrix, auth, Claude-only rejects (`trigger_evals`, output-style deploy),
+full matrix, auth, Claude-only rejects (`trigger_evals`, output-style deploy, `natural_language/`),
 and skill/agent staging rules. Isolated-sandbox runners default to 4 parallel
 workers (`DEFAULT_PARALLEL_WORKERS` in `tests/lib/vendor.py`); the serial
 exceptions live in `tests/CLAUDE.md` / `tests/AGENTS.md`.
@@ -98,6 +98,12 @@ don't bring up new harnesses under Pattern B.
   fixed 5-pass denominator, graded by a deterministic `grade.py` plus a
   refute-biased `judge.py`. No verdict cache: the repeated draws are
   the measurement.
+- **`natural_language/`**: Pattern A, behavioral only (the subject is an
+  output style, so there is no `script_tests/`). 2 scenarios × a fixed
+  5-pass denominator, graded by a deterministic `grade.py` plus a
+  refute-biased `judge.py`. No verdict cache: the repeated draws are
+  the measurement. Workers load the style through Claude output-style
+  selection, so the runner stays on `--vendor claude`.
 - **`task/`**: Pattern A. The `task_*` family hub, holding both
   deterministic surfaces: `script_tests/run.sh` unit-tests the bundled
   `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (54 scenarios), and

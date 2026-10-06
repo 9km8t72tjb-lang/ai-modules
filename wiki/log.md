@@ -869,3 +869,20 @@ ingest touched. The `boilerplate` warn on `log.md` is pre-existing. The size inf
 `entities/cursor.md` came with the 12:32 import and grew with this one, and the
 one on `entities/openai-codex.md` is new with this ingest. Both entity splits
 are left for a human to weigh.
+
+## [2026-10-05 16:28] update | Claude-only surfaces now include natural_language
+
+- concepts/verification-surfaces.md (`natural_language` added to the Claude-only
+  surfaces parenthetical)
+
+## [2026-10-05 20:07] update | Headless outputStyle selection re-checked on build 2.1.289
+
+- concepts/claude-output-style-selection.md (build 2.1.289 still applies a
+  project `outputStyle` on the same marker route the 2.1.226 probe used, observed
+  on 5 October 2026 through the `natural_language` harness preflight)
+- index.md (selection-page one-liner and Last updated)
+
+## [2026-10-05 20:08] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

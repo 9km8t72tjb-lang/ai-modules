@@ -19,6 +19,7 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
 | `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper) + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
 | `language_humanizer/` | `language_humanizer` | Pattern A (behavioral only) | 3 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py` for the qualitative assertions. |
+| `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. |
 | `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/` holds a behavioral eval per family member. `run_all.sh` drives both script runners. |
 | `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
 | `task_fix/` | `task_fix` | Pattern A (behavioral only) | Three staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and count the archive, keep a repeat whose sites each earn their link, surface a gathering that would leave an Acceptance item nothing to measure. Grades the task file's bytes and the run's per-finding disposition line. |
@@ -60,7 +61,7 @@ Do not pin dated ids such as `claude-sonnet-4-6` — Claude uses the latest
 `--model` / `--judge-model` override the vendor default; `--model ''`
 inherits the CLI default. `--worker-bin` overrides the binary;
 `--claude-bin` remains a deprecated alias. Claude-only surfaces
-(`trigger_evals/`, `deployment/script_tests/style_run.sh`) reject
+(`trigger_evals/`, `deployment/script_tests/style_run.sh`, `natural_language/`) reject
 `--vendor cursor` until a Cursor equivalent exists.
 
 The Cursor twin of this file is `tests/AGENTS.md` — keep the vendor
@@ -77,11 +78,12 @@ spawnable land only in `<sandbox>/.{claude,cursor}/agents/`.
 ### Parallel workers: default 4 only where each job has its own sandbox
 
 `tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS` is **4**. That is the
-`--workers` default on the two runners whose jobs cannot collide:
+`--workers` default on the runners whose jobs cannot collide:
 
 - `tests/wiki/layer2/run.py` — one sandbox directory per scenario; passes
   of the same scenario stay sequential.
 - `tests/language_humanizer/evals/run.py` — one staged sandbox per pass.
+- `tests/natural_language/evals/run.py` stages one sandbox per pass.
 
 `--workers 1` forces the serial path. Raising it past 4 mostly buys
 model contention and timeouts, not faster wall-clock.
@@ -225,6 +227,23 @@ security add-generic-password -a "$USER" -s claude-headless-token -w '<token>' -
 `CLAUDE_CODE_OAUTH_TOKEN` exported in the shell wins over both, in every
 runner, since they all build their worker env from the shared
 `worker_env()`.
+
+### Worker isolation
+
+`tests/lib/worker_isolation.py` is the single source of the isolation that
+every runner importing it applies. Each worker and each judge stays free of
+the host's standing-instruction files that its working directory and ancestor
+walk would reach, because it runs under a fresh root outside the home
+directory and any git repository.
+
+Cursor is the preferred measurement vendor. The Claude branch of the helper
+serves compatibility runs and Claude-only product surfaces such as
+output-style loading. Two Cursor sources stay outside the helper: User Rules,
+which Cursor keeps in its settings rather than in project files, and deployed
+user-level skills.
+
+Runners that import the helper take their sandbox roots and their worker
+arguments from it. The unit tests live in `tests/lib/test_worker_isolation.py`.
 
 ### Timed-out worker output: decode it through `tests/lib/worker_io.py`
 

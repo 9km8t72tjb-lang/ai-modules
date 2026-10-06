@@ -20,7 +20,7 @@ and accepts:
 --vendor {claude,cursor}   # default: claude
 --model MODEL              # override worker model; '' inherits the CLI default
 --worker-bin PATH          # override binary; --claude-bin is a deprecated alias
---judge-model MODEL        # language_humanizer only; '' inherits
+--judge-model MODEL        # every harness that ships evals/judge.py, including natural_language; '' inherits
 ```
 
 | Role | `--vendor claude` | `--vendor cursor` |
@@ -42,6 +42,8 @@ equivalent exists:
 - `trigger_evals/` — inspects Claude `Skill(...)` / stream-json load evidence
 - `deployment/script_tests/style_run.sh` — Claude output-styles deploy path
   (also honors `TEST_VENDOR=cursor`)
+- `natural_language/` exercises Claude output-style selection through
+  `outputStyle` in a sandbox `.claude/settings.json`.
 
 ### Auth
 
@@ -87,8 +89,9 @@ write it.
 
 ### Parallel workers
 
-Cursor default is **4 concurrent jobs** (`tests/lib/vendor.py`
-`DEFAULT_PARALLEL_WORKERS`) on wiki layer 2 and `language_humanizer`.
+`DEFAULT_PARALLEL_WORKERS` in `tests/lib/vendor.py` sets the `--workers`
+default to **4 concurrent jobs** on wiki layer 2, `language_humanizer`, and
+`natural_language`.
 Pass `--workers 1` to serialize. Pattern A runners stay sequential:
 `git_commit` (shared TMPDIR), `git_review` (timeout), the `task_*`
 family (serial until their parallel-worker tasks land; the host guard
@@ -114,7 +117,8 @@ significant iteration.
 
 Pin the skill-under-test through `--vendor` defaults (`sonnet` / `auto`).
 Keep graders model-free when possible; when a judge LLM exists
-(`language_humanizer`), it inherits on Claude and uses `auto` on Cursor.
+(every harness that ships `evals/judge.py`, including `natural_language`),
+it inherits on Claude and uses `auto` on Cursor.
 Do not pin dated model ids such as `claude-sonnet-4-6`.
 
 ### Verdict cache, timeouts, isolation
@@ -122,7 +126,8 @@ Do not pin dated model ids such as `claude-sonnet-4-6`.
 Same rules as `tests/CLAUDE.md`: content-keyed cache under
 `<evals>/.eval_cache/`, worker completion gates before trusting grade.sh,
 and sandboxes that must not inherit host instructions when the skill under
-test is about prose or standing instructions.
+test is about prose or standing instructions. Those sandboxes come from
+`tests/lib/worker_isolation.py`.
 
 ### Reading results
 

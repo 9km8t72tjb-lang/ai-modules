@@ -1,7 +1,7 @@
 ---
 title: Claude output style selection
 created: 2026-10-01
-updated: 2026-10-02
+updated: 2026-10-05
 checked: 2026-08-10
 type: concept
 tags: [claude, output-style, deployment, verification-gap]
@@ -39,9 +39,12 @@ That was observed on 2 October 2026 against build 2.1.226 with a marker style
 whose reply token showed whether it had loaded. The token appeared with the
 sandbox as its own git root, with the sandbox nested inside an outer repository,
 and under `--setting-sources project,local`, and it was missing from a control
-sandbox. A malformed project settings file drops the selection without an error,
-which [Anthropic Claude Code](../entities/anthropic-claude-code.md) records
-beside the setting sources.
+sandbox. The same marker route still applied the project `outputStyle` on
+5 October 2026 against build 2.1.289, in the isolated sandboxes the
+`natural_language` behavioural harness stages for its preflight. A malformed
+project settings file drops the selection without an error, which
+[Anthropic Claude Code](../entities/anthropic-claude-code.md) records beside
+the setting sources.
 
 ### Every interactive route writes local scope
 
@@ -130,4 +133,6 @@ checked either.
   definition.
 - Claude Code build 2.1.226 on one machine, probed on 2 October 2026 with a
   marker style in throwaway sandboxes, for headless selection.
+- Claude Code build 2.1.289 on one machine, observed on 5 October 2026 through
+  the `natural_language` harness preflight marker on the `outputStyle` route.
 - The desktop application bundle installed on 7 August 2026.
