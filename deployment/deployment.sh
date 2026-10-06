@@ -33,8 +33,10 @@ set -euo pipefail
 #   basename(target_dir). The caller can override <name> when the basename
 #   isn't tool-distinctive — e.g. VS Code's user-prompts dir on macOS and
 #   OpenCode's ~/.config/opencode config dir both have generic basenames.
-#   jq, perl, and rsync are required at startup: the script aborts with a
-#   named-binary message when any one is missing from PATH.
+#   jq, perl, and rsync are required at startup for deploy and uninstall: the
+#   script aborts with a named-binary message when any one is missing from
+#   PATH. Cleanup-only --clear-backups skips that gate, because it copies
+#   nothing and calls none of those binaries.
 #
 # Usage:
 #   ./deployment.sh                              # show usage and examples
@@ -594,13 +596,16 @@ fi
 
 # jq, perl, and rsync are the non-stock extras the rest of this script calls.
 # A PATH lookup here fails before any copy or merge, with the missing name.
-for _required_cmd in jq perl rsync; do
-  if ! command -v "$_required_cmd" >/dev/null 2>&1; then
-    echo "Error: $_required_cmd is required for deployment but was not found on PATH." >&2
-    exit 1
-  fi
-done
-unset _required_cmd
+# Cleanup-only --clear-backups never reaches those calls, so it skips the gate.
+if [[ "$BACKUP_CLEANUP_ONLY" != true ]]; then
+  for _required_cmd in jq perl rsync; do
+    if ! command -v "$_required_cmd" >/dev/null 2>&1; then
+      echo "Error: $_required_cmd is required for deployment but was not found on PATH." >&2
+      exit 1
+    fi
+  done
+  unset _required_cmd
+fi
 
 # ---------------------------------------------------------------------------
 # App targets: id|label|base_dir

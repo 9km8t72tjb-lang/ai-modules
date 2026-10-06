@@ -886,3 +886,15 @@ are left for a human to weigh.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-06 15:59] update | Toolchain floor owns remaining standing tools
+
+- summaries/ai-modules-repository.md (toolchain passage now describes the
+  charter's delegation to the `make install` floor, the instruction-file
+  inventory, and the deploy script's `jq`, `perl`, and `rsync` startup gate)
+- index.md (Last updated)
+
+## [2026-10-06 16:01] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

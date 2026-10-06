@@ -1,7 +1,7 @@
 ---
 title: The ai-modules repository
 created: 2026-08-08
-updated: 2026-09-05
+updated: 2026-10-06
 type: summary
 tags: [repo-structure, plugin, skill, agent, deployment]
 sources: []
@@ -76,15 +76,18 @@ well: the harness research had grown past what a shipped skill should carry.
 
 ### Toolchain
 
-The toolchain is deliberately small, and the charter and the instruction files
-state it the same way: Make plus standard Unix shell plus Markdown, with `jq` and
-`git` required by the deploy script and Python 3 shipped by helper scripts in the
-wiki, task, and formatting skills, all three accepted as standing dependencies.
-Naming the dependencies in both places is deliberate, because an instruction file
-that lists only the languages reads as a complete inventory and sends an agent
-looking for permission it already has. Python is not a footnote to the list:
-inside the plugins tree it carries more executable code than shell does, and shell
-only leads repo-wide because the deploy script is written in it.
+The toolchain is deliberately small. The charter names Make plus standard Unix
+shell plus Markdown, with Python 3 as an accepted standing dependency for helper
+scripts in the wiki, task, and formatting skills, and leaves the remaining
+standing tools to the declared toolchain floor that `make install` prepares. The
+instruction files still name `jq`, `git`, and Python 3 beside the languages,
+because a file that lists only the languages reads as a complete inventory and
+sends an agent looking for permission it already has. The deploy script's
+startup gate additionally requires `jq`, `perl`, and `rsync` on `PATH` before it
+copies or merges; current macOS ships all three under `/usr/bin`, and Linux
+contributors often still install `jq` or `rsync`. Python is not a footnote to
+the list: inside the plugins tree it carries more executable code than shell
+does, and shell only leads repo-wide because the deploy script is written in it.
 
 `make lint` runs `markdownlint`, a `jq` syntax check, and `shellcheck`; `make
 fix` auto-fixes Markdown only; `make deploy` installs; `make uninstall` reverses

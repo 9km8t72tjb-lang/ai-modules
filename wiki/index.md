@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-05 | Total pages: 35
+> Last updated: 2026-10-06 | Total pages: 35
 
 ## Entities
 

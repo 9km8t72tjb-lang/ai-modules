@@ -2,7 +2,7 @@
 description: Replace live-home deploy backups with rsync that skips sockets and FIFOs and treats vanished sources as success, add a jq/perl/rsync PATH gate, and prove both in the script tests.
 scope: deployment
 created: 2026-10-06T13:50:51
-updated: 2026-10-06T13:50:51
+updated: 2026-10-06T15:59:58
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -31,11 +31,11 @@ The standing repo rule that keeps the toolchain to Make, shell, and Markdown, wi
 
 ## Approach
 
-Add `copy_tree_for_backup` in `deployment/deployment.sh` and have `backup_app_dir` call it instead of `cp -a`. The helper `mkdir -p`s the destination, then runs `rsync -rlptgo "$source/" "$dest/"`. Those flags are archive without devices/specials, so sockets, FIFOs, and device nodes are omitted while regular files, directories, and symlinks copy. Treat rsync exit `0` and exit `24` as success. Any other exit calls `err` with the `backup-copy` label and fails the backup. Comment at the helper that Samba rsync uses 24 for a vanished source, that `-a` includes `-D` on both Samba rsync and openrsync, and that current macOS ships openrsync as `/usr/bin/rsync`.
+Add `copy_tree_for_backup` in `deployment/deployment.sh` and have `backup_app_dir` call it instead of `cp -a`. The helper `mkdir -p`s the destination, then runs `rsync -rlptgo "$source/" "$dest/"`. Those flags are archive without devices/specials, so sockets, FIFOs, and device nodes are omitted while regular files, directories, and symlinks copy. Treat rsync exit `0` and exit `24` as success. Treat exit `23` as success only when every captured error line reports `No such file or directory`, which is how openrsync reports a vanished source. Any other exit calls `err` with the `backup-copy` label and fails the backup. Comment at the helper that Samba rsync uses 24 for a vanished source, that openrsync uses 23 with that vanished-file wording, that `-a` includes `-D` on both Samba rsync and openrsync, and that current macOS ships openrsync as `/usr/bin/rsync`.
 
 After the existing explicit-scope validation, loop `jq`, `perl`, and `rsync` through `command -v` and abort with `Error: <name> is required for deployment but was not found on PATH.` Rewrite the header comment that currently lists only stock tools so it states those three are required at startup.
 
-Rewrite the `## Platform Notes` paragraph in `deployment/README.md` so the tool list includes `jq`, `perl`, and `rsync`, the startup abort is stated, and the backup sentence states wholesale copy, `rsync -rlptgo`, omitted specials, and exit 24 as success.
+Rewrite the `## Platform Notes` paragraph in `deployment/README.md` so the tool list includes `jq`, `perl`, and `rsync`, the startup abort is stated, and the backup sentence states wholesale copy, `rsync -rlptgo`, omitted specials, Samba exit 24 as success, and openrsync exit 23 as success only on vanished-file stderr.
 
 Add two regressions to `tests/deployment/script_tests/run.sh`, keeping them on the existing `run_all.sh` path:
 
@@ -54,9 +54,9 @@ Rewrite the runtime-floor passages of that live make-install task so they list `
 
 ## Acceptance
 
-- `copy_tree_for_backup` in `deployment/deployment.sh` creates the destination with `mkdir -p`, copies with `rsync -rlptgo`, returns success on exit 0 and 24, and fails through `err` `backup-copy` on any other exit. `backup_app_dir` calls that helper and no longer uses `cp -a` for the live-home snapshot.
+- `copy_tree_for_backup` in `deployment/deployment.sh` creates the destination with `mkdir -p`, copies with `rsync -rlptgo`, returns success on exit 0, exit 24, and exit 23 whose captured errors are all vanished-file reports, and fails through `err` `backup-copy` on any other exit. `backup_app_dir` calls that helper and no longer uses `cp -a` for the live-home snapshot.
 - After scope validation, `deployment/deployment.sh` aborts with `Error: <name> is required for deployment but was not found on PATH.` when `jq`, `perl`, or `rsync` is absent from PATH, and the header comment names those three as required at startup.
-- `deployment/README.md` `## Platform Notes` lists `jq`, `perl`, and `rsync` beside the stock Unix tools, states the named-binary startup abort, and states that global backups remain wholesale trees copied with `rsync -rlptgo`, omitting sockets, FIFOs, and device nodes, treating rsync exit 24 as success.
+- `deployment/README.md` `## Platform Notes` lists `jq`, `perl`, and `rsync` beside the stock Unix tools, states the named-binary startup abort, and states that global backups remain wholesale trees copied with `rsync -rlptgo`, omitting sockets, FIFOs, and device nodes, treating Samba rsync exit 24 as success and openrsync exit 23 as success only when every captured error line reports a vanished source.
 - `tests/deployment/script_tests/run.sh` contains the backup fixture and the three `assert_startup_requires` calls described in Approach. `bash tests/deployment/run_all.sh` prints `Backup skip of sockets and FIFOs regression passed` and `Startup gate for jq, perl, and rsync regression passed` and exits 0.
 - The live make-install task's runtime-floor text lists `jq`, `perl`, and `rsync` as required, does not claim a stock machine already satisfies the runtime floor, and states that a present `/usr/bin/rsync` is left in place.
 - `make clean` followed by `make deploy` (or the current `install` alias of deploy) on a machine whose harness homes contain live sockets completes with a zero exit and a summary that reports a backup for each activated target, with no `backup-copy` error.

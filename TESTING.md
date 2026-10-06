@@ -60,12 +60,13 @@ subtrees so lint scope matches git scope. The two lists change together.
 
 ## Stack and Runner
 
-Make plus POSIX shell plus Markdown, with `jq`, `git`, and Python 3 as standing
-dependencies of the declared toolchain floor the charter names through
-`make install`. Bundled-script tests are plain shell. Behavioural evals spawn
-one worker per scenario through the runner's vendor switch. Use the Cursor
-worker for those runs: Cursor tests are cheaper and faster. It runs as
-`agent -p` on model `auto`. The Claude worker
+Make plus POSIX shell plus Markdown, with `jq`, `git`, and Python 3 as the
+standing tools the test runners use. Remaining standing tools belong to the
+declared toolchain floor the charter names through `make install`.
+Bundled-script tests are plain shell. Behavioural evals spawn one worker per
+scenario through the runner's vendor switch. Use the Cursor worker for those
+runs: Cursor tests are cheaper and faster. It runs as `agent -p` on model
+`auto`. The Claude worker
 (`claude -p` on `sonnet`) remains available when a run needs a Claude-pinned
 sample. Pin the worker for a run so results stay comparable, and keep grading
 on the model-free grader.
