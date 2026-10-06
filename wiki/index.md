@@ -9,7 +9,7 @@
 <!-- Alphabetical within section -->
 
 - [Anthropic Claude Code](entities/anthropic-claude-code.md): configuration roots, the setting sources a headless worker reads, the user's deployed roles and skills that reach that worker unless a scratch configuration directory replaces the user tree, the hardcoded CLAUDE.md / AGENTS.md standing-instruction pair and its walk past the repository root, agent frontmatter tolerance, the file-edit read state, hooks, safe mode, and the retired `claude config` subcommand.
-- [Cursor](entities/cursor.md): rules as the whole instruction mechanism, agent fields with the tools and roles print mode lists, skills attached by hand, helper delegation through the Task tool with batch and notice delivery and what print mode records of it, helper isolation and context load, the goal tools, the non-login agent shell, the print-mode agent CLI with its permission file, resume, and stream-json events, and the undocumented home-directory rules folder.
+- [Cursor](entities/cursor.md): rules as the whole instruction mechanism, project always-apply `.mdc` as the print-mode-injecting deploy path, account User Rules versus non-injecting home and local-plugin rule files, agent fields with the tools and roles print mode lists, skills attached by hand, helper delegation through the Task tool with batch and notice delivery and what print mode records of it, helper isolation and context load, the goal tools, the non-login agent shell, and the print-mode agent CLI with its permission file, resume, and stream-json events.
 - [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md): one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents, and preview plugins.
 - [Google Antigravity](entities/google-antigravity.md): the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and four open verification gaps.
 - [OpenAI Codex](entities/openai-codex.md): configuration layers and trusting a project for a single run, the CLI binary shipped off `PATH` inside the ChatGPT app bundle, TOML agent roles, the built-in sub-agent and goal tools, headless runs through `codex exec`, the single instructions slot, personalities, profiles, and hook trust.
@@ -31,7 +31,7 @@
 - [Instruction-defect classes](concepts/instruction-defect-classes.md): three ways an AI-consumed instruction passes review and fails at runtime (reach, disposition, intra-file contradiction), why review misses each, why measurement found them, and the measured limit where instruction repair ends and a mechanism must carry the property.
 - [Interpreter and tool-path portability](concepts/interpreter-and-tool-path-portability.md): stock macOS bash 3.2 as the bundled-script floor, the licence reason it stays, the stock python3, the login-shell PATH trap, the constructs verified to fail on that build, and two zsh constructs that misfire silently in commands an agent runs directly.
 - [Orchestration failure families](concepts/orchestration-failure-families.md): the run evidence behind the recipes proposed for agent_spinner, with 23 failure families and their counts, the base rates, a register of 16 cases under neutral labels, the mechanisms observed together, the families seen in the cases each recipe rests on, and a map from each run-protocol step and check to the families it answers.
-- [Output style delivery design](concepts/output-style-delivery-design.md): the decision record behind the `styles/` source, the per-target delivery matrix, the marked-block write, and the scope rejections.
+- [Output style delivery design](concepts/output-style-delivery-design.md): the decision record behind the `styles/` source, the per-target delivery matrix including Cursor's project-only `.mdc` write, the marked-block write, and the scope rejections.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md): why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md): naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.
@@ -40,7 +40,7 @@
 
 ## Comparisons
 
-- [System prompt substitution across harnesses](comparisons/system-prompt-substitution-across-harnesses.md): the native, synthesizable, and append-only tiers, what each global deploy must write, and the price of synthesis.
+- [System prompt substitution across harnesses](comparisons/system-prompt-substitution-across-harnesses.md): the native, synthesizable, and append-only tiers, what each global deploy must write including Cursor's project-only file path, and the price of synthesis.
 
 ## Queries
 

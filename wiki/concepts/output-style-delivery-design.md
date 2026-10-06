@@ -1,11 +1,12 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-10-01
+updated: 2026-10-06
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
-sources: []
+sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
 confidence: high
+checked: 2026-10-06
 ---
 
 # Output style delivery design
@@ -69,7 +70,7 @@ style arm becomes the deploy script's first non-plugin asset source, so
 | OpenCode | a file under the global config tree, body only | add its path to the `instructions` array | file plus key; route decision open |
 | Codex | a generated instructions file under the Codex configuration tree, synthesized per the whole-prompt mechanism | merge `model_instructions_file` into the user configuration | file plus key, replacing |
 | Antigravity | a marked block in `~/.gemini/GEMINI.md` | none | block in a user-owned file, under its rules-file character cap |
-| Cursor | `.cursor/rules/<name>.mdc` with `alwaysApply: true` | none | project scope, global path unverified |
+| Cursor | `.cursor/rules/<name>.mdc` with `alwaysApply: true` | none | project scope; no print-mode-injecting global file path |
 
 Claude is the built row. It shipped with the `style` artefact type, the repo-root
 source directory, and the prior-value restore, at both global and project scope.
@@ -162,11 +163,15 @@ delivery route onto machinery that already exists. See
 [the deployment model](deployment-model.md).
 
 The per-harness split follows from the research rather than from a preference for
-small tasks. Each harness carries its own unresolved decision: Cursor's
-undocumented global rules directory, Codex's derivation and section-heading
-fragility, OpenCode's default-agent override. Bundled into one task those are
-several verification items hanging off a single piece of work; split per harness,
-each is small and independently landable.
+small tasks. Each harness carries its own unresolved decision: Codex's derivation
+and section-heading fragility, OpenCode's default-agent override, and the
+remaining append-only targets. Cursor's global file path was the open item in
+that list; print-mode probes on 6 October 2026 closed it as a negative for both
+the user `rules/` folder and a user-local plugin's `rules/` component, while
+confirming the project `.mdc` always-apply write
+([probes](../raw/notes/cursor-style-injection-probes-2026-10-06.md)). Bundled into
+one task those open items are several verification items hanging off a single
+piece of work; split per harness, each is small and independently landable.
 
 ## Open questions
 

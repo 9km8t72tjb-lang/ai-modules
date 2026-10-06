@@ -1,11 +1,12 @@
 ---
 title: System prompt substitution across harnesses
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-10-06
 type: comparison
 tags: [system-prompt, portability, output-style, claude, codex, opencode, antigravity, cursor, copilot]
-sources: []
+sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
 confidence: high
+checked: 2026-10-06
 ---
 
 # System prompt substitution across harnesses
@@ -46,13 +47,16 @@ slot whose current contents can be re-derived, edited, and written back.
 | Claude Code | `~/.claude/output-styles/<name>.md` | `outputStyle` key in `~/.claude/settings.json` |
 | OpenAI Codex | instructions file under `~/.codex/` | `model_instructions_file` in `config.toml` |
 | SST OpenCode | agent file, or a path in the `instructions` array | none for `instructions`; agent selection for the replacing route |
-| Cursor | none that is documented | user rules live in the application settings |
+| Cursor | project `.cursor/rules/<name>.mdc` with `alwaysApply: true`; no print-mode-injecting global file path | none for the project write; account User Rules are settings text a deploy cannot write |
 | Google Antigravity | `~/.gemini/GEMINI.md` (the workspace `.agents/rules/` tree is project scope) | none; the global file needs no activation mode |
 | Copilot in VS Code | `~/.copilot/instructions` | none |
 
 Copilot is the cheapest target to reach, with one file and no settings key.
-Cursor is the most expensive, because its machine-wide carrier is not a file at
-all and a deploy step cannot write it.
+Cursor's automatic file write is project-scoped only. Print-mode probes on
+6 October 2026 found that a home-directory `rules/` file and a user-local
+plugin's always-apply rule do not inject, while a project `.mdc` does
+([probes](../raw/notes/cursor-style-injection-probes-2026-10-06.md)). Machine-wide
+voice still depends on settings User Rules, which a deploy step cannot write.
 
 ### Plugin-integrated route
 

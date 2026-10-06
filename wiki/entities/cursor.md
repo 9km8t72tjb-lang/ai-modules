@@ -1,11 +1,15 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-10-04
+updated: 2026-10-06
 type: entity
 tags: [cursor, agent, skill, frontmatter, discovery, verification-gap]
-sources: [raw/notes/agent-delegation-host-observations-2026-09.md, raw/notes/delegation-probes-2026-10-04.md]
+sources:
+  - raw/notes/agent-delegation-host-observations-2026-09.md
+  - raw/notes/delegation-probes-2026-10-04.md
+  - raw/notes/cursor-style-injection-probes-2026-10-06.md
 confidence: high
+checked: 2026-10-06
 ---
 
 # Cursor
@@ -13,9 +17,9 @@ confidence: high
 ## Overview
 
 Cursor is an AI-first code editor and a target here for the agent-definition
-surface and for standing instructions. It is the most limited target of the six
-for anything that has to be deployed as a file, because its machine-wide
-instruction carrier is not a file at all.
+surface and for standing instructions. Its deployable style path is project
+scope: an always-apply `.mdc` under `.cursor/rules/`. Machine-wide voice still
+lives in settings User Rules, which a deploy step cannot write.
 
 Facts below were verified on 7 August 2026 against `cursor.com/docs/context/rules`,
 `/docs/agent/modes`, and the separate `cursor.com/help/customization/rules` page,
@@ -218,29 +222,46 @@ Rules are Markdown under `.cursor/rules/` with `*.mdc` filenames, and the
 frontmatter selects one of four activation modes: Always Apply through
 `alwaysApply: true`, Apply Intelligently from a `description`, Apply to Specific
 Files from `globs`, and Apply Manually by mention. An applied rule is included at
-the start of the model context rather than replacing anything already in it.
+the start of the model context rather than replacing anything already in it. A
+plain `.md` file in that folder is ignored; project rules need the `.mdc`
+extension. When `alwaysApply` is `true`, the loader ignores `description` and
+`globs`, so those fields cannot narrow an always-on rule to prose-only surfaces.
 
 Nested `AGENTS.md` files are the frontmatter-free alternative, with the more
 specific file taking precedence. Cursor also reads a project `CLAUDE.md` exactly
 as it reads `AGENTS.md`, which makes it one of the harnesses adopting a
-Claude-named file, at project scope rather than from the home directory.
+Claude-named file, at project scope rather than from the home directory. The
+legacy `.cursorrules` file is deprecated; the help page migrates it into an
+Always Apply project rule.
 
 Precedence among the documented kinds is Team Rules over Project Rules over User
-Rules.
+Rules. Rules reach Agent chat only, not Inline Edit, Tab, or Bugbot.
 
-### The user rule is not a file
+### User rules and machine-local rule files
 
-Two documentation pages agree that a user-level rule is stored in Cursor's own
-settings rather than in any project directory. It applies across all projects on
-that machine, and it is excluded from profile exports, so moving machines means
-re-entering it or moving it into a project rule file.
+Account User Rules are plain text under Customize → Rules. They apply across
+projects, sync with the Cursor account, and are the documented slot for a
+machine-wide communication style. A deploy step cannot write them.
 
-An exhaustive enumeration of every path on the help page returns
-`.cursor/rules/`, `*.mdc`, `AGENTS.md`, `CLAUDE.md`, and the legacy
-`.cursorrules`, and no home-directory rules folder at all.
+The help page also names machine-local user rule files under the user
+configuration tree's `rules/` folder. Those files stay on the machine and do not
+sync. The rules reference still describes User Rules only as the settings text.
+Print-mode probes on 6 October 2026 against agent CLI `2026.10.01` settled
+injection for a deploy:
 
-A User Rule also reaches Agent chat only, not Inline Edit or Tab, so a voice set
-there governs part of the product rather than all of it.
+- A project `.cursor/rules/*.mdc` with `alwaysApply: true` was quoted in
+  context
+  ([probes](../raw/notes/cursor-style-injection-probes-2026-10-06.md)).
+- The same shape of file under the user `rules/` folder was not
+  ([probes](../raw/notes/cursor-style-injection-probes-2026-10-06.md)).
+- A user-local plugin under `plugins/local/` with a `rules/` always-apply
+  `.mdc` did not inject that rule, while a skill in the same plugin was
+  available, both under auto-discovery and under `--plugin-dir`
+  ([probes](../raw/notes/cursor-style-injection-probes-2026-10-06.md)).
+
+So the file-based path a deploy can write and that print mode actually loads is
+project `.cursor/rules/*.mdc`. Machine-wide voice still goes through settings
+User Rules, or through whatever IDE-only channel a later probe confirms.
 
 ### Modes
 
@@ -250,17 +271,10 @@ mode as a tool-and-behaviour preset rather than a style slot until that changes.
 
 ## Verification gaps
 
-A `~/.cursor/rules/` directory exists on at least one machine running Cursor, and
-was empty there when checked on 8 August 2026, while no documentation page
-mentions it. Treat a global rules file there as an
-undocumented possibility to test empirically rather than as either a supported
-path or a settled negative, and record which of observation or documentation any
-claim about it rests on.
-
-The empirical test is cheap: place a Markdown rule file carrying
-`alwaysApply: true` and a distinctive, easily observed instruction in that
-folder, start a fresh chat in a project with no rules of its own, and see whether
-the instruction takes effect.
+Home-directory rule injection and user-local plugin rule injection in print mode
+are settled negatives as of 6 October 2026
+([probes](../raw/notes/cursor-style-injection-probes-2026-10-06.md)). Whether an
+IDE Agent chat after a window reload injects either surface remains untested.
 
 The delegation research planned probes that had not run when it closed. The
 print-mode probes of 4 October 2026 settled part of that list. Print mode
@@ -289,7 +303,8 @@ is unmeasured as well.
 
 ## Derived from
 
-- `cursor.com/docs/context/rules`, `/docs/agent/modes`, and
-  `cursor.com/help/customization/rules`.
+- `cursor.com/docs/context/rules`, `/docs/agent/modes`,
+  `cursor.com/help/customization/rules`, and `cursor.com/docs/reference/plugins`,
+  re-read 6 October 2026 for the rules and plugin surfaces the style deploy uses.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

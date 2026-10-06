@@ -898,3 +898,19 @@ pre-existing.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-06 17:20] ingest | Cursor style-rule injection probes
+
+- raw/notes/cursor-style-injection-probes-2026-10-06.md (new)
+- entities/cursor.md (project always-apply `.mdc` as the injecting deploy path;
+  home `rules/` and local-plugin rules settled as print-mode negatives; account
+  User Rules kept as the settings-only machine-wide slot)
+- concepts/output-style-delivery-design.md (Cursor row and harness-split passage)
+- comparisons/system-prompt-substitution-across-harnesses.md (Cursor global-write
+  row and expense paragraph)
+- index.md (Cursor, delivery-design, and comparison one-liners)
+
+## [2026-10-06 17:21] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
