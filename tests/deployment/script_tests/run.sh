@@ -321,7 +321,7 @@ case "${STUB_RSYNC_MODE:-}" in
     exit 23
     ;;
   openrsync-denied)
-    printf '%s\n' 'rsync: send_files failed to open "secret": Permission denied' >&2
+    printf '%s\n' 'rsync(12345): error: secret: open (2) in .claude: Permission denied' >&2
     exit 23
     ;;
   samba-vanished)
@@ -398,8 +398,6 @@ assert_startup_requires rsync jq perl
 
 cleanup_tool_dir="$(mktemp -d "${SCRATCH}/cleanup-tools.XXXXXX")"
 link_cmd "$cleanup_tool_dir" dirname
-link_cmd "$cleanup_tool_dir" jq
-link_cmd "$cleanup_tool_dir" perl
 for extra in mkdir rm cat mktemp basename uname date sort mv; do
   link_cmd "$cleanup_tool_dir" "$extra"
 done
@@ -408,10 +406,12 @@ cleanup_out="$(
   PATH="$cleanup_tool_dir" HOME="$HOME_DIR" \
     "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --clear-backups 2>&1
 )" || cleanup_rc=$?
-[[ "$cleanup_rc" -eq 0 ]] || fail "clear-backups without rsync failed: $cleanup_out"
-if printf '%s\n' "$cleanup_out" | grep -Fq "rsync is required for deployment"; then
-  fail "clear-backups still required rsync in: $cleanup_out"
-fi
+[[ "$cleanup_rc" -eq 0 ]] || fail "clear-backups without jq, perl, and rsync failed: $cleanup_out"
+for gated in jq perl rsync; do
+  if printf '%s\n' "$cleanup_out" | grep -Fq "$gated is required for deployment"; then
+    fail "clear-backups still required $gated in: $cleanup_out"
+  fi
+done
 
 printf 'OpenCode deployment regression passed\n'
 printf 'Antigravity deployment regression passed\n'
@@ -419,4 +419,4 @@ printf 'Python bytecode exclusion regression passed\n'
 printf 'Backup skip of sockets and FIFOs regression passed\n'
 printf 'Backup vanished-file rsync exit handling regression passed\n'
 printf 'Startup gate for jq, perl, and rsync regression passed\n'
-printf 'Cleanup-only --clear-backups skips the rsync startup gate\n'
+printf 'Cleanup-only --clear-backups skips the jq, perl, and rsync startup gate\n'

@@ -1843,9 +1843,6 @@ backup_rsync_errors_are_vanished_files() {
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ -z "$line" ]] && continue
     case "$line" in
-      *'skipping non-regular file'*) continue ;;
-    esac
-    case "$line" in
       *'No such file or directory'*)
         saw=1
         ;;
