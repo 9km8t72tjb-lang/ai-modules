@@ -2,8 +2,8 @@
 description: Deploy the output style to Cursor as a project always-apply .mdc rule; on --global report that no print-mode-injecting machine-wide file path exists and name the settings User Rules paste.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-10-06T17:20:09
-status: open
+updated: 2026-10-06T17:35:18
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -22,9 +22,8 @@ plugin's always-apply rule both failed injection on the settled probe.
 ## Context
 
 This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md),
-which creates the repo-root source directory, the `style` artefact type, and the
-deploy-log restore behaviour. Ship that first; this task adds one target and no
-new machinery.
+which created the repo-root source directory, the `style` artefact type, and the
+deploy-log restore behaviour. This task adds one target and no new machinery.
 
 The wiki records the harness facts on its [Cursor](../wiki/entities/cursor.md)
 page, in [output style delivery design](../wiki/concepts/output-style-delivery-design.md),
@@ -63,16 +62,14 @@ machine-wide rule-file path that print mode injects, and name the manual
 alternative: paste the generated body into Customize → Rules (User Rules).
 
 Generate the variant rather than copying. Strip the Claude frontmatter. Emit
-Cursor frontmatter with `alwaysApply: true`. Rewrite the style body's
-`<engineering_behavior>` clause through the existing per-tool `replace:` facility
-in `deployment/deployment.conf` so it states that the wording rules govern the
-named prose surfaces, leave coding and tool-use behaviour to Cursor's defaults,
-and that this harness only appends.
+Cursor frontmatter with `alwaysApply: true`. In that same generation step, rewrite
+the style body's `<engineering_behavior>` clause so it states that the wording
+rules govern the named prose surfaces, leave coding and tool-use behaviour to
+Cursor's defaults, and that this harness only appends.
 
 **Out of scope:**
 
-- The source directory, the `style` artefact type, and the log restore behaviour,
-  all owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
+- Deliverables named in Context, owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
 - Cursor's team rules and its settings-stored User Rules, neither of which a
   deploy step can write.
 - Writing `~/.cursor/rules/` or a user-local plugin `rules/` tree as a global
@@ -95,11 +92,13 @@ and that this harness only appends.
   verified by searching it for `keep-coding-instructions` and `force-for-plugin`
   and finding neither.
 - The deployed body contains no reference to Claude's keep-coding-instructions
-  mechanism, and the `<engineering_behavior>` clause reads correctly for a
-  harness that only appends.
+  mechanism, and the `<engineering_behavior>` clause states that the wording
+  rules govern the named prose surfaces, leave coding and tool-use behaviour to
+  Cursor's defaults, and that this harness only appends.
 - Uninstalling removes the deployed project rule file and leaves any
   pre-existing rule files in the same folder untouched.
-- `deployment/README.md` gains a Cursor row for the style type naming the
-  project `.mdc` path, stating that `--global` has no injecting file write, and
+- In `deployment/README.md`, rewrite the Target Layout Styles cell for Cursor
+  from `not yet` to name the project `.mdc` path and state that `--global` has
+  no injecting file write, and add a Generated Formats row for `style`|Cursor
   stating that Cursor appends rather than replaces, so adherence is weaker than
   on Claude.
