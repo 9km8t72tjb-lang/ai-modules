@@ -1825,16 +1825,56 @@ clear_old_backups_for_app_dir() {
 # nodes are omitted. Samba rsync uses exit 24 when a source file vanishes
 # mid-copy (live sqlite WAL/SHM); that is treated as success. Current macOS
 # ships openrsync as /usr/bin/rsync; Linux typically ships Samba rsync.
+# openrsync uses exit 23 for the same vanished-file case (its man page
+# documents exit 1 for any error; observed on macOS 26.6.2). Exit 23 is
+# success only when every captured error line is a vanished-file report
+# ("No such file or directory"). Other 23s, such as a permission error,
+# still fail the backup.
+backup_rsync_errors_are_vanished_files() {
+  local text="$1"
+  local line
+  local saw=0
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" ]] && continue
+    case "$line" in
+      *'skipping non-regular file'*) continue ;;
+    esac
+    case "$line" in
+      *'No such file or directory'*)
+        saw=1
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  done <<< "$text"
+
+  [[ "$saw" -eq 1 ]]
+}
+
 copy_tree_for_backup() {
   local source="$1"
   local dest="$2"
   local rc=0
+  local err_file
+  local err_text
 
   mkdir -p "$dest"
-  rsync -rlptgo "$source/" "$dest/" || rc=$?
+  err_file="$(mktemp "${TMPDIR:-/tmp}/deploy-rsync.XXXXXX")"
+  rsync -rlptgo "$source/" "$dest/" 2>"$err_file" || rc=$?
+  err_text="$(cat "$err_file")"
+  rm -f "$err_file"
+
   if [[ "$rc" -eq 0 || "$rc" -eq 24 ]]; then
+    [[ -n "$err_text" ]] && printf '%s\n' "$err_text" >&2
     return 0
   fi
+  if [[ "$rc" -eq 23 ]] && backup_rsync_errors_are_vanished_files "$err_text"; then
+    warn "backup-copy" "$err_text"
+    return 0
+  fi
+  [[ -n "$err_text" ]] && printf '%s\n' "$err_text" >&2
   err "backup-copy" "rsync exited $rc copying $source to $dest"
   return 1
 }

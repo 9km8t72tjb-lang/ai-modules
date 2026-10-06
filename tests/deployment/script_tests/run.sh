@@ -299,6 +299,76 @@ assert_file "$bak/real.txt"
 [[ ! -p "$bak/live.pipe" && ! -e "$bak/live.pipe" ]] || fail "backup copied the FIFO"
 
 # ---------------------------------------------------------------------------
+# Backup copy accepts openrsync vanished-file exit 23 and Samba exit 24,
+# and still fails a permission-shaped openrsync 23.
+# ---------------------------------------------------------------------------
+STUB_RSYNC_DIR="${SCRATCH}/rsync-stub"
+mkdir -p "$STUB_RSYNC_DIR"
+cat >"$STUB_RSYNC_DIR/rsync" <<'EOF'
+#!/usr/bin/env bash
+set +e
+n=$#
+offset=$((n - 1))
+src="${@:$offset:1}"
+dst="${@:$n:1}"
+mkdir -p "$dst"
+if [[ -d "$src" ]]; then
+  cp -R "${src}." "$dst"
+fi
+case "${STUB_RSYNC_MODE:-}" in
+  openrsync-vanished)
+    printf '%s\n' 'rsync: link_stat "gone": No such file or directory' >&2
+    exit 23
+    ;;
+  openrsync-denied)
+    printf '%s\n' 'rsync: send_files failed to open "secret": Permission denied' >&2
+    exit 23
+    ;;
+  samba-vanished)
+    exit 24
+    ;;
+esac
+exit 1
+EOF
+chmod +x "$STUB_RSYNC_DIR/rsync"
+
+run_stub_backup_deploy() {
+  local mode="$1"
+  local home="$2"
+  mkdir -p "$home/.claude"
+  printf 'keep\n' >"$home/.claude/notes.txt"
+  STUB_RSYNC_MODE="$mode" PATH="$STUB_RSYNC_DIR:$PATH" HOME="$home" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude --type style
+}
+
+assert_one_claude_backup() {
+  local home="$1"
+  local backups
+  shopt -s nullglob
+  backups=("$home"/.claude_*)
+  shopt -u nullglob
+  [[ ${#backups[@]} -eq 1 ]] || fail "expected one backup under $home, got ${#backups[@]}"
+  assert_file "${backups[0]}/notes.txt"
+}
+
+VANISH_HOME="${SCRATCH}/vanish-home"
+run_stub_backup_deploy openrsync-vanished "$VANISH_HOME" >/dev/null
+assert_one_claude_backup "$VANISH_HOME"
+
+SAMBA_HOME="${SCRATCH}/samba-vanish-home"
+run_stub_backup_deploy samba-vanished "$SAMBA_HOME" >/dev/null
+assert_one_claude_backup "$SAMBA_HOME"
+
+DENIED_HOME="${SCRATCH}/denied-home"
+denied_rc=0
+denied_out="$(run_stub_backup_deploy openrsync-denied "$DENIED_HOME" 2>&1)" || denied_rc=$?
+[[ "$denied_rc" -ne 0 ]] || fail "permission-shaped openrsync 23 succeeded"
+printf '%s\n' "$denied_out" | grep -Fq 'backup-copy' ||
+  fail "permission-shaped openrsync 23 did not print backup-copy in: $denied_out"
+printf '%s\n' "$denied_out" | grep -Fq 'rsync exited 23' ||
+  fail "permission-shaped openrsync 23 did not name exit 23 in: $denied_out"
+
+# ---------------------------------------------------------------------------
 # Startup gate names jq, perl, and rsync when PATH lacks them.
 # ---------------------------------------------------------------------------
 link_cmd() {
@@ -330,4 +400,5 @@ printf 'OpenCode deployment regression passed\n'
 printf 'Antigravity deployment regression passed\n'
 printf 'Python bytecode exclusion regression passed\n'
 printf 'Backup skip of sockets and FIFOs regression passed\n'
+printf 'Backup vanished-file rsync exit handling regression passed\n'
 printf 'Startup gate for jq, perl, and rsync regression passed\n'

@@ -93,9 +93,9 @@ how to expand the project; AI executes within the boundary the human set.
 - Task files stay plain CommonMark with YAML frontmatter, one atomic work item
   per file, and lifecycle status matching their location.
 - The default maintenance and deployment surface is Make plus standard Unix shell
-  plus Markdown, with jq and git (required by the deployment script) and Python 3
-  (shipped by helper scripts in the wiki, task, and formatting skills) as accepted
-  standing dependencies.
+  plus Markdown, with Python 3 as an accepted standing dependency for helper
+  scripts. The declared toolchain floor, prepared by `make install`, is the
+  mechanism that names the remaining standing tools those surfaces require.
 
 ## Intentional Constraints
 

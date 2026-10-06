@@ -173,7 +173,9 @@ don't bring up new harnesses under Pattern B.
   the deterministic parts of the incremental day-grouping walk.
 - **`deployment/`**: Pattern A, script-only, and the one harness that
   belongs to the deploy script rather than to a skill. `script_tests/run.sh`
-  covers the OpenCode, Antigravity, and bytecode-exclusion paths;
+  covers the OpenCode, Antigravity, and bytecode-exclusion paths, the
+  socket and FIFO backup copy, openrsync vanished-file versus permission
+  exit 23, and the `jq`, `perl`, and `rsync` startup gate;
   `script_tests/style_run.sh` covers output-style deployment and uninstall.
 - **`trigger_evals/`**: a different axis from the rest, namely whether a
   skill's `description:` makes Claude load it on a realistic user message. Driven

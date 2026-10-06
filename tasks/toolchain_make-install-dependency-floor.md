@@ -2,7 +2,7 @@
 description: Turn make install into environment preparation: declare the runtime and development tool floor in one file, report and install what is missing or too old, and free the name from the deploy alias.
 scope: "repo toolchain"
 created: 2026-09-18T13:48:56
-updated: 2026-10-06T13:34:42
+updated: 2026-10-06T14:51:46
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -23,7 +23,7 @@ The outcome to judge the target by is the fresh start: a clone of this repositor
 
 The deploy script already aborts at startup when `jq`, `perl`, or `rsync` is missing from `PATH`, naming the binary. That gate is a fail-loud PATH lookup, not a version check and not an installer. This task still owns the declared floor, the install recipes, and freeing `make install` from the deploy alias. Do not treat the startup gate as a substitute for the manifest.
 
-The runtime extras are not all stock. `perl` ships on macOS and typical Linux. `rsync` ships on current macOS as openrsync (`/usr/bin/rsync`) and is a package on many Linux distributions. `jq` does not ship with macOS and is the extra a Mac contributor usually still has to install. The sibling [bash 3.2 floor](archive/deployment_bash-32-floor.md) already landed, so the interpreter itself is the stock `/bin/bash`. The runtime check must list `jq`, `perl`, and `rsync` as required runtime tools. It must not claim that a stock machine always satisfies the runtime floor with no install, because `jq` is often absent. It must not brew-install `rsync` on a Mac whose `/usr/bin/rsync` already resolves.
+The runtime extras are not all stock. `perl` ships on macOS and typical Linux. `rsync` ships on current macOS as openrsync (`/usr/bin/rsync`) and is a package on many Linux distributions. Current macOS also ships `jq` at `/usr/bin/jq` beside those two. The missing-`jq` case is Linux distributions that do not ship it, and macOS releases older than the bundled build. The sibling [bash 3.2 floor](archive/deployment_bash-32-floor.md) already landed, so the interpreter itself is the stock `/bin/bash`. The runtime check must list `jq`, `perl`, and `rsync` as required runtime tools. It must not claim that a stock machine always satisfies the runtime floor with no install, because `jq` is often absent on Linux. It must not brew-install `rsync` on a Mac whose `/usr/bin/rsync` already resolves.
 
 The development floor is not stock. `make lint` needs `markdownlint` and `shellcheck`, neither of which ships with the operating system, alongside `jq`. The test harnesses additionally reach for `python3`, `node`, and the agent CLI used to drive the skill evals. The repository's README states in prose that the lint targets use these tools and suggests a package manager on macOS, which is guidance a reader follows by hand rather than a declaration a target can act on.
 
