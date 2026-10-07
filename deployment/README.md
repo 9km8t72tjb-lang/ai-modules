@@ -80,7 +80,7 @@ The table below shows global-mode paths. Project-dir mode replaces `~` with `<pr
 | Target | Commands | Skills | Agents | Hooks | Styles |
 | --- | --- | --- | --- | --- | --- |
 | VS Code Copilot | `~/Library/Application Support/Code/User/prompts/<name>.prompt.md` (macOS) or `~/.config/Code/User/prompts/<name>.prompt.md` (Linux), copied | `~/.copilot/skills/<name>` copied | `~/.copilot/agents/<name>.agent.md`, frontmatter rewritten | `~/.copilot/hooks/<file>` copied | not yet |
-| Cursor | `~/.cursor/commands/<name>.md` copied | `~/.cursor/skills/<name>` copied | `~/.cursor/agents/<name>.md`, frontmatter rewritten | `~/.cursor/hooks.json` (copy from `cursor-hooks*.json`) and `~/.cursor/hooks/<file>` for shell scripts | not yet |
+| Cursor | `~/.cursor/commands/<name>.md` copied | `~/.cursor/skills/<name>` copied | `~/.cursor/agents/<name>.md`, frontmatter rewritten | `~/.cursor/hooks.json` (copy from `cursor-hooks*.json`) and `~/.cursor/hooks/<file>` for shell scripts | project `.cursor/rules/<name>.mdc` with `alwaysApply: true`; `--global` has no injecting file write |
 | Claude Code | `~/.claude/commands/<name>.md` copied | `~/.claude/skills/<name>` copied | `~/.claude/agents/<name>.md`, frontmatter rewritten | `.hooks` key merged into `~/.claude/settings.json` (from `claude-code-hooks*.json`); shell scripts copied to `~/.claude/hooks/<file>` | file copied to `~/.claude/output-styles/<name>.md`; `outputStyle` merged from `style:<name>` in `deployment.conf` |
 | OpenAI Codex | `~/.codex/prompts/<name>.md` copied | `~/.codex/skills/<name>` copied (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | `hooks` key merged into `~/.codex/hooks.json` (from `codex-custom-deploy-hooks.json`); shell scripts copied to `~/.codex/hooks/<file>` | not yet |
 | Antigravity | not deployed, since the repo ships no commands | fan-out copied to `~/.gemini/config/skills/<name>`, `~/.gemini/antigravity/skills/<name>`, and `~/.gemini/antigravity-cli/skills/<name>` | `~/.gemini/config/agents/<name>.md` generated with Antigravity frontmatter and tool-name mapping | `charter_guardrail` key merged into `~/.gemini/config/hooks.json`; shell scripts copied to `~/.gemini/config/hooks/<file>` | not yet |
@@ -106,6 +106,7 @@ Several targets do not consume the repo source files directly:
 | hook (`hooks/antigravity-hooks.json`) | Antigravity | `charter_guardrail` key merged into `~/.gemini/config/hooks.json` or `<project>/.agents/hooks.json`; relative `./hooks/` command paths are rewritten to absolute (global) or `.agents/hooks/` (project-dir) so the config stays portable |
 | hook (`hooks/cursor-hooks*.json`) | Cursor | copied to `~/.cursor/hooks.json` |
 | style (`styles/*.md`) | Claude Code | copied to `~/.claude/output-styles/<name>.md`; `outputStyle` set from `style:<name>` in `deployment.conf` |
+| style (`styles/*.md`) | Cursor | generated `.mdc` under `<project>/.cursor/rules/` with `alwaysApply: true`; Cursor appends rather than replaces, so adherence is weaker than on Claude |
 
 `replace:path VAR=value` rules in `deployment.conf` substitute `$VAR$` in matching deployed copies.
 

@@ -1,7 +1,7 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-10-06
+updated: 2026-10-07
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
 sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
@@ -72,10 +72,12 @@ style arm becomes the deploy script's first non-plugin asset source, so
 | Antigravity | a marked block in `~/.gemini/GEMINI.md` | none | block in a user-owned file, under its rules-file character cap |
 | Cursor | `.cursor/rules/<name>.mdc` with `alwaysApply: true` | none | project scope; no print-mode-injecting global file path |
 
-Claude is the built row. It shipped with the `style` artefact type, the repo-root
-source directory, and the prior-value restore, at both global and project scope.
-Every other row stays per-target delivery work, and each is a delivery decision
-rather than new machinery.
+Claude and Cursor are the built rows. Claude shipped with the `style` artefact
+type, the repo-root source directory, and the prior-value restore, at both global
+and project scope. Cursor added a generated rule file under a project-dir deploy
+and no new machinery; a global run writes no Cursor file and reports that account
+User Rules take a manual paste. Every other row stays per-target delivery work,
+and each is a delivery decision rather than new machinery.
 
 Two rows carry a caveat. The Codex row records a decided route, since the
 synthesized replacement won over a marked block in its global rules file and that
@@ -99,12 +101,22 @@ replacement, so nothing writes it today.
 
 ### The content transform needs no new machinery
 
-Claude receives the file verbatim, because it is the only target that parses the
-frontmatter. Every other target receives the body with the frontmatter stripped,
-which is what Claude itself does before injecting a style. The one sentence in
-the style body that names `keep-coding-instructions`, a Claude-only concept,
-becomes a placeholder variable substituted per tool through the existing
-`replace:` rule in the deploy configuration.
+Claude receives the file verbatim, because it is the only target that reads the
+style's own frontmatter. Every other target receives the body with that
+frontmatter stripped, which is what Claude itself does before injecting a style.
+Cursor's rule file then carries Cursor frontmatter in its place,
+`alwaysApply: true` plus the style's description.
+
+The one clause in the style body that names `keep-coding-instructions`, a
+Claude-only concept, needs wording per target. The Cursor generator rewrites it in
+the generation step, replacing the whole `<engineering_behavior>` element with a
+clause saying that the wording rules govern the named prose surfaces, that coding
+and tool use stay with Cursor's defaults, and that the harness only appends. The
+remaining append-only targets still plan a placeholder substituted per tool
+through the deploy configuration's `replace:` rule. That route needs a
+placeholder the source style does not carry yet, and Claude's verbatim copy would
+then need a substitution of its own, so the targets built next choose between
+the two routes.
 
 Codex is the exception, and it is an exception in kind rather than degree. Its
 `model_instructions_file` displaces the built-in instructions with no
@@ -198,3 +210,5 @@ how much an append-only target loses.
 - The `deployment_output-style-*` task files, which carry these decisions as work
   items. Their number and status track the delivery work rather than this record,
   so read the backlog for that state.
+- `deployment/deployment.sh`, whose Cursor style arm and
+  `generate_cursor_style_rule` make up the built Cursor row.

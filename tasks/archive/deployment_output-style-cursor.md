@@ -2,9 +2,11 @@
 description: Deploy the output style to Cursor as a project always-apply .mdc rule; on --global report that no print-mode-injecting machine-wide file path exists and name the settings User Rules paste.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-10-06T17:35:18
-status: ready
+updated: 2026-10-07T09:14:15
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Deploy the output style to Cursor as a project always-apply rule
@@ -21,13 +23,13 @@ plugin's always-apply rule both failed injection on the settled probe.
 
 ## Context
 
-This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md),
+This builds on [the Claude groundwork task](deployment_output-style-claude-groundwork.md),
 which created the repo-root source directory, the `style` artefact type, and the
 deploy-log restore behaviour. This task adds one target and no new machinery.
 
-The wiki records the harness facts on its [Cursor](../wiki/entities/cursor.md)
-page, in [output style delivery design](../wiki/concepts/output-style-delivery-design.md),
-and in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md).
+The wiki records the harness facts on its [Cursor](../../wiki/entities/cursor.md)
+page, in [output style delivery design](../../wiki/concepts/output-style-delivery-design.md),
+and in [system prompt substitution across harnesses](../../wiki/comparisons/system-prompt-substitution-across-harnesses.md).
 Rules are append-only: an applied rule is included at the start of context and
 replaces nothing. Cursor has no `keep-coding-instructions` flag; when
 `alwaysApply` is `true`, `description` and `globs` are ignored, so they cannot
@@ -37,7 +39,7 @@ rewrite `<engineering_behavior>` so it no longer names Claude's flag.
 
 Print-mode probes on 6 October 2026 against agent CLI `2026.10.01` settled the
 global question
-([probes](../wiki/raw/notes/cursor-style-injection-probes-2026-10-06.md)):
+([probes](../../wiki/raw/notes/cursor-style-injection-probes-2026-10-06.md)):
 
 - Project `.cursor/rules/*.mdc` with `alwaysApply: true` injects.
 - The same file under the user configuration tree's `rules/` folder does not.
@@ -69,7 +71,7 @@ Cursor's defaults, and that this harness only appends.
 
 **Out of scope:**
 
-- Deliverables named in Context, owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
+- Deliverables named in Context, owned by [the Claude groundwork task](deployment_output-style-claude-groundwork.md).
 - Cursor's team rules and its settings-stored User Rules, neither of which a
   deploy step can write.
 - Writing `~/.cursor/rules/` or a user-local plugin `rules/` tree as a global

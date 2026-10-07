@@ -61,7 +61,7 @@ Do not pin dated ids such as `claude-sonnet-4-6` — Claude uses the latest
 `--model` / `--judge-model` override the vendor default; `--model ''`
 inherits the CLI default. `--worker-bin` overrides the binary;
 `--claude-bin` remains a deprecated alias. Claude-only surfaces
-(`trigger_evals/`, `deployment/script_tests/style_run.sh`, `natural_language/`) reject
+(`trigger_evals/`, `natural_language/`) reject
 `--vendor cursor` until a Cursor equivalent exists.
 
 The Cursor twin of this file is `tests/AGENTS.md` — keep the vendor

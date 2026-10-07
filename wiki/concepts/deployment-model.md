@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-10-01
+updated: 2026-10-07
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -67,10 +67,11 @@ The style directive lives here rather than in the style file, and
 
 ### Copying is not the only transform
 
-Three targets receive generated files rather than copies. Codex agents are
-generated as TOML, Antigravity agents are generated with its own frontmatter and
-a mapped [tool vocabulary](antigravity-tool-vocabulary.md), and OpenCode agents
-are generated with its permission object. Antigravity also takes a per-class
+A target receives a generated file rather than a copy wherever it reads a
+different format. Codex agents are generated as TOML, Antigravity agents with its
+own frontmatter and a mapped [tool vocabulary](antigravity-tool-vocabulary.md),
+OpenCode agents with its permission object, and Cursor's output style as an
+always-apply `.mdc` rule. Antigravity also takes a per-class
 fan-out rather than one write, because its
 [global roots](antigravity-global-roots.md) diverge by artefact class. Hook configuration is merged as a JSON key into an existing settings file
 rather than replacing it, which is what the script's key-merge function exists
@@ -140,7 +141,8 @@ delivered as a file plus a settings key rather than as a file alone. See
 The script is the largest single executable file in the repository, and it
 outweighs every bundled skill script put together. It carries its own
 configuration format, its own log format, backup retention, an uninstall path,
-a dry run, two-dimensional filtering, and three code generators. It is also the
+a dry run, two-dimensional filtering, and a code generator for each target format
+it bridges. It is also the
 only substantial program here that ships to nobody, while every machine depends
 on it.
 
@@ -177,8 +179,9 @@ path.
 ## Open questions
 
 Whether every harness should receive every artefact class is unsettled. OpenCode
-hooks are not implemented, and the `style` type reaches Claude alone while its
-sibling harnesses stay unbuilt. So the target matrix has holes that are decisions
+hooks are not implemented, and the `style` type reaches Claude and, at project
+scope only, Cursor, while its other harnesses stay unbuilt. So the target matrix
+has holes that are decisions
 in some cells, sequenced work in others, and gaps in the rest. The command row is
 the settled kind, empty in every target's cell because the source is.
 

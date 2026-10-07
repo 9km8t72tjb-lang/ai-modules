@@ -2,8 +2,8 @@
 description: Gate the repeated-link and size checks to live task bodies, and rewrite the rules describing them so an archived finding is never reported rather than reported as a count nobody acts on.
 scope: plugins/ai_dev/skills
 created: 2026-09-18T21:27:49
-updated: 2026-09-18T21:27:49
-status: open
+updated: 2026-10-07T08:43:23
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -38,7 +38,11 @@ The scope rule this task states belongs in the base `task` skill, because the st
 
 Coverage for the linter's rule set lives in `tests/task/script_tests/run.sh`, whose case groups already include one for the size check, so the new scenarios extend that harness rather than starting another.
 
-The live task [repo-wide link integrity](task-family_repo-wide-link-integrity.md) edits the same script and the same rules-layer passages, widening the page walk from task files to every repo file. It states that the repeated-link warn keeps its current per-file behaviour, so the two tasks do not contradict each other, but a wider walk changes what "archived" means for a page that is not a task file at all. Whichever lands second reconciles the gate against the walk it finds.
+Three live tasks edit the same rules-layer passages this task rewrites (`<lint>` warn bucket, **Repeated-link react protocol**, **Repeated-link disposition line**, and/or `task_fix` `<output_contract>`), and whichever lands second reconciles its sentences against the text it finds:
+
+- [repo-wide link integrity](task-family_repo-wide-link-integrity.md) also edits the same script and those passages, widening the page walk from task files to every repo file. It states that the repeated-link warn keeps its current per-file behaviour, so the two tasks do not contradict each other, but a wider walk changes what "archived" means for a page that is not a task file at all. Whichever lands second reconciles the gate against the walk it finds.
+- [Answer a repeated-link warn by reorganizing the task body](task-family_repeated-link-reorganize-body.md) rewrites the warn bucket, the react protocol, the disposition-line block, and the `task_fix` `<output_contract>` so a repeated-link finding is answered by reorganizing the body rather than by a per-link kept disposition. It already links this file and states the same second-to-land reconciliation; this task's archived-count removal and live-only qualification must land against whichever wording of those passages is present.
+- [Return a ready task to checked on any rewrite](task-family_stamp-consequence-on-any-rewrite.md) rewrites the **Repeated-link react protocol** so it leaves `implemented` and `audited` bodies alone, and adds a re-gate to the repeated-link round of `task_auto_check`. Whichever lands second reconciles this task's archived-finding removal against the protocol text it finds.
 
 ## Approach
 
@@ -61,6 +65,7 @@ Extend `tests/task/script_tests/run.sh` with the scenarios the Acceptance names,
 
 - `check_repeated_links` and `check_size` each return no findings for a page under `tasks/archive/`, verified on a staged archived fixture that carries one target linked several times and a body past the split threshold, where both currently report.
 - The same two fixtures placed under `tasks/` still report both findings, so the gate narrowed by location rather than removing the checks.
+- `check_repeated_links` and `check_size` each open with a leading `is_archived` early-return and carry the same one-sentence live-only docstring rationale as `check_no_position_claims` (`Open tasks only — archived pages are closed records nobody maintains, so checking them would only create permanent noise.`), verified by reading those three functions side by side.
 - A live task body linking an archived target several times still reports its repeated-link finding, proving the gate keys on the linking page's own location.
 - An archive-inclusive run over this repository's tasks tree reports the same count as the live run for these two checks, and its remaining findings all name pages under `tasks/`.
 - An archive-inclusive run still reports a staged archived fixture carrying a frontmatter, provenance, status-validity, status-location, datetime, or filename-collision defect, so the mechanical side of the mode is untouched.

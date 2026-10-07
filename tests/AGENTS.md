@@ -40,8 +40,6 @@ These reject `--vendor cursor` with a clear message until a Cursor
 equivalent exists:
 
 - `trigger_evals/` — inspects Claude `Skill(...)` / stream-json load evidence
-- `deployment/script_tests/style_run.sh` — Claude output-styles deploy path
-  (also honors `TEST_VENDOR=cursor`)
 - `natural_language/` exercises Claude output-style selection through
   `outputStyle` in a sandbox `.claude/settings.json`.
 

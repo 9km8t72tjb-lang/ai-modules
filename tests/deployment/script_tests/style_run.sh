@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Regression coverage for the style artefact type, Claude two-placement
-# deploy, and merge_json_key prior-value capture/restore.
+# Regression coverage for the style artefact type: Claude two-placement
+# deploy, Cursor project always-apply .mdc generation, and merge_json_key
+# prior-value capture/restore.
 set -euo pipefail
 
 if [[ "${TEST_VENDOR:-}" == "cursor" ]] || [[ "${1:-}" == "--vendor" && "${2:-}" == "cursor" ]]; then
   printf '%s\n' \
-    "style_run.sh is Claude-only; --vendor cursor is unsupported for deployment style tests." >&2
+    "style_run.sh is a deterministic script harness; --vendor is unsupported." >&2
   exit 2
 fi
 
@@ -114,6 +115,32 @@ if printf '%s\n' "$project_dry" | grep -q "${HOME_DIR}/.claude/"; then
   fail "project dry-run must not resolve paths under HOME"
 fi
 
+# --- Cursor project dry-run: one .mdc write, nothing under home ---
+cursor_project_dry="$(HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target cursor --dry-run)"
+printf '%s\n' "$cursor_project_dry" | grep -q "${PROJECT_DIR}/.cursor/rules/natural-language.mdc" ||
+  fail "cursor project dry-run missing .mdc rule write"
+printf '%s\n' "$cursor_project_dry" | grep -q 'would-gen' ||
+  fail "cursor project dry-run missing would-gen"
+mdc_count="$(printf '%s\n' "$cursor_project_dry" | grep -c 'would-gen.*\.cursor/rules/natural-language\.mdc' || true)"
+assert_eq "$mdc_count" "1" "cursor project dry-run should report one .mdc write"
+if printf '%s\n' "$cursor_project_dry" | grep -qE "${HOME_DIR}/(\.cursor/|plugins/)"; then
+  fail "cursor project dry-run must not resolve paths under HOME"
+fi
+
+# --- Cursor global: report no injecting path, write nothing ---
+mkdir -p "$HOME_DIR/.cursor/rules" "$HOME_DIR/.cursor/plugins/local"
+printf '%s\n' 'pre-existing' > "$HOME_DIR/.cursor/rules/keep-me.mdc"
+cursor_global="$(HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target cursor --clear-backups)"
+printf '%s\n' "$cursor_global" | grep -qi 'no deployable machine-wide rule-file path' ||
+  fail "cursor global must report no deployable machine-wide rule-file path"
+printf '%s\n' "$cursor_global" | grep -q 'Customize → Rules' ||
+  fail "cursor global must name Customize → Rules paste"
+[[ ! -e "$HOME_DIR/.cursor/rules/natural-language.mdc" ]] ||
+  fail "cursor global must not write a style rule under user rules/"
+plugin_mdc="$(find "$HOME_DIR/.cursor/plugins/local" -name '*.mdc' 2>/dev/null || true)"
+[[ -z "$plugin_mdc" ]] || fail "cursor global must not install a style rule under plugins/local/"
+assert_file "$HOME_DIR/.cursor/rules/keep-me.mdc"
+
 # --- Real project-dir deploy ---
 HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
 assert_file "$PROJECT_DIR/.claude/output-styles/natural-language.md"
@@ -124,6 +151,39 @@ jq -e '.outputStyle == "natural-language"' "$PROJECT_DIR/.claude/settings.json" 
 jq -e '.outputStyle == "home-prior"' "$HOME_DIR/.claude/settings.json" >/dev/null ||
   fail "project deploy mutated home settings"
 
+# --- Cursor real project-dir deploy ---
+mkdir -p "$PROJECT_DIR/.cursor/rules"
+sibling_rule="$PROJECT_DIR/.cursor/rules/keep-sibling.mdc"
+sibling_saved="${SCRATCH}/keep-sibling.mdc"
+printf '%s\n' '---' 'alwaysApply: true' '---' 'pre-existing sibling' > "$sibling_rule"
+cp "$sibling_rule" "$sibling_saved"
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target cursor >/dev/null
+cursor_rule="$PROJECT_DIR/.cursor/rules/natural-language.mdc"
+assert_file "$cursor_rule"
+# Parses as Markdown with YAML frontmatter and alwaysApply: true
+awk 'BEGIN{n=0} /^---$/{n++; next} n==1{print} n>=2{exit}' "$cursor_rule" | grep -q 'alwaysApply: true' ||
+  fail "cursor rule missing alwaysApply: true in frontmatter"
+if grep -qE 'keep-coding-instructions|force-for-plugin' "$cursor_rule"; then
+  fail "cursor rule must not carry Claude output-style frontmatter keys"
+fi
+if grep -qi 'keep-coding-instructions' "$cursor_rule"; then
+  fail "cursor rule body must not reference keep-coding-instructions"
+fi
+eb_line="$(tr '\n' ' ' < "$cursor_rule" | grep -o '<engineering_behavior>[^<]*</engineering_behavior>' || true)"
+[[ -n "$eb_line" ]] || fail "cursor rule missing <engineering_behavior>"
+printf '%s\n' "$eb_line" | grep -qi 'named prose surfaces' ||
+  fail "engineering_behavior must name prose surfaces"
+printf '%s\n' "$eb_line" | grep -qi 'coding' ||
+  fail "engineering_behavior must leave coding behaviour with Cursor"
+printf '%s\n' "$eb_line" | grep -qi 'tool-use' ||
+  fail "engineering_behavior must leave tool-use behaviour with Cursor"
+printf '%s\n' "$eb_line" | grep -qi "Cursor's defaults" ||
+  fail "engineering_behavior must name Cursor's defaults"
+printf '%s\n' "$eb_line" | grep -qi 'append' ||
+  fail "engineering_behavior must state harness only appends"
+cmp -s "$sibling_saved" "$sibling_rule" ||
+  fail "cursor deploy changed pre-existing sibling rule"
+
 # --- Redeploy: single log entry per artefact, same settings value ---
 HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude >/dev/null
 file_log_count="$(grep -cF "${PROJECT_DIR}/.claude/output-styles/natural-language.md"$'\t' "$DEPLOY_LOG" || true)"
@@ -132,6 +192,12 @@ assert_eq "$file_log_count" "1" "expected one log line for style file after rede
 assert_eq "$key_log_count" "1" "expected one log line for outputStyle after redeploy"
 jq -e '.outputStyle == "natural-language"' "$PROJECT_DIR/.claude/settings.json" >/dev/null ||
   fail "redeploy changed outputStyle"
+
+# --- Cursor uninstall removes deployed rule, leaves sibling ---
+HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target cursor --uninstall >/dev/null
+[[ ! -e "$cursor_rule" ]] || fail "cursor uninstall left deployed rule"
+cmp -s "$sibling_saved" "$sibling_rule" ||
+  fail "cursor uninstall changed pre-existing sibling rule"
 
 # --- Project uninstall restores @absent (no prior key) ---
 HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target claude --uninstall >/dev/null

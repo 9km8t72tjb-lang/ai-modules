@@ -914,3 +914,18 @@ pre-existing.
 
 The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-07 08:25] update | Cursor style row built
+
+- concepts/output-style-delivery-design.md (Claude and Cursor as the built rows;
+  the content-transform passage records the Cursor generator's
+  `<engineering_behavior>` rewrite beside the `replace:` route the remaining
+  append-only targets still plan; the deploy script added to Derived from)
+- concepts/deployment-model.md (Cursor's generated style rule among the generated
+  files, the generator clause made count-free, and the `style` open question)
+- index.md (Last updated)
+
+## [2026-10-07 08:25] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

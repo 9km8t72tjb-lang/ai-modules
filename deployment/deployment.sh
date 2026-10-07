@@ -1482,6 +1482,94 @@ generate_opencode_agent() {
 }
 
 # ---------------------------------------------------------------------------
+# Generate a Cursor always-apply .mdc rule from a Claude output-style source.
+#
+# Cursor appends rules and has no keep-coding-instructions flag. Strip the
+# Claude frontmatter, emit alwaysApply: true, and rewrite <engineering_behavior>
+# so the wording rules govern prose surfaces, coding stays with Cursor defaults,
+# and the harness only appends.
+# ---------------------------------------------------------------------------
+generate_cursor_style_rule() {
+  local source="$1"
+  local dest="$2"
+  local target_id="$3"
+  local artifact_type="$4"
+
+  if [[ ! -f "$source" ]]; then
+    err "missing" "source not found: $source"
+    return 1
+  fi
+
+  local description=""
+  local in_frontmatter=false frontmatter_done=false
+  local body=""
+  local line=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if ! $frontmatter_done && [[ "$line" == "---" ]]; then
+      if $in_frontmatter; then
+        in_frontmatter=false
+        frontmatter_done=true
+      else
+        in_frontmatter=true
+      fi
+      continue
+    fi
+
+    if $in_frontmatter; then
+      if [[ "$line" =~ ^description:[[:space:]]*(.*)$ ]]; then
+        description="${BASH_REMATCH[1]}"
+        description="${description#\"}"
+        description="${description%\"}"
+        description="${description#\'}"
+        description="${description%\'}"
+      fi
+      continue
+    fi
+
+    body+="${line}"$'\n'
+  done < "$source"
+
+  body="${body%$'\n'}"
+
+  local cursor_engineering
+  cursor_engineering='<engineering_behavior>The wording rules govern the named prose surfaces. Coding and tool-use behaviour stay with Cursor'\''s defaults. This harness only appends.</engineering_behavior>'
+
+  if [[ "$body" == *"<engineering_behavior>"* ]]; then
+    body="$(
+      ENGINEERING_BEHAVIOR="$cursor_engineering" perl -0pe \
+        's/<engineering_behavior>.*?<\/engineering_behavior>/$ENV{ENGINEERING_BEHAVIOR}/s' \
+        <<< "$body"
+    )"
+  else
+    err "missing" "source has no <engineering_behavior>: $source"
+    return 1
+  fi
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    info "would-gen" "$dest (cursor style rule)"
+    return 0
+  fi
+
+  if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
+
+  {
+    printf '%s\n' '---'
+    if [[ -n "$description" ]]; then
+      printf 'description: %s\n' "$description"
+    fi
+    printf '%s\n' 'alwaysApply: true'
+    printf '%s\n\n' '---'
+    printf '%s\n' "$body"
+  } > "$dest"
+
+  ok "generated" "$dest (cursor style rule)"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+  append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
+}
+
+# ---------------------------------------------------------------------------
 # Install a single artifact into one app target
 # ---------------------------------------------------------------------------
 install_for_app() {
@@ -1741,6 +1829,17 @@ install_for_app() {
             # Conf-sourced scalar: empty hooks_dir, scalar as 7th arg.
             # source for the log column is deployment.conf (no JSON file read).
             merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle" "$app_id" "$type" "" "$active_style"
+          fi
+          ;;
+        cursor)
+          if [[ -z "$PROJECT_DIR" ]]; then
+            info "skip" "[$name] Cursor has no deployable machine-wide rule-file path that print mode injects; paste the generated body into Customize → Rules (User Rules)"
+          else
+            local dest_dir="${app_dir}/rules"
+            ensure_dir "$dest_dir"
+            local dest_path="${dest_dir}/${name}.mdc"
+            generate_cursor_style_rule "$source_abs" "$dest_path" "$app_id" "$type"
+            maybe_apply_replacements "$dest_path" ${replacement_specs[@]+"${replacement_specs[@]}"}
           fi
           ;;
         *)
