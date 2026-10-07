@@ -2,7 +2,7 @@
 description: Run the trigger evals on Cursor as on Claude, each worker in its own directory, with same-vendor baselines and no Claude-only label, and record live runs on both vendors.
 scope: tests/trigger_evals
 created: 2026-10-04T10:56:39
-updated: 2026-10-05T22:30:32
+updated: 2026-10-07T13:07:42
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -91,7 +91,7 @@ Narrow the Makefile's `EXCLUDE` prune of `tests/trigger_evals/results/` to the p
 Rewrite in place the doc passages the "Where the harness is called Claude-only" bullet lists, so none calls the harness Claude-only. In each doc list, remove only the `trigger_evals` entry and keep the rest, as for `CLAUDE_ONLY`. Then make these edits:
 
 - In `tests/CLAUDE.md`, rewrite the `## tests/trigger_evals/` section for both vendors. Its run patterns carry `--vendor cursor`, and they drop the dated `claude-sonnet-4-6` pin and the explicit `--workers`. The section states each vendor's deployed root and load evidence, the per-worker directory, and each CLI's default permission mode. It also states the drift-check roots and the escape guard, which any write to the checkout during a run trips. It names the Claude-only UUID proxy, the `vendor` and `worker_model` fields, and the same-vendor baseline rule. It keeps the guard task's zero-recall reading, stated for both vendors.
-- In the `## What's here` table of `tests/CLAUDE.md`, rewrite the `trigger_evals/` row's pattern cell, "local `run.py` wrapper (auto: deployed-mode or UUID fallback)". The new cell names deployed mode on both vendors and the Claude-only `--force-uuid` opt-in. The guard task already ends the automatic fallback that cell describes.
+- In the `## What's here` table of `tests/CLAUDE.md`, rewrite the `trigger_evals/` row's pattern cell, "local `run.py` wrapper (deployed mode; `--force-uuid` for UUID proxy)". The new cell names deployed mode on both vendors and the Claude-only `--force-uuid` opt-in.
 - Under `### Parallel workers` in `tests/CLAUDE.md`, list the trigger runner among the runners whose jobs cannot collide. Rewrite "the two runners whose jobs cannot collide" so it carries no count.
 - In `tests/AGENTS.md`, rewrite in place the `### Parallel workers` sentence that ends "on wiki layer 2 and `language_humanizer`.", so its runner list names the trigger runner too. Add to `## Running under Cursor` a trigger-eval command with `--vendor cursor` and a `--baseline` naming a prior Cursor run.
 - In `TESTING.md`'s `## Running Tests`, rewrite the trigger-eval command so it carries `--vendor cursor` and names a baseline from the same vendor.
@@ -124,6 +124,6 @@ Rewrite in place the doc passages the "Where the harness is called Claude-only" 
 - The `run.py` module docstring describes both vendors' deployed roots and load evidence, the per-worker directory, and the Claude-only UUID proxy. Its usage block shows `--vendor` with both vendors. `grep -c -- '--workers 10' tests/trigger_evals/run.py` prints 0.
 - The `## tests/trigger_evals/` section of `tests/CLAUDE.md` states each fact the `### Docs` section names for it. `awk '/^## tests\/trigger_evals\//{f=1;next} /^## /{f=0} f' tests/CLAUDE.md | grep -cE 'claude-sonnet-4-6|--workers 10'` prints 0.
 - `### Parallel workers` names the trigger runner in both `tests/CLAUDE.md` and `tests/AGENTS.md`. `grep -c 'the two runners whose jobs cannot collide' tests/CLAUDE.md` and ``grep -c 'wiki layer 2 and `language_humanizer`' tests/AGENTS.md`` each print 0. `## Running under Cursor` in `tests/AGENTS.md` holds a trigger-eval command with `--vendor cursor` and a `--baseline` naming a prior Cursor run.
-- The `trigger_evals/` row of the `## What's here` table in `tests/CLAUDE.md` and the `## Trigger evals` section of `tests/agent_spinner/RUNBOOK.md` each state what the `### Docs` section names for them. `grep -c 'deployed-mode or UUID fallback' tests/CLAUDE.md` and `grep -c 'falls back to the UUID proxy' tests/agent_spinner/RUNBOOK.md` each print 0.
+- The `trigger_evals/` row of the `## What's here` table in `tests/CLAUDE.md` and the `## Trigger evals` section of `tests/agent_spinner/RUNBOOK.md` each state what the `### Docs` section names for them. ``grep -c 'deployed mode; `--force-uuid` for UUID proxy' tests/CLAUDE.md`` and `grep -c 'falls back to the UUID proxy' tests/agent_spinner/RUNBOOK.md` each print 0.
 - `grep -c 'trigger_evals/run.py --eval-set' TESTING.md` prints 0. The trigger-eval command in `## Running Tests` carries `--vendor cursor` and names a same-vendor baseline.
 - `wiki/entities/cursor.md` states the load record, the record a shell or write call emits, the trust requirement, and the discovery roots, each once, with its date, CLI version, and source kind. `wiki/concepts/verification-surfaces.md` says trigger evals run on Claude and Cursor. `grep -F "$HOME" wiki/entities/cursor.md wiki/concepts/verification-surfaces.md` finds nothing.

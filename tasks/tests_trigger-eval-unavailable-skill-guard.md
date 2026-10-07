@@ -2,9 +2,11 @@
 description: Make the trigger-eval runner fail loudly on an unavailable skill instead of silently scoring a zero, and document how to read a zero-recall outcome in the `## tests/trigger_evals/` section of `tests/CLAUDE.md`.
 scope: "local test harnesses"
 created: 2026-08-30T16:57:07
-updated: 2026-10-04T22:41:37
-status: ready
+updated: 2026-10-07T12:06:59
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Fail loudly on an unavailable skill in the trigger-eval runner and document zero-recall reading
@@ -79,16 +81,19 @@ pass `--results-dir` under that staging so host deploy state and host results ar
 never consulted. For mode-selection checks (2) and (3), drive `main` (or the
 equivalent entry the script already invokes) under that staging with
 `run_uuid_fallback` and `run_deployed_mode` stubbed so each stub records that it
-was called and returns without writing accuracy, recall, precise, or family score
-fields: (1) without `--force-uuid`, a skill absent from the staged deployed tree
-exits non-zero, prints the named unavailability, and leaves no scored
-`results.json`; (2) with `--force-uuid`, the stubbed run records a
-`run_uuid_fallback` call and leaves no scored `results.json`; (3) with the skill
-present under the staged `HOME` deployed tree, the stubbed run records a
-`run_deployed_mode` call. Preserve `run_uuid_fallback`'s existing scoring
-behaviour for deliberate `--force-uuid` runs; the stubbed reachability assertion
-already proves that proxy path is selected, and the hermetic suite stops at those
-three assertions. The runner exits 0 when those assertions pass.
+was called and leaves no scored `results.json` (no accuracy, recall, precise, or
+family score fields): (1) without `--force-uuid`, a skill absent from the staged
+deployed tree exits non-zero, prints the named unavailability, and creates no
+results directory; (2) with `--force-uuid`, the uuid stub returns a score-free
+payload, the stubbed run records a `run_uuid_fallback` call, and leaves no scored
+`results.json`; (3) with the skill present under the staged `HOME` deployed tree,
+the deployed stub records the call then raises a sentinel so `main` exits through
+its exception handler before writing `results.json`, proving `run_deployed_mode`
+was selected without inventing precise or family score fields for the print path.
+Preserve `run_uuid_fallback`'s existing scoring behaviour for deliberate
+`--force-uuid` runs; the stubbed reachability assertion already proves that proxy
+path is selected, and the hermetic suite stops at those three assertions. The
+runner exits 0 when those assertions pass.
 
 Rewrite in place the mode-selection bullets under `## tests/trigger_evals/` in
 `tests/CLAUDE.md` so an unavailable skill exits with the named loud failure and
@@ -132,10 +137,11 @@ dual-vendor command and baseline rewrite stay with
   `run_uuid_fallback` call and leaves no scored `results.json`.
 - `tests/trigger_evals/script_tests/run.sh` asserts, under the same hermetic
   staging and stubs, that a skill present in the staged deployed tree records a
-  `run_deployed_mode` call.
+  `run_deployed_mode` call, exits via the deployed stub's sentinel before scoring,
+  and leaves no scored `results.json`.
 - `tests/trigger_evals/script_tests/run.sh` asserts that an unavailable-skill run
   without `--force-uuid` exits non-zero, prints the named unavailability, and
-  leaves no scored `results.json` under that hermetic staging; the runner exits 0
+  creates no results directory under that hermetic staging; the runner exits 0
   when its assertions pass.
 - The `## tests/trigger_evals/` section in `tests/CLAUDE.md` states deployed-mode
   selection, `--force-uuid` as the deliberate proxy path, and what a zero-recall

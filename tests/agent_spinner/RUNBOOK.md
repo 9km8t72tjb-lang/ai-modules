@@ -63,8 +63,12 @@ python3 tests/trigger_evals/run.py \
   --eval-set tests/trigger_evals/agent_spinner.json --skill agent_spinner
 ```
 
-The skill has to be deployed for the runner's deployed-mode path; without a
-deployment it falls back to the UUID proxy, which measures something weaker.
+The skill has to be deployed for the runner's deployed-mode path. An unavailable
+skill exits with a named unavailability error and writes no score;
+`--force-uuid` remains the deliberate opt-in to the UUID proxy and, for
+`agent_spinner`, also needs
+`--skill-path plugins/ai_dev/skills/agent_spinner` because the default
+source root is `plugins/knowledge_management/skills/<skill>`.
 
 **Deploy-time obligation.** The first `make deploy` that installs
 `agent_spinner` is the moment its description starts competing for triggers, so

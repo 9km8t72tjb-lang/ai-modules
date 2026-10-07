@@ -4,8 +4,10 @@
 Prefers the deployed skill (under `~/.claude/skills/<name>/`) when present —
 spawns `claude -p <query>` and watches the stream for an actual
 `Skill(skill="<name>", ...)` invocation or a `Read` of the deployed
-`SKILL.md`. When the skill is NOT deployed yet, falls back to the
-skill-creator runner's UUID-proxy approach.
+`SKILL.md`. When the skill is unavailable in the deployed tree and
+`--force-uuid` is not set, exits with a named unavailability error and
+writes no score. `--force-uuid` is the only entry to the skill-creator
+runner's UUID-proxy approach.
 
 This harness is Claude-only: it inspects Claude stream-json tool-use evidence.
 Its worker model still resolves through `tests/lib/vendor.py`, so the default
@@ -395,14 +397,15 @@ def run_deployed_mode(entries: list[dict], target_skill: str, family: list[str],
 def run_uuid_fallback(eval_set_path: Path, source_skill_path: Path,
                       model: str | None, runs_per_query: int, timeout: int,
                       workers: int, log) -> dict:
-    print("Mode: uuid_fallback (skill is not deployed)", file=log, flush=True)
+    print("Mode: uuid_fallback (--force-uuid)", file=log, flush=True)
     print("Note: uuid fallback uses skill-creator's run_eval.py, which only "
           "supports single-skill grading. Family / precise metrics are not "
           "available in this mode.\n", file=log, flush=True)
     if not (SKC_RUN_EVAL / "scripts" / "run_eval.py").is_file():
         raise RuntimeError(
             f"skill-creator runner not found at {SKC_RUN_EVAL}/scripts/run_eval.py — "
-            "install the skill-creator plugin or deploy the skill so deployed-mode kicks in."
+            "install the skill-creator plugin, or omit --force-uuid and deploy the skill "
+            "to measure in deployed mode."
         )
     cmd = [
         sys.executable, "-m", "scripts.run_eval",
@@ -479,8 +482,9 @@ def main() -> int:
                              "auto-derivation finds nothing.")
     parser.add_argument("--skill-path", default=None,
                         help="Source SKILL.md dir under plugins/...; used for "
-                             "deployed-vs-source drift warning and family "
-                             "auto-derivation. Defaults to "
+                             "deployed-vs-source drift warning, family "
+                             "auto-derivation, and required by --force-uuid. "
+                             "Defaults to "
                              "plugins/knowledge_management/skills/<skill>.")
     vendor.add_vendor_arguments(parser)
     parser.add_argument("--runs-per-query", type=int, default=3)
@@ -493,9 +497,9 @@ def main() -> int:
                              "against per query. Reports precise regressions and "
                              "improvements; a regression makes the exit code non-zero.")
     parser.add_argument("--force-uuid", action="store_true",
-                        help="Skip deployed detection and use uuid fallback. "
-                             "Mostly useful for testing the upstream runner "
-                             "in a clean environment.")
+                        help="Deliberate opt-in to the UUID-proxy path. "
+                             "Skip deployed detection and use skill-creator's "
+                             "uuid fallback. The only way to reach that path.")
     args = parser.parse_args()
     vendor.require_vendor_allowed(args.vendor, "trigger_evals")
     resolved = vendor.resolve(args)
@@ -522,6 +526,30 @@ def main() -> int:
     if args.skill not in family:
         family = [args.skill] + family
 
+    deployed_root = None if args.force_uuid else deployed_skill_root(args.skill)
+    if deployed_root is None and not args.force_uuid:
+        print(
+            f"ERROR: skill '{args.skill}' is unavailable: not found under "
+            f"~/.claude/skills/{args.skill}/. Deploy the skill (make deploy) "
+            f"or pass --force-uuid to use the UUID-proxy path deliberately.",
+            file=sys.stderr,
+        )
+        return 2
+
+    # --force-uuid preflight before any results directory exists
+    if args.force_uuid:
+        if source_skill_path is None:
+            print(
+                "ERROR: --force-uuid requires a skill source path "
+                "(--skill-path or the default under "
+                "plugins/knowledge_management/skills/<skill>).",
+                file=sys.stderr,
+            )
+            return 2
+        if shutil.which(resolved.bin) is None:
+            print(f"ERROR: '{resolved.bin}' CLI not found on PATH.", file=sys.stderr)
+            return 2
+
     if args.results_dir:
         out_dir = Path(args.results_dir).resolve()
     else:
@@ -530,7 +558,6 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"Results dir: {out_dir}")
 
-    deployed_root = None if args.force_uuid else deployed_skill_root(args.skill)
     drift_note = None
     if deployed_root and source_skill_path:
         drift_note = detect_drift(deployed_root / "SKILL.md",
@@ -563,13 +590,6 @@ def main() -> int:
                     args.timeout, args.workers, resolved, log,
                 )
             else:
-                if source_skill_path is None:
-                    print("ERROR: skill is not deployed and no --skill-path "
-                          "was given for uuid fallback.", file=sys.stderr)
-                    return 2
-                if shutil.which(resolved.bin) is None:
-                    print(f"ERROR: '{resolved.bin}' CLI not found on PATH.", file=sys.stderr)
-                    return 2
                 output = run_uuid_fallback(
                     eval_set_path, source_skill_path, resolved.worker_model,
                     args.runs_per_query, args.timeout, args.workers, log,

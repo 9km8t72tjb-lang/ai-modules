@@ -181,8 +181,9 @@ don't bring up new harnesses under Pattern B.
   `script_tests/style_run.sh` covers output-style deployment and uninstall.
 - **`trigger_evals/`**: a different axis from the rest, namely whether a
   skill's `description:` makes Claude load it on a realistic user message. Driven
-  by the local `run.py` wrapper, with hermetic unit tests for the
-  detector under `script_tests/`.
+  by the local `run.py` wrapper, with hermetic unit tests under `script_tests/`
+  for the baseline-regression detector and the
+  deployed-versus-unavailable-versus-`--force-uuid` mode-selection guards.
 
 ## Grader mechanics
 

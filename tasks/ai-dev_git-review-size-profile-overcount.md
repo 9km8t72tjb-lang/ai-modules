@@ -1,13 +1,13 @@
 ---
-description: Make git_review's size profile count diff content lines only, so added_lines and removed_lines equal git's own numstat sums in range mode and in uncommitted mode.
+description: Make git_review's size profile count content lines only (numstat-equal in range and uncommitted), prove via a new range scenario plus s11/s22, and keep tests/README.md and tests/CLAUDE.md current.
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-06T13:09:42
-updated: 2026-10-06T13:25:39
-status: open
+updated: 2026-10-07T17:12:09
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
-# Count only content lines in the git_review size profile
+# Count only content lines in the git_review size profile, prove it in script tests, and keep harness docs current
 
 ## Goal
 
@@ -56,7 +56,7 @@ Each assertion computes its expected values in its own sandbox, so the test pins
 ## Acceptance
 
 - A search of `collect_review_evidence.sh` for `count_matches '^\+'` and `count_matches '^-'` returns no match, and `collect_size_profile` computes `added_lines` and `removed_lines` from `$source` with a header-aware count.
-- The new range-mode scenario passes and asserts that `added_lines` and `removed_lines` equal the added and removed sums of `git diff --numstat -M main...feature` in its sandbox, skipping the `-` rows that numstat prints for binary files.
+- The new range-mode scenario passes and asserts that `added_lines` and `removed_lines` equal the added and removed sums of `git diff --numstat -M main...feature` in its sandbox, skipping the `-` rows that numstat prints for binary files. The sandbox feature branch used for that assertion includes the Approach-named text modify/add/delete, rename-without-content-change, and modified-binary edits.
 - The same scenario asserts that its `full_diff.txt` holds the removed comment and the added line as hunk lines that start with `---` and `+++`, so its fixture keeps the power to fail both a header-inclusive count and a plain `grep -v` filter.
 - The extended `s11` passes and asserts that the two counts equal the sums of `git diff --cached --numstat` and `git diff --numstat` plus the line count of each untracked file, all read in its sandbox.
 - The extended `s22` passes and asserts that the two counts equal the numstat sums over the changed paths the collector read, which leaves out every path listed in `unread_paths.txt`.

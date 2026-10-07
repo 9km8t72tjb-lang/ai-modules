@@ -33,7 +33,7 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `format_rust/` | `format_rust` | Pattern A (script-only) | `script_tests/` greps SKILL.md and the plugin README for the error-versus-invariant model, panic discipline, and clippy wiring; no `run_all.sh`. |
 | `update_changelog/` | `update_changelog` | Pattern A (script-only) | `script_tests/` covers the deterministic parts of the incremental day-grouping walk. |
 | `deployment/` | the deploy script (no single skill) | Pattern A (script-only) | These script tests execute the real deploy script, so they inherit its `jq`, `perl`, and `rsync` PATH gate. `script_tests/run.sh` covers the OpenCode, Antigravity, and bytecode-exclusion deployment paths, the socket and FIFO backup copy, openrsync vanished-file versus permission exit 23, the startup gate, and cleanup-only `--clear-backups` skipping that gate; `script_tests/style_run.sh` covers output-style deployment and uninstall. |
-| `trigger_evals/` | wiki and `task_*` family skills | local `run.py` wrapper (auto: deployed-mode or UUID fallback) | Whether a skill *triggers* on realistic user messages (description-matching), separate from skill *behavior*. |
+| `trigger_evals/` | wiki and `task_*` family skills | local `run.py` wrapper (deployed mode; `--force-uuid` for UUID proxy) | Whether a skill *triggers* on realistic user messages (description-matching), separate from skill *behavior*. |
 
 Pattern A is preferred for new harnesses. Pattern B stays in `wiki/`
 until the next significant iteration; don't bring up new harnesses
@@ -555,7 +555,7 @@ python3 tests/trigger_evals/run.py \
   --workers 10
 ```
 
-`run.py` auto-detects whether the skill is deployed:
+`run.py` selects mode from the deployed tree:
 
 - **Deployed mode** (default when `~/.claude/skills/<name>/SKILL.md`
   exists): spawns `claude -p` for each query × runs-per-query and
@@ -564,19 +564,38 @@ python3 tests/trigger_evals/run.py \
   skill `<X>` actually fired, not just "did SOMETHING fire." Warns
   if the deployed `description:` has drifted from the source under
   `plugins/…/<name>/SKILL.md` (run `make deploy` to resync).
-- **UUID-proxy fallback** (when the skill is NOT deployed): delegates
-  to skill-creator's `run_eval.py`, which writes a temp slash command
-  under `~/.claude/commands/<name>-skill-<uuid>.md` carrying the
-  description being tested and watches for the UUID in `Skill` /
-  `Read` inputs. Useful for testing a description *before* deploy.
-  Family/precise grading is NOT supported in this mode; the fallback
-  reports only the upstream single-skill pass/fail.
-- **Force UUID** (`--force-uuid`): override auto-detect and use the
-  UUID-proxy path even when the skill is deployed. Rarely useful in
-  practice: if you have the real skill deployed *and* you pass the
-  same description through the proxy, the model picks the deployed
-  one (because names like `wiki` beat names like `wiki-skill-<uuid>`),
-  and the proxy never gets called, which scores 0/N falsely.
+- **Unavailable skill** (skill absent from the deployed tree, and
+  `--force-uuid` not set): exits non-zero with a named unavailability
+  error and writes no score. Deploy the skill (`make deploy`) before
+  measuring, or pass `--force-uuid` deliberately.
+- **Force UUID** (`--force-uuid`): the only entry to the UUID-proxy
+  path. Delegates to skill-creator's `run_eval.py`, which writes a
+  temp slash command under
+  `~/.claude/commands/<name>-skill-<uuid>.md` carrying the description
+  being tested and watches for the UUID in `Skill` / `Read` inputs.
+  Family/precise grading is NOT supported in this mode; the proxy
+  reports only the upstream single-skill pass/fail. Rarely useful
+  when the real skill is also deployed: names like `wiki` beat
+  `wiki-skill-<uuid>`, so the proxy never gets called and scores
+  0/N falsely.
+
+**Reading a zero-recall outcome.** In deployed mode, a description-level
+zero for the skill under test shows those `expected_skill` rows as
+`[..]` in `run.log`, or `[.F]` when a sibling took the load, while
+null-expected rows still pass. On a single-target set that looks like
+`Precise: 8/16` on `agent_spinner.json` (every target row failed; every
+null row passed). Treat that as evidence about the `description:`, not
+as an availability failure. The unavailable-skill guard covers only
+`--skill`: when that named skill is missing from the deployed tree the
+run exits with the named unavailability and writes no score. Undeployed
+siblings in a multi-skill set still reach deployed mode, so every
+positive row at `[..]` with only the null rows passing should first
+send the reader to check what the worker could load (siblings present
+and deployed) before blaming one description. A run that prints
+`Precise: 0/N` with `__worker_failed__` in every triggered column is a
+dead worker; diagnose it through
+``### Worker auth: nested `claude -p` reads the stored OAuth login``
+above, not as a skill regression.
 
 ### Family / precise grading (deployed mode)
 
