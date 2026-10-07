@@ -2,8 +2,8 @@
 description: Make the trigger-eval runner fail loudly on an unavailable skill instead of silently scoring a zero, and document how to read a zero-recall outcome in the `## tests/trigger_evals/` section of `tests/CLAUDE.md`.
 scope: "local test harnesses"
 created: 2026-08-30T16:57:07
-updated: 2026-10-07T12:06:59
-status: audited
+updated: 2026-10-07T22:16:19
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -50,7 +50,7 @@ Deploy copies every skill into the deployed tree via `copy_path_with_replacement
 so the fallback is rarely taken after a normal deploy. The guard matters for the
 next skill authored but not yet deployed, whose run would otherwise repeat the
 silent-zero misread that produced the now-deferred
-[archive/tests_trigger-eval-harness-repair.md](archive/tests_trigger-eval-harness-repair.md).
+[tests_trigger-eval-harness-repair.md](tests_trigger-eval-harness-repair.md).
 This task carries the genuinely-open remainder of that deferred task, its
 loud-failure and zero-recall-documentation acceptance, while that task's
 reproduce-and-fix-the-resolution framing is moot, since deployed mode already
@@ -107,17 +107,17 @@ loud failure and writes no score, and `--force-uuid` remains the deliberate
 UUID-proxy opt-in, superseding the prior "falls back to the UUID proxy" wording.
 Leave the section's run command and deploy-time obligation as they stand; the
 dual-vendor command and baseline rewrite stay with
-[tests_trigger-evals-cursor-vendor.md](tests_trigger-evals-cursor-vendor.md).
+[tests_trigger-evals-cursor-vendor.md](../tests_trigger-evals-cursor-vendor.md).
 
 **Out of scope:**
 
 - Rewriting any skill `description:` to move a routing result, owned by
-  [wiki_activation-surface-and-descriptions.md](archive/wiki_activation-surface-and-descriptions.md).
+  [wiki_activation-surface-and-descriptions.md](wiki_activation-surface-and-descriptions.md).
 - Re-baselining recorded runs or deleting the stale 2026-05-17 run logs; that
   output is gitignored and a fresh run supersedes it.
 - Adding trigger-eval cases for any skill and editing the task-family
   harness-inventory rows, owned by
-  [task-family_test-harness-consolidation.md](archive/task-family_test-harness-consolidation.md);
+  [task-family_test-harness-consolidation.md](task-family_test-harness-consolidation.md);
   cross-link that task for registering any new trigger harness row rather than
   editing the inventory here.
 

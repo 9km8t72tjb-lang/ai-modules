@@ -2,7 +2,7 @@
 description: Consolidate the task skill's two local test dirs into one, register every task-family harness in the inventory table and README ## Current harnesses, and add task_auto_check trigger cases.
 scope: "task_* family local test harness"
 created: 2026-08-11T18:58:50
-updated: 2026-08-31T09:27:16
+updated: 2026-10-07T22:17:17
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -58,7 +58,7 @@ no-regression evidence this task records. Shared documentation surfaces still ne
 ordered co-edits. This task owns the task-family rows under `## What's here` in the
 tests tree's `CLAUDE.md` and the post-merge task-family bullets under
 `## Current harnesses` in `tests/README.md`.
-[tests_trigger-eval-unavailable-skill-guard.md](../tests_trigger-eval-unavailable-skill-guard.md)
+[tests_trigger-eval-unavailable-skill-guard.md](tests_trigger-eval-unavailable-skill-guard.md)
 owns the zero-recall guidance in the trigger harness's own `## tests/trigger_evals/`
 section of that `CLAUDE.md`, which this task leaves untouched.
 [tests_wiki-front-end-behavior-evals.md](../tests_wiki-front-end-behavior-evals.md)
