@@ -1,0 +1,8 @@
+{
+  "name": "ai_editorial",
+  "version": "1.0.0",
+  "description": "Skills for editorial craft on prose written for people to read: reports, proposals, updates, and documentation. Its first three skills are in development — slop_catch, which flags AI writing tells in a draft; ghost_writer, which carries per-genre rules for writing and editing strong prose; and language_humanizer, which delivers prose the intended reader understands on the first read.",
+  "author": { "name": "Andreas F. Hoffmann" },
+  "license": "MIT",
+  "skills": "./skills/"
+}

@@ -40,43 +40,49 @@ ai-modules/
 │   │       ├── wiki_fix/
 │   │       ├── executive_summary/
 │   │       └── spr/
-│   └── ai_dev/
+│   ├── ai_dev/
+│   │   ├── .claude-plugin/plugin.json
+│   │   ├── .codex-plugin/plugin.json
+│   │   ├── README.md
+│   │   ├── agents/
+│   │   │   ├── auto_drift_task.md
+│   │   │   ├── auto_gate_task.md
+│   │   │   ├── auto_reviewer_task.md
+│   │   │   ├── auto_verifier_task.md
+│   │   │   └── auto_shaper_task.md
+│   │   ├── hooks/           # shared hook scripts plus Claude/Codex/Antigravity hook configs
+│   │   └── skills/
+│   │       ├── git_commit/
+│   │       ├── git_checkout/
+│   │       ├── git_refresh/
+│   │       ├── git_review/
+│   │       ├── update_changelog/
+│   │       ├── task/
+│   │       ├── task_create/
+│   │       ├── task_check/
+│   │       ├── task_auto_check/
+│   │       ├── task_explain/
+│   │       ├── task_select/
+│   │       ├── task_implement/
+│   │       ├── task_audit/
+│   │       ├── task_finish/
+│   │       ├── task_fix/
+│   │       ├── guardrail/
+│   │       ├── guardrail_audit/
+│   │       ├── ai_instruction_writing/
+│   │       ├── ai_instruction_formatting/
+│   │       ├── skill_doctor/
+│   │       ├── agent_spinner/
+│   │       ├── harness_portability/
+│   │       ├── format_markdown/
+│   │       ├── format_python/
+│   │       └── format_rust/
+│   └── ai_editorial/
 │       ├── .claude-plugin/plugin.json
 │       ├── .codex-plugin/plugin.json
 │       ├── README.md
-│       ├── agents/
-│       │   ├── auto_drift_task.md
-│       │   ├── auto_gate_task.md
-│       │   ├── auto_reviewer_task.md
-│       │   ├── auto_verifier_task.md
-│       │   └── auto_shaper_task.md
-│       ├── hooks/           # shared hook scripts plus Claude/Codex/Antigravity hook configs
 │       └── skills/
-│           ├── git_commit/
-│           ├── git_checkout/
-│           ├── git_refresh/
-│           ├── git_review/
-│           ├── update_changelog/
-│           ├── task/
-│           ├── task_create/
-│           ├── task_check/
-│           ├── task_auto_check/
-│           ├── task_explain/
-│           ├── task_select/
-│           ├── task_implement/
-│           ├── task_audit/
-│           ├── task_finish/
-│           ├── task_fix/
-│           ├── guardrail/
-│           ├── guardrail_audit/
-│           ├── ai_instruction_writing/
-│           ├── ai_instruction_formatting/
-│           ├── skill_doctor/
-│           ├── agent_spinner/
-│           ├── harness_portability/
-│           ├── format_markdown/
-│           ├── format_python/
-│           └── format_rust/
+│           └── language_humanizer/
 ├── styles/                  # tracked output styles (Claude format; deployed, not a plugin component)
 │   └── natural-language.md
 ├── deployment/              # deployment script for installing artefacts globally or per-project
@@ -160,6 +166,16 @@ adopted a charter. Codex loads its plugin-bundled config from the plugin
 manifest after hook trust review. The deployable config-layer Codex and
 Antigravity hook sources remain available for explicit global or project
 activation outside plugin installs.
+
+### ai_editorial
+
+Skills for editorial craft on prose written for people to read: reports, proposals, status updates, documentation, and the everyday workplace writing that has to land with its audience. What sets this plugin apart is its subject matter, not its audience — every skill in this repository is invoked by a person and consumed by a model, and here it is the kind of text being worked on that changes. Instructions an AI reads at inference time remain the province of `ai_instruction_writing` and `ai_instruction_formatting`.
+
+The plugin ships `language_humanizer` today; its two siblings are in development:
+
+- **language_humanizer**: reviews, rewrites, or writes a document so its intended reader understands it on the first read. Three ordered passes carry the work — an inventory of every load-bearing element of the input, the moves that produce first-read comprehension, and a verification of the delivered text against that inventory — so a rewrite comes in no longer than the draft it replaces (a padded draft markedly shorter) while each condition, requirement strength, number, actor, and causal joint carries through intact. The reduction comes out of filler, restatement, and nominalized phrasing rather than out of content, which is what separates it from a summarizer.
+- **slop_catch** *(in development)*: flags the tells that mark a draft as AI-generated — the lexical giveaways alongside the structural patterns — and returns concrete feedback on what to change.
+- **ghost_writer** *(in development)*: rules for writing and, above all, editing strong prose, with one ruleset per genre: scientific writing, essays, blog posts, social media, and case studies.
 
 ## Installing and deploying
 
