@@ -103,6 +103,19 @@ assert_file() {
     return 1
 }
 
+# Read one `key: value` line from a size_profile.txt (or similar) file.
+profile_value() {
+    local file=$1 key=$2
+    awk -F': ' -v k="$key" '$1 == k { print $2; exit }' "$file"
+}
+
+# Sum added and removed columns from `git diff --numstat` on stdin, skipping
+# binary rows where either column is `-`. Prints "added removed".
+sum_numstat_text() {
+    awk '$1 != "-" && $2 != "-" { a += $1; r += $2 }
+         END { printf "%d %d\n", a + 0, r + 0 }'
+}
+
 identity() {
     git config user.email "harness@example.com"
     git config user.name "Harness"
@@ -407,7 +420,9 @@ s10_size_profile_counts_generated_files() {
 }
 
 s11_uncommitted_mode_reports_both_lanes() {
-    local repo ev status worktree_diff local_commits
+    local repo ev status worktree_diff local_commits profile
+    local staged_sum unstaged_sum expect_added expect_removed actual_added actual_removed
+    local sa sr ua ur untracked_lines
     repo=$(fresh_repo s11) || return 1
     ev="$SCRATCH/s11/ev"
 
@@ -427,6 +442,21 @@ s11_uncommitted_mode_reports_both_lanes() {
     status=$(cat "$ev/worktree_status.txt" 2>/dev/null)
     worktree_diff=$(cat "$ev/worktree_diff.txt" 2>/dev/null)
     local_commits=$(cat "$ev/local_commits.txt" 2>/dev/null)
+    profile=$(cat "$ev/size_profile.txt" 2>/dev/null)
+
+    staged_sum=$(cd "$repo" && git diff --cached --numstat | sum_numstat_text)
+    unstaged_sum=$(cd "$repo" && git diff --numstat | sum_numstat_text)
+    sa=${staged_sum%% *}; sr=${staged_sum##* }
+    ua=${unstaged_sum%% *}; ur=${unstaged_sum##* }
+    untracked_lines=0
+    while IFS= read -r f; do
+        [[ -z "$f" || ! -f "$repo/$f" ]] && continue
+        untracked_lines=$((untracked_lines + $(wc -l < "$repo/$f" | tr -d ' ')))
+    done < <(cd "$repo" && git ls-files --others --exclude-standard)
+    expect_added=$((sa + ua + untracked_lines))
+    expect_removed=$((sr + ur))
+    actual_added=$(profile_value "$ev/size_profile.txt" added_lines)
+    actual_removed=$(profile_value "$ev/size_profile.txt" removed_lines)
 
     local ok=true
     assert_contains "staged path" "$status" "alpha.txt" || ok=false
@@ -438,6 +468,11 @@ s11_uncommitted_mode_reports_both_lanes() {
     assert_contains "upstream named" "$local_commits" "upstream: origin/main" || ok=false
     assert_contains "ahead count" "$local_commits" "ahead: 1" || ok=false
     assert_contains "commit message carried" "$local_commits" "one commit ahead of the upstream" || ok=false
+    assert_eq "uncommitted added_lines match lane numstats plus untracked" \
+        "$actual_added" "$expect_added" || ok=false
+    assert_eq "uncommitted removed_lines match lane numstats" \
+        "$actual_removed" "$expect_removed" || ok=false
+    assert_contains "size profile present" "$profile" "added_lines:" || ok=false
     $ok
 }
 
@@ -547,6 +582,7 @@ s15_usage_and_argument_handling() {
 # unread rather than emptying the whole-range diff.
 s22_unreadable_path_records_unread_remainder() {
     local target repo ret ev ok=true
+    local path status renamed expect_added expect_removed actual_added actual_removed path_sum pa pr
     target="$SCRATCH/s22"
     rm -rf "$target"
     mkdir -p "$target"
@@ -566,6 +602,28 @@ s22_unreadable_path_records_unread_remainder() {
         "src/readable.py" || ok=false
     assert_absent "full_diff hides secret_flag" "$(cat "$ev/full_diff.txt" 2>/dev/null)" \
         "secret_flag" || ok=false
+
+    # Size profile counts only the readable paths the per-path fallback kept.
+    expect_added=0
+    expect_removed=0
+    while IFS=$'\t' read -r status path renamed; do
+        [[ -z "$status" ]] && continue
+        case "$status" in
+            R*|C*) path="${renamed:-$path}" ;;
+        esac
+        grep -qxF "$path" "$ev/unread_paths.txt" 2>/dev/null && continue
+        path_sum=$(git -C "$repo" diff --numstat -M "main...widen" -- "$path" 2>/dev/null |
+            sum_numstat_text)
+        pa=${path_sum%% *}; pr=${path_sum##* }
+        expect_added=$((expect_added + pa))
+        expect_removed=$((expect_removed + pr))
+    done < "$ev/name_status.txt"
+    actual_added=$(profile_value "$ev/size_profile.txt" added_lines)
+    actual_removed=$(profile_value "$ev/size_profile.txt" removed_lines)
+    assert_eq "per-path fallback added_lines match readable numstat" \
+        "$actual_added" "$expect_added" || ok=false
+    assert_eq "per-path fallback removed_lines match readable numstat" \
+        "$actual_removed" "$expect_removed" || ok=false
 
     # Acceptance git-command hide checks on the staged sandbox.
     git -C "$repo" show "HEAD:src/locked.py" >/dev/null 2>&1 && {
@@ -588,6 +646,79 @@ s22_unreadable_path_records_unread_remainder() {
         log "    [src/locked.py is present in the worktree]"
         ok=false
     }
+    $ok
+}
+
+# Range-mode size profile: content-line counts equal git diff --numstat, and the
+# fixture keeps hunk lines that begin with --- / +++ so a header-inclusive or
+# plain grep -v filter would miscount.
+s24_size_profile_line_counts_match_numstat() {
+    local root repo ev ok=true
+    local expect_sum expect_added expect_removed actual_added actual_removed full_diff
+    root="$SCRATCH/s24"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --bare --initial-branch=main "$root/origin.git" || return 1
+    git clone --quiet "$root/origin.git" "$root/repo" 2>/dev/null || return 1
+    (
+        cd "$root/repo" || exit 1
+        identity
+        printf 'keep\n-- note\nalso keep\n' > notes.sql
+        printf 'plain\n' > keep.txt
+        printf 'rename me\n' > old_name.txt
+        printf 'delete me\n' > gone.txt
+        # NUL so git treats this as binary (numstat prints -, no ---/+++ pair).
+        printf 'bin\000v1' > data.bin
+        git add -A
+        git commit --quiet -m "seed the size-profile fixture"
+        git push --quiet origin main
+        git remote set-head origin main
+
+        git checkout --quiet -b feature
+        # Remove the SQL comment so the hunk carries a content line "--- note".
+        printf 'keep\nalso keep\n' > notes.sql
+        # Add a line that begins with ++ so the hunk carries "+++ x".
+        printf 'plain\n++ x\n' > keep.txt
+        printf 'brand new\n' > added.txt
+        git rm --quiet gone.txt
+        git mv old_name.txt new_name.txt
+        printf 'bin\000v2-longer' > data.bin
+        git add -A
+        git commit --quiet -m "feature: modify, add, delete, rename, binary, and ---/+++ content"
+        git push --quiet -u origin feature
+    ) || return 1
+    repo="$root/repo"
+    ev="$root/ev"
+
+    collect "$repo" --base main --head feature --out "$ev" >/dev/null
+    expect_sum=$(cd "$repo" && git diff --numstat -M "main...feature" | sum_numstat_text)
+    expect_added=${expect_sum%% *}
+    expect_removed=${expect_sum##* }
+    actual_added=$(profile_value "$ev/size_profile.txt" added_lines)
+    actual_removed=$(profile_value "$ev/size_profile.txt" removed_lines)
+    full_diff=$(cat "$ev/full_diff.txt" 2>/dev/null)
+
+    assert_eq "range added_lines match numstat" "$actual_added" "$expect_added" || ok=false
+    assert_eq "range removed_lines match numstat" "$actual_removed" "$expect_removed" || ok=false
+    # Hunk content (not the file headers): a removed "-- note" and an added "++ x".
+    if ! printf '%s\n' "$full_diff" | grep -E '^--- note$' >/dev/null; then
+        log "    [missing hunk content line --- note]"
+        ok=false
+    fi
+    if ! printf '%s\n' "$full_diff" | grep -E '^\+\+\+ x$' >/dev/null; then
+        log "    [missing hunk content line +++ x]"
+        ok=false
+    fi
+    # Confirm the fixture exercised every Approach-named edit class.
+    assert_contains "name-status records the rename" \
+        "$(cat "$ev/name_status.txt" 2>/dev/null)" "old_name.txt" || ok=false
+    assert_contains "name-status records the deletion" \
+        "$(cat "$ev/name_status.txt" 2>/dev/null)" "gone.txt" || ok=false
+    assert_contains "name-status records the addition" \
+        "$(cat "$ev/name_status.txt" 2>/dev/null)" "added.txt" || ok=false
+    # binary_files: 1 fails when data.bin is still text; a name-only check cannot.
+    assert_contains "size profile counts the modified binary" \
+        "$(cat "$ev/size_profile.txt" 2>/dev/null)" "binary_files: 1" || ok=false
     $ok
 }
 
@@ -1042,6 +1173,8 @@ scenario s22 "unreadable path records unread remainder and keeps readable diffs"
     s22_unreadable_path_records_unread_remainder
 scenario s23 "push_approval logs the push, scopes TMPDIR, and grades order fail branches" \
     s23_push_approval_order_proofs
+scenario s24 "size profile line counts match numstat and keep ---/+++ content lines" \
+    s24_size_profile_line_counts_match_numstat
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

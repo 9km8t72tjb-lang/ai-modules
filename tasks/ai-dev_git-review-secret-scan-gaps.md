@@ -2,7 +2,7 @@
 description: Make git_review's secret scan report each hit's file and line, read every added line, catch the credential and home-path shapes it misses, and match the manual fallback.
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-06T13:25:39
-updated: 2026-10-06T13:25:39
+updated: 2026-10-08T09:06:30
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -31,7 +31,7 @@ The skill's `<evidence_set>` names the scan. Eval 20 runs the skill on the `secr
 
 Rewrite `collect_secret_scan` in three parts, keeping the two sections of `secret_scan.txt` and their `none` lines.
 
-**Extraction.** Replace the `^\+` and `^+++` filter pair with one pass over the diff file that emits each added content line with its location. Treat a line that starts with `---` or `+++` as a header only between a file's `diff --git` line and its first content line, so an added line that begins with `++` stays a content line. Take the path from the `+++ b/<path>` header and the starting line number from the `+c` field of each `@@ -a,b +c,d @@` hunk header, then advance the number on every context line and every added line. An untracked file in uncommitted mode has a synthesized header and no hunk header, so its numbering starts at 1. [ai-dev_git-review-size-profile-overcount.md](ai-dev_git-review-size-profile-overcount.md) introduces the same header rule in `collect_size_profile`, so when that pass is already in the collector, factor the shared header handling into one helper both functions use.
+**Extraction.** Replace the `^\+` and `^+++` filter pair with one pass over the diff file that emits each added content line with its location. Treat a line that starts with `---` or `+++` as a header only between a file's `diff --git` line and its first content line, so an added line that begins with `++` stays a content line. Take the path from the `+++ b/<path>` header and the starting line number from the `+c` field of each `@@ -a,b +c,d @@` hunk header, then advance the number on every context line and every added line. An untracked file in uncommitted mode has a synthesized header and no hunk header, so its numbering starts at 1. [ai-dev_git-review-size-profile-overcount.md](archive/ai-dev_git-review-size-profile-overcount.md) introduces the same header rule in `collect_size_profile`, so when that pass is already in the collector, factor the shared header handling into one helper both functions use.
 
 **Output.** Match both patterns against each added line's content alone, so a file path never draws a hit, and write each hit under its section as `<path>:<line>:<content>`, where `<content>` is the added line without its leading `+`.
 

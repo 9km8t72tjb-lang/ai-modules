@@ -375,9 +375,25 @@ collect_size_profile() {
         generated=$(grep -E '^diff --git ' "$source" 2>/dev/null |
             count_matches_piped "$GENERATED_PATTERN")
 
+        # Count content lines only: skip each file's --- / +++ header pair
+        # (and leave content that begins with those characters alone once the
+        # header is past). Matches git diff --numstat on the same changes.
+        local added_lines removed_lines counts
+        counts=$(awk '
+            /^diff --git / { hdr = 1; next }
+            hdr && /^--- / { next }
+            hdr && /^\+\+\+ / { hdr = 0; next }
+            /^@@/ { hdr = 0; next }
+            /^\+/ { added++ }
+            /^-/ { removed++ }
+            END { printf "%d %d\n", added + 0, removed + 0 }
+        ' "$source")
+        added_lines=${counts%% *}
+        removed_lines=${counts##* }
+
         printf 'changed_files: %s\n' "$total"
-        printf 'added_lines: %s\n' "$(count_matches '^\+' "$source")"
-        printf 'removed_lines: %s\n' "$(count_matches '^-' "$source")"
+        printf 'added_lines: %s\n' "$added_lines"
+        printf 'removed_lines: %s\n' "$removed_lines"
         printf 'binary_files: %s\n' "$binary"
         printf 'generated_files: %s\n' "$generated"
         if ((total > 0)); then
