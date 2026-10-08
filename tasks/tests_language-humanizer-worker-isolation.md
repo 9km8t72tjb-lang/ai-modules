@@ -2,9 +2,11 @@
 description: "Isolate the language_humanizer eval worker and judge from host instructions through a shared tests/lib helper, re-measure on Cursor, and keep Claude isolation as compatibility."
 scope: tests
 created: 2026-10-02T12:56:51
-updated: 2026-10-05T22:30:32
-status: ready
+updated: 2026-10-08T11:00:56
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Isolate the language_humanizer eval workers from the host via a shared tests/lib helper, then re-measure
@@ -60,10 +62,10 @@ helper contract as compatibility.
   rule that also covers a harness that copies the skill into an isolated sandbox
   and path-reads that copy.
 - **The skill under test.** `evals/stage.sh` points `skill_path` at
-  `plugins/ai_editorial/skills/language_humanizer/SKILL.md`. That file ships on
-  the `init-ai-editorial-plugin` branch and is absent from `main`, so every
-  Acceptance item that starts a worker, and the Approach skill-copy that feeds
-  those items, runs on a checkout that carries it.
+  `plugins/ai_editorial/skills/language_humanizer/SKILL.md`, which `main`
+  carries since the `ai_editorial` plugin merged, so every Acceptance item that
+  starts a worker, and the Approach skill-copy that feeds those items, runs on
+  an ordinary checkout.
 
 ## Approach
 
@@ -81,9 +83,9 @@ helper contract as compatibility.
    that temporary root after the call.
 3. **Document the isolation.** Rewrite the universal skill path-read passages so
    one canonical rule remains: workers path-read the skill under test from a staged
-   copy that sits outside any graded tree — either under the eval's `artefacts/`
-   directory beside the sandbox, or inside an isolated sandbox when the harness
-   copies the skill there (as this harness does) — and never from a graded tree.
+   copy that sits outside any graded tree, either under the eval's `artefacts/`
+   directory beside the sandbox or inside an isolated sandbox when the harness
+   copies the skill there (as this harness does), and never from a graded tree.
    Apply that rewrite at `### Skill and agent loading` in `tests/AGENTS.md` and
    at the matching artefacts sentence under `### Model policy` in
    `tests/CLAUDE.md`, keeping the two guides lockstep. Rewrite the passages of

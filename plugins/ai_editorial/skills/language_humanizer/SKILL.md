@@ -1,7 +1,7 @@
 ---
 name: language_humanizer
-description: "Review, rewrite, or write a document so its intended reader understands it on the first read: coherent from beginning to end, plain in its wording, and carrying every load-bearing element of the input — conditions, requirement strength, numbers, actors, and causal joints — through intact, with any reduction taken out of filler rather than out of content. Use when a user asks to make a document easier to understand, simplify wording, cut jargon, unpack a dense paragraph, spell out abbreviations, sharpen a goal, spec, proposal, report, status update, or README section so readers can act on it, check whether a draft will land with a particular audience, or turn notes, bullets, or findings into a document a reader can follow. The subject is comprehension and coherence for a named reader, on whatever material the skill is handed: a request for a short version at a fraction of the original length belongs to `executive_summary`, and a request to meet a target genre's craft standard — what a good essay, case study, or social post is — belongs to `ghost_writer`."
-version: 1.0.0
+description: "Review, rewrite, or write a document so its intended reader understands it on the first read: coherent from beginning to end, plain in its wording, and carrying every load-bearing element of the input (conditions, requirement strength, numbers, actors, causal joints) through intact, with any reduction taken out of filler rather than content. Use when a user asks to make a document easier to understand, simplify wording, cut jargon, unpack a dense paragraph, spell out abbreviations, sharpen a goal, spec, proposal, report, status update, or README section so readers can act on it, check whether a draft will land with an audience, or turn notes, bullets, or findings into a document a reader can follow. Its subject is comprehension and coherence for a named reader, on whatever material it is handed. A short version at a fraction of the original length belongs to `executive_summary`, and meeting a genre's craft standard (a good essay, case study, or social post) belongs to `ghost_writer`."
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 <language_humanizer>
 
 <objective>
-Deliver human-facing text the intended reader understands on the first read: coherent from beginning to end, carried in language that is easy to take in, and clear and pleasant to read. Hold both ends at once — every load-bearing element of the input reaches the delivered text intact, and the delivered text stays plain and compact — by taking every reduction out of form rather than out of content.
+Deliver human-facing text the intended reader understands on the first read: coherent from beginning to end, carried in language that is easy to take in, and clear and pleasant to read. Hold both ends at once by taking every reduction out of form rather than out of content: every load-bearing element of the input reaches the delivered text intact, and the delivered text stays plain and compact.
 </objective>
 
 <role_and_activation>
@@ -40,7 +40,7 @@ Select rewrite when the user hands over a draft and asks for it improved. Select
 </mode_selection>
 
 <mode_to_path_mapping>
-Each mode runs on one of two paths, and a mode's path follows its input. Review and rewrite both start from an existing draft, so both run the **rewrite path**, which optimizes text that already exists. Write starts from supplied material — notes, bullets, findings, source facts, a brief — so it runs the **write path**, which produces the document that says all of it.
+Each mode runs on one of two paths, and a mode's path follows its input. Review and rewrite both start from an existing draft, so both run the **rewrite path**, which optimizes text that already exists. Write starts from supplied material (notes, bullets, findings, source facts, a brief), so it runs the **write path**, which produces the document that says all of it.
 
 What a mode returns then sets its route through the three passes. Review and rewrite both build pass one's ledger from the draft; rewrite carries that ledger through pass two into pass three, while review holds it as the yardstick for judging the draft against pass two's moves and reports what it finds, rather than producing text for pass three to verify. Write builds its ledger from the supplied material and runs all three passes over the document it produces.
 
@@ -61,15 +61,15 @@ Keep every qualifier, condition, exception, and scope limit, splitting a sentenc
 </keep_qualifiers_conditions_and_exceptions>
 
 <keep_requirement_strength>
-Keep requirement strength exactly as written, in both directions: a must stays a must, a should stays a should, a may stays a may, and a hedge marking real uncertainty stays a hedge. Carry the strength on the modal verb the input used, because a paraphrase into a noun phrase silently reclassifies the requirement — a must rewritten as a hard limit, a firm constraint, or a target reads as a description of the world instead of an obligation on someone, and a should rewritten as a requirement invents an obligation the input never gave.
+Keep requirement strength exactly as written, in both directions: a must stays a must, a should stays a should, a may stays a may, and a hedge marking real uncertainty stays a hedge. A hedge is real when it marks doubt about whether a statement is true; a phrase that only softens a statement whose modal verb already carries its strength is hedging padding, and it comes out with the rest of the padding. Carry the strength on the modal verb the input used, because a paraphrase into a noun phrase silently reclassifies the requirement. A must rewritten as a hard limit, a firm constraint, or a target reads as a description of the world instead of an obligation on someone, and a should rewritten as a requirement invents an obligation the input never gave.
 </keep_requirement_strength>
 
 <keep_every_specific_specific>
-Keep every specific specific: a named team stays named, a number keeps its value and unit, and a threshold keeps both sides of its comparison. Take every value from the input, so a figure the input never states — including a gap, total, or percentage that follows arithmetically from two figures it does state — stays off the page and the reader keeps doing that arithmetic themselves.
+Keep every specific specific: a named team stays named, a number keeps its value and unit, and a threshold keeps both sides of its comparison. Take every value from the input. A figure the input never states stays off the page, including a gap, total, or percentage that follows arithmetically from two figures it does state, so the reader keeps doing that arithmetic themselves.
 </keep_every_specific_specific>
 
 <keep_the_reason_beside_the_claim>
-Keep the reason beside the claim, so a sentence carrying both a what and a why still carries both afterward, and keep the joining word that marks which is which — because, since, so, therefore, which is why. A reason parked in the next clause with only a semicolon or a full stop between it and its claim leaves the reader to guess that a causal link was meant, so the joint counts as carried through only when a connective states it.
+Keep the reason beside the claim, so a sentence carrying both a what and a why still carries both afterward, and keep the joining word that marks which is which: because, since, so, therefore, which is why. When a move relocates a claim or splits its sentence, as leading with the main point does, every joint attached to that claim travels with it (its reason, its condition, its contrast, and its concession), each into the same sentence or into the next one, opened by the joining word that names the link. A contrast keeps both of its sides together, in one sentence or in two adjacent ones. A reason parked in the next clause with only a semicolon or a full stop between it and its claim leaves the reader to guess that a causal link was meant, so the joint counts as carried through only when a connective states it.
 </keep_the_reason_beside_the_claim>
 
 <keep_the_connective_tissue>
@@ -81,7 +81,7 @@ Keep a coherent paragraph as prose whenever its transitions are doing the arguin
 </keep_a_coherent_paragraph_as_prose>
 
 <keep_open_questions_visible>
-Keep the reader's open questions visible: where the source is genuinely ambiguous, name the competing readings and route the choice to the author, and where a term needs a definition the source never supplies, flag that term for the author. Both routes hand the decision back, in place of the two shortcuts that would hide it — silently picking one reading, or inventing a definition.
+Keep the reader's open questions visible: where the source is genuinely ambiguous, name the competing readings and route the choice to the author, and where a term needs a definition the source never supplies, flag that term for the author. Both routes hand the decision back, in place of the two shortcuts that would hide it: silently picking one reading, or inventing a definition.
 </keep_open_questions_visible>
 
 <keep_risks_commitments_and_constraints_at_full_force>
@@ -93,7 +93,7 @@ Keep a rewrite within the length of the draft it replaces. This is the skill's o
 </keep_a_rewrite_within_the_draft_length>
 
 <keep_the_reduction_uncapped_below_that_ceiling>
-Take a padded, repetitive, or over-hedged draft markedly below that ceiling — the rewrite has a maximum length and no minimum — and draw every word of the reduction from filler, restatement, nominalized phrasing, and hedging padding, so each ledger item stays whole.
+Take a padded, repetitive, or over-hedged draft markedly below that ceiling, because the rewrite has a maximum length and no minimum. Draw every word of the reduction from filler, restatement, nominalized phrasing, and hedging padding, so each ledger item stays whole.
 </keep_the_reduction_uncapped_below_that_ceiling>
 
 <keep_a_new_document_as_long_as_its_content_needs>
@@ -106,15 +106,15 @@ Keep a newly written document as long as its content needs and no longer, since 
 The work runs as three ordered passes.
 
 <pass_one_inventory_what_the_delivered_text_is_accountable_for>
-Before writing a word, list the load-bearing elements of the input — the existing draft on the rewrite path, the supplied material on the write path — and hold that list as the ledger the delivered text is accountable for. Cover these item classes:
+Before writing a word, list the load-bearing elements of the input (the existing draft on the rewrite path, the supplied material on the write path) and hold that list as the ledger the delivered text is accountable for. Cover these item classes:
 
 - the central claim, ask, decision, or finding, plus its current placement when the input already has one;
 - every actor and owner named or implied, and who must do what;
 - every number, date, deadline, quantity, unit, threshold, metric, version, and identifier;
 - every product, system, and technical term that carries precision;
-- requirement strength as written — must, should, may, will, might, committed, proposed — plus any hedge marking genuine uncertainty;
+- requirement strength as written (must, should, may, will, might, committed, proposed), plus any hedge marking genuine uncertainty;
 - conditions, exceptions, scope limits, and qualifiers such as "only when", "except", "up to", and "for X but not Y";
-- the causal and logical joints carrying the argument — because, therefore, unless, so that, even though;
+- the causal and logical joints carrying the argument, such as because, therefore, unless, so that, and even though;
 - risks, constraints, dependencies, commitments, and open questions;
 - ordering wherever sequence is meaning, as in steps, precedence, and priority.
 </pass_one_inventory_what_the_delivered_text_is_accountable_for>
@@ -122,17 +122,18 @@ Before writing a word, list the load-bearing elements of the input — the exist
 <pass_two_produce_the_text_for_first_read_comprehension>
 Apply these moves to the text a mode returns, on the rewrite path and the write path alike:
 
-- lead with the main point: make the first sentence carry the most consequential thing the reader has to do or know — the action with its owner and its date, the decision reached, or the finding — so a reader who stops after that one sentence still holds the substance;
+- lead with the main point: open with the most consequential thing the reader has to do or know (the action with its owner and its date, the decision reached, or the finding), so a reader who stops after the opening still holds the substance. When the document assigns work, that is the action itself, ahead of any standing constraint or background. When the input reaches its point through an argument, state the point first and then walk the argument in the input's own order, so each step keeps the connective that joins it to the step before. Carry the point's reason as the fidelity contract requires, and give current values, background, and every other detail the sentences that follow;
 - order the whole so each part follows from the one before it, grouping related material and letting the transitions carry the logic that joins the parts;
-- carry one idea per sentence on a real verb, and turn an abstract noun back into the verb hiding inside it;
+- carry one idea per sentence on a real verb: when a sentence holds a second claim, give that claim a sentence of its own, opened by the word that carried the link (because, so, but, whereas, therefore). Turn an abstract noun back into the verb hiding inside it;
 - name the actor in active voice wherever the actor matters;
 - choose the common word where it is exactly as precise as the rare one, and keep the technical term where replacing it would cost precision, adding a short gloss on first use when the named reader may not carry that term;
-- hold the words that carry force at the wording the input gave them while applying that plain-word move — modal verbs, thresholds, and qualifiers — since these are the words whose everyday-sounding substitutes cost precision;
-- unpack a stacked clause chain — em-dash pileups, nested parentheticals — into separate sentences;
+- hold the words that carry force (modal verbs, thresholds, and qualifiers) at the wording the input gave them while applying that plain-word move, since these are the words whose everyday-sounding substitutes cost precision;
+- unpack a stacked clause chain, such as a run of dash-joined asides or nested parentheticals, into separate sentences;
 - spell out an abbreviation on first use, then use the short form;
 - phrase positively wherever the positive says the same thing;
 - give longer text descriptive headings, and set genuinely parallel points as a list or table;
-- cut a clause that only restates what its own sentence already said.
+- give every sentence, and every clause inside it, a job the ledger assigns: carrying a ledger item, glossing a term on first use, or joining two items with their connective. A sentence or clause with none of those jobs is filler, and it comes out;
+- give each ledger item one home in the text: the opening carries the main point, each later sentence, section, table, or list adds only what no earlier part has said, and the text closes on the last item not yet said.
 </pass_two_produce_the_text_for_first_read_comprehension>
 
 <pass_three_verify_the_delivered_text_against_the_ledger>
@@ -158,7 +159,7 @@ Return the new document first, complete and ready to use, then the same preserva
 </write_mode_output>
 
 <shared_close>
-Every mode closes with the open items — genuine ambiguities named with their competing readings, and terms needing a definition the source never supplied — phrased as questions for the author, followed by the assumed reader when the source named none.
+Every mode closes with the open items, phrased as questions for the author: genuine ambiguities named with their competing readings, and terms needing a definition the source never supplied. The assumed reader follows them when the source named none.
 </shared_close>
 
 <selection_line>

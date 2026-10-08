@@ -2,8 +2,8 @@
 """Re-grade an existing run's captured responses without re-sampling the skill.
 
 Spawning a fresh worker draws a new sample from a stochastic model, which is
-the one thing a below-the-bar run must not do — a re-roll buries the result it
-was supposed to report. Correcting a *grader* is different: the responses are
+the one thing a below-the-bar run must not do, because a re-roll buries the
+result it was supposed to report. Correcting a *grader* is different: the responses are
 immutable once captured, so re-grading measures the same fifteen outputs with a
 fixed instrument. This script does exactly that, walking a prior run directory,
 re-running `grade.py` and (unless `--skip-judge`) `judge.py` over the artifacts
@@ -33,7 +33,7 @@ THIS = pathlib.Path(__file__).resolve().parent
 GRADE = THIS / "grade.py"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
-import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
+import vendor  # noqa: E402  (shared vendor helper in tests/lib)
 
 import judge as judge_mod  # noqa: E402  (sibling module in this harness)
 import run as run_mod  # noqa: E402  (reuse SCENARIOS, summarize, render, emit)
@@ -49,7 +49,7 @@ def regrade_pass(pass_dir: pathlib.Path, scenario: str, args) -> dict:
     n = int(pass_dir.name.split("-")[1])
 
     if not sources:
-        run_mod.emit(f"  [{scenario} {pass_dir.name}] SKIP — no source document on disk")
+        run_mod.emit(f"  [{scenario} {pass_dir.name}] SKIP: no source document on disk")
         return {"scenario": scenario, "pass": n, "passed": False,
                 "assertions": {}, "integrity": {"artifacts_present": False},
                 "delivered_words": None, "fixture_words": None}
@@ -115,12 +115,12 @@ def regrade_pass(pass_dir: pathlib.Path, scenario: str, args) -> dict:
     was = original.get("passed")
     moved = "" if was is None or was == passed else f"  (was {'PASS' if was else 'FAIL'})"
     if void:
-        run_mod.emit(f"  [{scenario} {pass_dir.name}] VOID{moved} — worker "
+        run_mod.emit(f"  [{scenario} {pass_dir.name}] VOID{moved}: worker "
                      "answered but never wrote delivered.md")
     else:
         run_mod.emit(f"  [{scenario} {pass_dir.name}] {'PASS' if passed else 'FAIL'}"
                      f"{moved}"
-                     f"{'' if passed else ' — diverging: ' + ', '.join(diverging)}")
+                     f"{'' if passed else ', diverging: ' + ', '.join(diverging)}")
     return verdict
 
 
@@ -175,7 +175,7 @@ def main() -> int:
             try:
                 verdicts[(s, n)] = fut.result()
             except Exception as exc:
-                run_mod.emit(f"  [{s} {p.name}] ERROR — harness fault: {exc!r}")
+                run_mod.emit(f"  [{s} {p.name}] ERROR, harness fault: {exc!r}")
                 verdicts[(s, n)] = {"scenario": s, "pass": n, "passed": False,
                                     "assertions": {}, "integrity": {"regrade_ran": False},
                                     "delivered_words": None, "fixture_words": None}
@@ -192,7 +192,7 @@ def main() -> int:
     (run_dir / "summary.regrade.json").write_text(json.dumps(summary, indent=2))
     report = run_mod.render(summary)
     report += ("\n## As-run rates before the instrument fix\n\n"
-               + "\n".join(f"- `{s}` — {r}" for s, r in summary["original_rates"].items())
+               + "\n".join(f"- `{s}`: {r}" for s, r in summary["original_rates"].items())
                + "\n")
     (run_dir / "summary.regrade.md").write_text(report)
     run_mod.RESULTS.mkdir(parents=True, exist_ok=True)

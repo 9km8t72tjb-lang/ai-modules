@@ -169,12 +169,12 @@ activation outside plugin installs.
 
 ### ai_editorial
 
-Skills for editorial craft on prose written for people to read: reports, proposals, status updates, documentation, and the everyday workplace writing that has to land with its audience. What sets this plugin apart is its subject matter, not its audience — every skill in this repository is invoked by a person and consumed by a model, and here it is the kind of text being worked on that changes. Instructions an AI reads at inference time remain the province of `ai_instruction_writing` and `ai_instruction_formatting`.
+Skills for editorial craft on prose written for people to read: reports, proposals, status updates, documentation, and the everyday workplace writing that has to land with its audience. What sets this plugin apart is its subject matter, not its audience: every skill in this repository is invoked by a person and consumed by a model, and here it is the kind of text being worked on that changes. Instructions an AI reads at inference time remain the province of `ai_instruction_writing` and `ai_instruction_formatting`.
 
 The plugin ships `language_humanizer` today; its two siblings are in development:
 
-- **language_humanizer**: reviews, rewrites, or writes a document so its intended reader understands it on the first read. Three ordered passes carry the work — an inventory of every load-bearing element of the input, the moves that produce first-read comprehension, and a verification of the delivered text against that inventory — so a rewrite comes in no longer than the draft it replaces (a padded draft markedly shorter) while each condition, requirement strength, number, actor, and causal joint carries through intact. The reduction comes out of filler, restatement, and nominalized phrasing rather than out of content, which is what separates it from a summarizer.
-- **slop_catch** *(in development)*: flags the tells that mark a draft as AI-generated — the lexical giveaways alongside the structural patterns — and returns concrete feedback on what to change.
+- **language_humanizer**: reviews, rewrites, or writes a document so its intended reader understands it on the first read. Three ordered passes carry the work: an inventory of every load-bearing element of the input, the moves that produce first-read comprehension, and a verification of the delivered text against that inventory. Together they let a rewrite come in no longer than the draft it replaces (a padded draft markedly shorter) while each condition, requirement strength, number, actor, and causal joint carries through intact. The reduction comes out of filler, restatement, and nominalized phrasing rather than out of content, which is what separates it from a summarizer.
+- **slop_catch** *(in development)*: flags the tells that mark a draft as AI-generated (the lexical giveaways alongside the structural patterns) and returns concrete feedback on what to change.
 - **ghost_writer** *(in development)*: rules for writing and, above all, editing strong prose, with one ruleset per genre: scientific writing, essays, blog posts, social media, and case studies.
 
 ## Installing and deploying

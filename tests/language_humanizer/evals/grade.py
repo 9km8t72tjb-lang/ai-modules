@@ -3,11 +3,12 @@
 
 Grades the mechanically checkable half of each scenario's assertions against
 the post-run sandbox: the delivered text's word count against the fixture's
-own word count, presence of each ledger item (names, dates, thresholds with
-their units, requirement-strength words, the exception clause, the causal
-joint), and the bullet-cascade / filler shape of the delivered prose. The
-qualitative half — "reads plainly", "strength and scope unchanged in
-context", "opens with its main point" — lives in judge.py.
+own word count, presence of each ledger item (names, dates, thresholds and
+the current measurement with their units, requirement-strength words, the
+exception clause, the causal joint), and the bullet-cascade / filler shape of
+the delivered prose. The qualitative half ("reads plainly", "strength and
+scope unchanged in context", "opens with its main point") lives in judge.py.
+evals/test_grade.py proves each check here can fail.
 
 Usage:
     python3 grade.py <eval_id> <sandbox_proj> <source_file> [--json]
@@ -44,7 +45,7 @@ def bullet_lines(text: str) -> list[str]:
 
 
 def longest_short_bullet_run(text: str, max_words: int = 12) -> int:
-    """Longest run of consecutive bullet lines each under `max_words` words —
+    """Longest run of consecutive bullet lines each under `max_words` words:
     the mechanical proxy for the fidelity contract's banned 'cascade of
     ever-shorter bullets that splinters one argument into disconnected
     stubs'."""
@@ -100,6 +101,11 @@ LEDGER_FIDELITY = {
     "item_deadline_14_march": r"14\s+March|March\s+14|2026-03-14|14\.03",
     "item_threshold_200ms": r"200\s*ms",
     "item_threshold_995": r"99\.5\s*%",
+    # The current p95 latency is a ledger number like the two thresholds, but
+    # it is the present measurement rather than a target. Whether it still
+    # reads as the present value is the judge's call; this asks only whether
+    # the figure survived with its unit.
+    "item_measurement_340ms": r"340\s*ms",
     "item_strength_must": r"\bmust\b",
     "item_strength_should": r"\bshould\b",
     "item_exception_enterprise": r"enterprise",
@@ -107,7 +113,7 @@ LEDGER_FIDELITY = {
     # conjunction and the relative form too. The earlier
     # /because|since|so that|therefore/ read 0/5 against rewrites that said
     # "so missing it is not an option" and "which is why the deadline is
-    # firm" — a paraphrase the skill is entitled to make. Whether the joint
+    # firm", a paraphrase the skill is entitled to make. Whether the joint
     # still *connects the right two facts* is the judge's call; this only
     # asks whether a causal connective survived at all.
     "item_causal_joint": (
@@ -167,7 +173,7 @@ def build_checks(eval_id: str, ctx: dict) -> dict:
         add("paragraph_stays_prose", longest_short_bullet_run(d) < 3,
             f"longest run of sub-12-word bullets: {longest_short_bullet_run(d)}")
         # Counting the *source's* transition words punished rewrites that
-        # substituted an equivalent connective — "yet" for "but" — while the
+        # substituted an equivalent connective ("yet" for "but") while the
         # argument stayed fully connected. Whether the reasoning still hangs
         # together belongs to the judge's argument_stays_connected_prose line,
         # which names the specific joints and accepts any wording that carries
@@ -175,7 +181,7 @@ def build_checks(eval_id: str, ctx: dict) -> dict:
         add("compounding_argument_kept",
             has(d, r"compound|snowball|cumulativ|accumulat|builds? on itself|"
                    r"carr(?:y|ies|ied) .{0,30}(?:smaller|reduced) .{0,20}base"),
-            "the compounding mechanism — the argument's hinge — is still named")
+            "the compounding mechanism, the argument's hinge, is still named")
 
     elif eval_id == "write_path":
         for cid, pat in LEDGER_WRITE.items():

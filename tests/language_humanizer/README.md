@@ -1,22 +1,30 @@
 # tests/language_humanizer/
 
 Pattern A (skill-creator-aligned) harness for the `language_humanizer` skill
-in the `ai_editorial` plugin. The skill ships no bundled scripts, so there is
-no `script_tests/` layer here. The whole harness is behavioral.
+in the `ai_editorial` plugin. The skill ships no bundled scripts, so its
+deterministic surface is a static contract over `SKILL.md` and its
+registration, plus unit tests that prove the grader can fail. `run_all.sh`
+drives both. The measurement itself is behavioral and runs out-of-band
+through `evals/run.py`.
 
 ```text
 tests/language_humanizer/
 ├── README.md            # this file: what the harness covers and why
 ├── RUNBOOK.md           # how to run it and how to read the result
+├── run_all.sh           # the deterministic surface: static contract + grader tests
+├── script_tests/
+│   └── run.sh           # static SKILL.md / README / registration contract
 ├── results/             # one run-<ts>.{json,md} per recorded measurement
 ├── evals/
 │   ├── evals.json       # canonical schema + the full expectation list per scenario
 │   ├── stage.sh         # stage one scenario, print the agent-ready inputs
 │   ├── grade.py         # deterministic grader (word counts, ledger items, shape)
+│   ├── test_grade.py    # grader unit tests: a faithful rewrite passes, each lossy one fails
 │   ├── judge.py         # LLM grader for the assertions no regex can settle
 │   ├── run.py           # multi-pass runner: worker → grade → judge → aggregate
+│   ├── regrade.py       # re-grade a captured run with the current graders
 │   └── fixtures/<id>/setup.sh
-└── workspace/run-<ts>/<scenario>/pass-<n>/
+└── workspace/run-<ts>/<scenario>/pass-<n>/   # each pass's record, sandbox copied in
 ```
 
 ## What it measures
@@ -29,7 +37,7 @@ three directions.
 
 | Scenario | Path | The pressure |
 | --- | --- | --- |
-| `fidelity_padded` | rewrite | A 390-word padded status update carrying nine load-bearing items. A faithful restatement of all nine needs ~80 words, so the fixture's content is well under half its length. A rewrite has ample room to hit the 75% ceiling *and* keep everything, which makes any dropped item a real failure rather than a length casualty. |
+| `fidelity_padded` | rewrite | A 390-word padded status update carrying thirteen load-bearing items: two actors, one deadline, two thresholds, the current latency figure, two musts, two shoulds, one exception, and two causal joints. A faithful restatement of all thirteen needs under 80 words, which `evals/test_grade.py` proves stays under half the fixture. A rewrite has ample room to hit the 75% ceiling *and* keep everything, which makes any dropped item a real failure rather than a length casualty. |
 | `compression_trap` | rewrite | One long paragraph whose argument lives entirely in its transitions, plus one hedged uncertain claim. The two obvious "readability" moves, bulleting the paragraph and asserting the hedge flatly, both destroy meaning. |
 | `write_path` | write | Unordered retro notes carrying five load-bearing items among the noise, with no draft length to measure against. Tests that the write path leads with the main point and adds no filler of its own. |
 
@@ -49,26 +57,60 @@ measurement, so replaying a stored verdict would report a sample size the run
 never took.
 
 The passes run **concurrently** instead (default four at a time), which is what
-keeps a fifteen-pass measurement inside ten minutes. Every pass stages its own
-sandbox and writes only inside it, so concurrency costs nothing in isolation;
+keeps a fifteen-pass measurement inside ten minutes. Every pass runs in its own
+isolated sandbox root and writes only inside it, so concurrency costs nothing;
 the shared model endpoint is the only contended resource, and `--workers 1`
 restores the serial path when a latency reading matters.
+
+## Isolation from the host
+
+The skill's subject is prose, and the host's standing-instruction files carry
+writing rules of their own, so a worker that can see them measures the host as
+much as the skill. Every pass therefore runs under the shared
+`tests/lib/worker_isolation.py` contract. `run.py` stages each pass's sandbox
+under a fresh root in the system temporary directory, outside the home
+directory and outside any git repository, and starts the worker from the
+staged project with the helper's arguments for the resolved vendor. `judge.py`
+starts every judge call from an isolated root of its own in the same way.
+Once a pass is graded, `run.py` copies the finished sandbox into
+`workspace/run-<ts>/<scenario>/pass-<n>/sandbox/` and removes the temporary
+root, so the live sandbox never sits inside the repository while the copy
+stays available to `regrade.py`.
+
+The skill under test is copied into that root as a project skill
+(`<root>/.cursor/skills/language_humanizer/` or the `.claude` twin), beside
+the graded project rather than inside it, and the worker path-reads that copy.
+The root is also the Cursor workspace, which matters: a Cursor worker told to
+path-read a copy staged elsewhere read the deployed `~/.cursor/skills` copy
+instead (traced on 8 October 2026), so a run would have measured the deployed
+skill rather than the one under test. Staged as a project skill and named by
+path, the copy was the one read. That is a mitigation rather than a guarantee,
+because a deployed copy still wins over a project copy when the prompt names no
+path; the backlog carries the shared micro-deployment that takes deployed copies
+out of view on both vendors. Because the copy lands in `pass-<n>/sandbox/`, every
+pass also records exactly which `SKILL.md` it measured. Two Cursor sources stay
+outside the helper's reach: User Rules, which Cursor keeps in its settings, and
+the deployed user-level skills.
 
 ## How the two graders split the work
 
 `grade.py` owns everything a regex can settle, and owns it deterministically:
 word counts on both sides of every ratio, presence of each ledger item
-(names, dates, thresholds with their units, `must` / `should`, the exception
-clause, the causal joint), the bullet-cascade shape, a filler-phrase list, and
-two harness-integrity checks (the source document came out untouched, and
-`delivered.md` was written).
+(names, dates, thresholds and the current measurement with their units,
+`must` / `should`, the exception clause, the causal joint), the bullet-cascade
+shape, a filler-phrase list, and two harness-integrity checks (the source
+document came out untouched, and `delivered.md` was written).
+`evals/test_grade.py` stages each real fixture, feeds the grader a faithful
+rewrite that must pass every check, then lossy variants that must fail on
+exactly the check naming what they dropped, so a grader that cannot fail is
+caught before a worker call is spent on it.
 
 `judge.py` owns the rest of each scenario's named assertions: "reads
 plainly", "strength and scope unchanged in context", "opens with its main
-point", and "no invented content". It makes one pinned-sonnet call per pass
-against a refute-biased rubric: fail the assertion unless the delivered text
-plainly satisfies it. Both graders' verdicts gate the pass; a pass is clean only when
-every assertion from both sides held.
+point", and "no invented content". It makes one isolated call per pass on the
+vendor-resolved judge model against a refute-biased rubric: fail the assertion
+unless the delivered text plainly satisfies it. Both graders' verdicts gate the
+pass; a pass is clean only when every assertion from both sides held.
 
 The dividing line is *fact versus meaning*, and the first run taught it the
 hard way. Two assertions started out as keyword proxies for meaning and both
@@ -83,8 +125,10 @@ that line: a regex may ask whether a string is present, never whether meaning
 survived.
 
 Model policy follows the tree-wide convention in `tests/CLAUDE.md` /
-`tests/AGENTS.md` via `--vendor`: the skill under test runs on latest
-`sonnet` (Claude) or `auto` (Cursor). The judge inherits on Claude and uses
-`auto` on Cursor — it is no longer pinned to the worker model. Other
-harnesses keep their meta level model-free because their grading is fully
-deterministic.
+`tests/AGENTS.md` via `--vendor`: the skill under test runs on `auto` (Cursor)
+or the latest `sonnet` (Claude). The recorded measurement runs on Cursor, per
+`TESTING.md`, and the Claude worker stays available for a Claude-pinned sample
+under the same isolation contract. The judge uses `auto` on Cursor and inherits
+the default model on Claude, so it is no longer pinned to the worker model.
+Other harnesses keep their meta level model-free because their grading is
+fully deterministic.

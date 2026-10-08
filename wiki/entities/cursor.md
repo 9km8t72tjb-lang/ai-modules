@@ -1,15 +1,18 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-10-06
+updated: 2026-10-08
 type: entity
 tags: [cursor, agent, skill, frontmatter, discovery, verification-gap]
 sources:
   - raw/notes/agent-delegation-host-observations-2026-09.md
   - raw/notes/delegation-probes-2026-10-04.md
   - raw/notes/cursor-style-injection-probes-2026-10-06.md
+  - raw/notes/cursor-skill-shadowing-probes-2026-10-08.md
+  - raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md
+  - raw/notes/micro-deployed-worker-home-probes-2026-10-08.md
 confidence: high
-checked: 2026-10-06
+checked: 2026-10-08
 ---
 
 # Cursor
@@ -49,6 +52,30 @@ In a sandboxed print-mode session, a role file staged in the project's
 user's agents directory did not appear among the subagent types, although the
 documentation lists user variants. Deployed user-level skills did reach that
 session, which read the user-level agent_spinner `SKILL.md` (4 October 2026).
+
+A deployed user-level skill can also take the place of a staged copy of the same
+skill. On 8 October 2026 a print-mode worker of CLI 2026.10.01, told to read a
+staged `SKILL.md` that sat outside its workspace, read the deployed user-level
+copy of the same name in three of three runs and never opened the staged one in
+two of them. Staged as a project skill of the workspace
+(`<root>/.cursor/skills/<name>/` with `--workspace <root>`) and named by path in
+the prompt, the copy was the one read, in both runs that tried it
+([probes](../raw/notes/cursor-skill-shadowing-probes-2026-10-08.md)). A project
+copy does not displace a deployed copy on its own, though: with every repository
+skill in the workspace's `.cursor/skills/` and no path in the prompt, the worker
+read the deployed copies. `CURSOR_CONFIG_DIR`, which the CLI reads before
+`XDG_CONFIG_HOME` for its configuration directory, kept authentication but left
+skill discovery on the home directory, where the CLI looks under `.cursor`,
+`.claude`, `.codex`, `.grok`, and `.agents`. A scratch `HOME` authenticated once
+its `Library` linked back to the real one, and a skill copied into that scratch
+home's `.cursor/skills/` was then the copy read when the prompt named it
+([micro-home probes](../raw/notes/micro-deployed-worker-home-probes-2026-10-08.md)).
+A skill the
+harness had not staged at all, such as a base skill the staged one reaches by
+name, resolved to its deployed copy as well
+([dependency reads](../raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md)).
+An eval that path-reads a staged skill from outside the workspace can therefore
+measure the deployed skill instead of the one under test.
 
 There is no tools field, and a tools allowlist written into the frontmatter
 anyway goes unenforced (observed 26 September 2026). Print mode listed these

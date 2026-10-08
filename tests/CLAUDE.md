@@ -18,7 +18,7 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
 | `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
 | `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper, and the size-profile line counts) + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
-| `language_humanizer/` | `language_humanizer` | Pattern A (behavioral only) | 3 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py` for the qualitative assertions. |
+| `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on `--vendor cursor`, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
 | `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. |
 | `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/` holds a behavioral eval per family member. `run_all.sh` drives both script runners. |
 | `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
@@ -71,9 +71,19 @@ when either changes.
 The behavioral eval runners automate the old operator-driven Phase 2:
 instead of running the skill yourself in-session, let the runner spawn
 the vendor worker, then read `response.txt` for the prose-verdict
-expectations `grade.sh` can't check. Skills stage under each eval's
-`artefacts/` directory (beside the sandbox); named agents that must be
-spawnable land only in `<sandbox>/.{claude,cursor}/agents/`.
+expectations `grade.sh` can't check. Workers path-read the skill under
+test from a staged copy that sits outside every graded tree: either under
+the eval's `artefacts/` directory beside the sandbox, or inside an isolated
+sandbox root when the harness copies the skill there, as
+`language_humanizer` does. A worker never path-reads the skill from a
+graded tree or from its source in the repository. Named agents that must be
+spawnable land only in `<sandbox>/.{claude,cursor}/agents/`. On Cursor, a
+deployed user-level skill of the same name can win over a path-read copy:
+on 8 October 2026 a traced worker read the deployed `~/.cursor/skills` copy
+instead of the staged one. Staging the copy as a project skill of the
+worker's workspace and naming its path in the prompt made the worker read the
+staged copy, which is how `language_humanizer` stages it, but with no path in
+the prompt a deployed copy still won over the project copy.
 
 ### Parallel workers: default 4 only where each job has its own sandbox
 
@@ -82,7 +92,7 @@ spawnable land only in `<sandbox>/.{claude,cursor}/agents/`.
 
 - `tests/wiki/layer2/run.py` — one sandbox directory per scenario; passes
   of the same scenario stay sequential.
-- `tests/language_humanizer/evals/run.py` — one staged sandbox per pass.
+- `tests/language_humanizer/evals/run.py`: one isolated sandbox root per pass.
 - `tests/natural_language/evals/run.py` stages one sandbox per pass.
 
 `--workers 1` forces the serial path. Raising it past 4 mostly buys

@@ -95,11 +95,18 @@ don't bring up new harnesses under Pattern B.
   `evals/run.py` with a deterministic `grade.sh`. Forge fixtures put a stub
   `gh` on `PATH` that serves fixture JSON and logs every call, so a run that
   posts nothing is provable. See `evals/README.md`.
-- **`language_humanizer/`**: Pattern A, behavioral only (the skill
-  ships no scripts, so there is no `script_tests/`). 3 scenarios × a
-  fixed 5-pass denominator, graded by a deterministic `grade.py` plus a
-  refute-biased `judge.py`. No verdict cache: the repeated draws are
-  the measurement.
+- **`language_humanizer/`**: Pattern A, prose-only skill. The skill
+  ships no scripts, so `script_tests/` covers the static contract
+  (single-file directory, pseudo-XML lint, the description budget and its
+  two router splits, dash-free prose, the named sections and fidelity
+  rules, and registration lockstep), and `evals/test_grade.py` proves the
+  grader passes a faithful rewrite and fails each lossy one; `run_all.sh`
+  drives both. `evals/` runs 3 scenarios × a fixed 5-pass denominator,
+  graded by a deterministic `grade.py` plus a refute-biased `judge.py`.
+  Every pass and every judge call runs from an isolated root through
+  `tests/lib/worker_isolation.py`, and the recorded measurement runs on
+  `--vendor cursor`. No verdict cache: the repeated draws are the
+  measurement.
 - **`natural_language/`**: Pattern A, behavioral only (the subject is an
   output style, so there is no `script_tests/`). 2 scenarios × a fixed
   5-pass denominator, graded by a deterministic `grade.py` plus a

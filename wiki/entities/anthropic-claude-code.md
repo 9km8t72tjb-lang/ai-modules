@@ -1,10 +1,10 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-10-04
+updated: 2026-10-08
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
-sources: [raw/notes/delegation-probes-2026-10-04.md]
+sources: [raw/notes/delegation-probes-2026-10-04.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
 confidence: high
 ---
 
@@ -62,7 +62,13 @@ listed the user's deployed `auto_*` roles and skills at startup, so they reach a
 sandboxed session as well. A worker given a scratch `CLAUDE_CONFIG_DIR`, with
 `CLAUDE_SECURESTORAGE_CONFIG_DIR` set to the empty string and the test runner's
 `_claude_worker_env()` environment, authenticated. It listed only the built-in
-roles and skills ([probes](../raw/notes/delegation-probes-2026-10-04.md)).
+roles and skills ([probes](../raw/notes/delegation-probes-2026-10-04.md)). On
+8 October 2026, against build 2.1.289, the same environment listed the skills in
+the working directory's `.claude/skills/` beside the built-in and
+organisation-managed skills, with only built-in agents. A skill deployed into the
+scratch directory's own `skills/` was the copy the Skill tool loaded when the
+prompt named it without a path
+([probes](../raw/notes/micro-deployed-worker-home-probes-2026-10-08.md)).
 
 ### Standing instruction files
 

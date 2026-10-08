@@ -1,6 +1,6 @@
 {
   "skill_name": "language_humanizer",
-  "notes": "Each eval runs over a fixed denominator of passes (default 5) via run.py; the recorded per-scenario pass rate over that denominator is the deliverable. The bar is every assertion holding on every pass. Mechanical expectations are graded by grade.py, qualitative ones by judge.py.",
+  "notes": "Each eval runs over a fixed denominator of passes (default 5) via run.py; the recorded per-scenario pass rate over that denominator is the deliverable. The bar is every assertion holding on every pass. Mechanical expectations are graded by grade.py, qualitative ones by judge.py. Each expectation is settled by exactly one grader; evals/test_grade.py proves the mechanical half can fail.",
   "evals": [
     {
       "id": "fidelity_padded",
@@ -8,7 +8,7 @@
       "path": "rewrite",
       "passes": 5,
       "prompt": "The file draft.md is our Q1 checkout status update. Rewrite it so the engineering leads it goes to can act on it after a single read.",
-      "expected_output": "Rewrite mode runs on the rewrite path. The delivered text reads plainly, comes in at no more than 75% of the fixture's word count, and carries all nine load-bearing items at unchanged strength and scope. The reduction comes out of the fixture's filler and restatement, never out of a ledger item.",
+      "expected_output": "Rewrite mode runs on the rewrite path. The delivered text reads plainly, comes in at no more than 75% of the fixture's word count, and carries all thirteen load-bearing items at unchanged strength and scope. The reduction comes out of the fixture's filler and restatement, never out of a ledger item.",
       "files": [
         "evals/fixtures/fidelity_padded/setup.sh"
       ],
@@ -19,10 +19,13 @@
         "The 14 March deadline survives.",
         "The 200 ms committed p95 latency survives with its unit.",
         "The 99.5% availability floor survives with its unit.",
-        "The must-strength obligations are still musts.",
+        "The current p95 checkout latency of 340 ms survives with its unit, as the present measurement rather than a target.",
+        "Both must-strength obligations, Priya shipping the fix and availability staying at or above 99.5%, are still musts.",
         "The Billing squad's retry migration is still a should, not upgraded to a must.",
+        "Enterprise retries staying on the dedicated worker is still a should, not upgraded to a must.",
         "The enterprise-tenant exception survives, still scoped to enterprise tenants and still conditional on the contract renegotiation.",
         "The causal link making the deadline follow from the contractual commitment survives.",
+        "The causal link making the fix necessary because the current latency is above the commitment survives.",
         "The delivered text reads plainly: one idea per sentence on a real verb, active voice where the actor matters, no stacked clause chains, none of the source's filler or restatement.",
         "The delivered text adds no fact, number, owner, date, or commitment absent from the source.",
         "The delivered text carries no cascade of three or more sub-12-word bullets.",
@@ -42,8 +45,7 @@
       "expectations": [
         "The delivered text is no longer than the fixture's word count.",
         "The argument stays connected prose: the signup-dip-recovers / conversion-compounds contrast, the budget-priority conclusion, and the self-serve concentration all survive with their logical joints.",
-        "At least four of the source's transition words survive.",
-        "The compounding mechanism — the argument's hinge — is still named.",
+        "The compounding mechanism, the argument's hinge, is still named.",
         "The onboarding-step explanation stays marked as uncertain, and the pricing-page confound that makes it uncertain survives with it.",
         "The delivered text carries no cascade of three or more sub-12-word bullets.",
         "The delivered text is easier to take in than the one-paragraph source while staying prose.",

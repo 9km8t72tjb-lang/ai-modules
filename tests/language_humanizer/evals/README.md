@@ -12,8 +12,9 @@ scenario exercises and a `passes` field recording the intended denominator.
 | `stage.sh <id> [target]` | Stages one fixture and prints `sandbox_proj`, `source_file`, `skill_name`, `skill_path`, `prompt` as `printf %q`-quoted `name=value` lines. Also drops a pristine copy of the fixture at `<target>/.fixture_pristine`. |
 | `fixtures/<id>/setup.sh <target>` | Writes the fixture document into `<target>/proj/` and prints that project path. The header comment enumerates the fixture's load-bearing items, so the fixture and its assertion set can be checked against each other by reading one file. |
 | `grade.py <id> <proj> <source> [--json]` | Deterministic grader. Exits 0 when every mechanical and integrity check passed. |
+| `test_grade.py` | Grader unit tests with no model call. Stages each real fixture, feeds `grade.py` a faithful rewrite that must pass every check, then lossy variants that must fail on exactly the check naming what they dropped. |
 | `judge.py <id> <fixture> <delivered> <response>` | LLM grader for the qualitative assertions, refute-biased, one JSON verdict per rubric line. |
-| `run.py [scenario ...]` | Drives worker → `grade.py` → `judge.py` per pass (five passes at a time by default), then aggregates the per-scenario rate. |
+| `run.py [scenario ...]` | Drives worker → `grade.py` → `judge.py` per pass, four passes at a time by default, each from an isolated root through `tests/lib/worker_isolation.py`, then aggregates the per-scenario rate. |
 | `regrade.py <run_dir>` | Re-measures an existing run's captured responses with the current graders, spawning no worker. Writes `verdict.regrade.json` / `summary.regrade.*` beside the originals. |
 
 ## Where each expectation is graded
@@ -58,6 +59,7 @@ worker's behavior comes from the skill rather than from the harness.
    qualitative rubric to `RUBRICS` in `judge.py`.
 4. Add the id to `SCENARIOS` in `run.py` and the full expectation list to
    `evals.json`.
-5. Validate the graders before spending worker calls: hand-write a faithful
-   `delivered.md` and a deliberately lossy one, and confirm `grade.py` passes
-   the first and fails the second. A grader that cannot fail proves nothing.
+5. Validate the graders before spending worker calls: add a faithful
+   `delivered.md` and a deliberately lossy one per new check to
+   `test_grade.py`, and confirm `grade.py` passes the first and fails the
+   second on exactly that check. A grader that cannot fail proves nothing.

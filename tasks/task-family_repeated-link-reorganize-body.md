@@ -2,8 +2,8 @@
 description: Make every task-writing surface answer a repeated-link warn by reorganizing the body so that what belongs together sits together, and retire the per-link kept disposition.
 scope: plugins/ai_dev
 created: 2026-10-07T08:07:22
-updated: 2026-10-07T08:07:22
-status: open
+updated: 2026-10-08T10:34:55
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -45,7 +45,7 @@ These test surfaces pin the per-link framing:
 
 - The `tests/task_fix/evals/` eval `kept_each_site_earns_link` stages a body whose Context describes the current sections of a reference page and whose Approach edits one of them, and it expects the finding kept. Its id also appears in `tests/task_fix/evals/stage.sh`, `tests/task_fix/README.md`, `tests/task_fix/RUNBOOK.md`, and `tests/README.md`, and `tests/task_fix/evals/README.md` calls it the counterweight to the linter proxy under its heading `## Why the grader reads the linter, not the prose`.
 - The `tests/task_auto_check/evals/` eval `regroup_immediate_ready` accepts a disposition that reads regrouped, kept, or surfaced, and its grader comment beginning "This fixture's Approach names throttle.py as the edit site" calls the fixture the contested edge of the edit-site carve-out. The fixture comments of `regroup_via_reviewer` and `regroup_immediate_ready`, and the grader comment above `no_repeated_link_finding`, explain their outcomes by whether a repeat earns its link.
-- Scenario `s11` in `tests/task_auto_check/script_tests/run.sh` pins protocol sentences this task rewrites, under the labels `the disposition set is closed at three`, `base names the four writing owners`, and `base names the reporting surfaces`.
+- Scenario `s11` in `tests/task_auto_check/script_tests/run.sh` pins protocol sentences this task rewrites; the Acceptance item whose check begins `bash tests/task_auto_check/script_tests/run.sh` selects every `s11` needle whose pinned sentence the base-skill rewrite replaces.
 
 The standing repo rules place a rule the whole family shares once in the base skill, so the reframe is written there and the siblings and agents point at it.
 
@@ -82,11 +82,11 @@ The standing repo rules place a rule the whole family shares once in the base sk
 5. The **Declare exclusions as an Out of scope boundary** rule lets a deferral name its owner in plain text when the grouping rule gathers the body's account of that owner elsewhere, keeps the one-line pointer and ownership-not-ordering clauses, and no longer contains the phrase "links the sibling task that owns it".
 6. `<lint_after_create>`, the `task_create` **Lint.** step, and the hub `<update>` workflow each route a `repeated-link` warn on the file they wrote to the react protocol, with `<update>` keeping one `updated` bump per round. The `task_create` **Write.** step names the grouping rule, and its `<output_contract>` requires a disposition line for each `repeated-link` finding.
 7. `grep -rn -E "earns its link|earns it on its own|each site earns|grouping rule's carve-outs|repeated account|kept because|regrouped or kept|regrouped, kept|rather than kept" plugins/ai_dev` prints nothing.
-8. The `task_fix` **Repeated-link findings** entry lists the protocol's surfaced reasons, and its `<output_contract>` names `regrouped` and `surfaced` as the only dispositions, counts them in `N issues resolved` and `K flagged for review`, and no longer contains "A kept finding enters neither count".
-9. The `task_auto_check` **Repeated-link disposition filter.** and its `<finalize_mechanical_lint>` step let only a regrouped finding leave the surfaced-but-not-fixed line and the stuck channel, its `<output_contract>` names regrouped and surfaced as the only dispositions, and its Grouping advocate stance proposes the reorganization.
+8. The `task_fix` **Remediate.** clause names the reorganization the protocol defines and still carries the phrase "apply the meaning-preserving regroup from the base `<lint>` **Repeated-link react protocol**", its **Repeated-link findings** entry lists the protocol's surfaced reasons, and its `<output_contract>` names `regrouped` and `surfaced` as the only dispositions, counts them in `N issues resolved` and `K flagged for review`, and no longer contains "A kept finding enters neither count".
+9. The `task_auto_check` **Repeated-link disposition filter.** and its `<finalize_mechanical_lint>` step let only a regrouped finding leave the surfaced-but-not-fixed line and the stuck channel, its `<output_contract>` names regrouped and surfaced as the only dispositions, and its Grouping advocate stance proposes the reorganization and surfaces a finding only with an organizational reason.
 10. `auto_reviewer_task`, `auto_verifier_task`, and `auto_shaper_task` describe the regroup as a reorganization under the react protocol, `auto_reviewer_task` returns `no_proposal` only with an organizational reason, and `auto_verifier_task` rejects a proposal that only strips link syntax.
-11. Outside run output, `grep -rn "kept_each_site_earns_link" tests` and `grep -rnw "earns" tests/task_fix tests/task_auto_check/evals` print nothing, and no file under `tests/task_fix/` describes a kept disposition.
+11. Outside run output, `grep -rn "kept_each_site_earns_link" tests` prints nothing, the same `-E` pattern the Acceptance item whose check begins `grep -rn -E "earns its link|` over `plugins/ai_dev` uses, printed over `tests/task_fix` and `tests/task_auto_check/evals`, prints nothing, and no file under `tests/task_fix/` treats kept as an expected or passing disposition (the fail-on-kept grader arm the Acceptance item that requires `regroup_state_and_edit_site` to fail when the disposition line reads kept already requires stays).
 12. `regroup_state_and_edit_site` passes, and the same grader reports a failure when it grades the staged fixture left untouched together with a response whose disposition line reads kept.
 13. `regroup_immediate_ready` passes, its `evals.json` entry no longer mentions the carve-out, and its grader reports a failure on a response whose disposition line reads kept.
-14. `bash tests/task_auto_check/script_tests/run.sh` passes, with each `s11` needle matching a sentence the base-skill rewrite wrote.
+14. `bash tests/task_auto_check/script_tests/run.sh` passes, with each `s11` needle whose pinned sentence the base-skill rewrite replaces matching that rewritten sentence.
 15. `create_regroup_owner_account` exists in `tests/task/evals/evals.json` with its fixture and grader arm and passes, and its grader reports a failure on a created file that links the sibling from Context and again from its `**Out of scope:**` entry.

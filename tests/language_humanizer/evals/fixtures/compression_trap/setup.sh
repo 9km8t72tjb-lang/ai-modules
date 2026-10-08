@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# setup.sh — stage the compression_trap fixture (rewrite path).
+# setup.sh: stage the compression_trap fixture (rewrite path).
 #
 # Usage: setup.sh <target_dir>
 #
 # Writes <target_dir>/proj/draft.md: one long paragraph whose argument lives
 # in its transitions (but / because / whereas / unlike / so / even though /
 # since / therefore) plus one hedged uncertain claim. The trap is that the
-# obvious readability move — splintering the paragraph into short bullets —
-# destroys the argument, and the obvious concision move — asserting the
-# hedged claim flatly — destroys the uncertainty marker.
+# obvious readability move, splintering the paragraph into short bullets,
+# destroys the argument, and the obvious concision move, asserting the hedged
+# claim flatly, destroys the uncertainty marker.
 
 set -euo pipefail
 

@@ -1,10 +1,10 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-10-05
+updated: 2026-10-08
 type: concept
-tags: [skill, repo-structure, authoring, claude, verification-gap]
-sources: []
+tags: [skill, repo-structure, authoring, claude, cursor, verification-gap]
+sources: [raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
 confidence: medium
 ---
 
@@ -98,8 +98,22 @@ deployed roles and skills also reach a sandboxed worker. A worker given a
 scratch configuration directory listed only the built-in ones
 ([Anthropic Claude Code](../entities/anthropic-claude-code.md)). A malformed
 sandbox settings file fails silently, so a run that depends on a staged style
-proves the style loaded before it measures anything. The backlog carries the
-work to isolate the existing prose harness and to build a style harness this way.
+proves the style loaded before it measures anything. The `language_humanizer`
+and `natural_language` harnesses run this way, through the shared isolation
+helper under `tests/lib/`. On Cursor, a deployed skill can also take the place of
+the copy under test: a print-mode worker read the deployed copy rather than a
+staged copy outside its workspace, and a project copy did not displace the
+deployed one unless the prompt named its path ([Cursor](../entities/cursor.md)).
+A scratch home on Cursor and a scratch configuration directory on Claude each take
+the deployed copies out of view, and a skill deployed into that scratch location
+was the copy loaded by name on both vendors
+([micro-home probes](../raw/notes/micro-deployed-worker-home-probes-2026-10-08.md)). A skill the harness did not
+stage, such as the hub or base skill the skill under test reaches by name,
+resolved on both vendors to the deployed copy, or to the repository checkout when
+the sandbox sat inside it
+([dependency reads](../raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md)).
+The backlog carries the work to stage those copies centrally and to check every
+worker's reads.
 
 ### Trigger coverage is a third question, asked separately
 

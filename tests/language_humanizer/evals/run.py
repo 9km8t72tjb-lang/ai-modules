@@ -6,34 +6,52 @@ Each of the three scenarios runs over a **fixed denominator** of passes
 the deliverable. The bar is every assertion holding on every pass; a scenario
 that misses it reports its measured rate and the diverging assertions rather
 than being re-rolled for a better draw. There is deliberately no verdict
-cache here — the repeated draws are the measurement, so replaying a stored
-verdict would defeat it. `--passes` changes the denominator explicitly, and
-the chosen denominator is recorded in the summary alongside the rates.
+cache here, because the repeated draws are the measurement and replaying a
+stored verdict would defeat it. `--passes` changes the denominator explicitly,
+and the chosen denominator is recorded in the summary alongside the rates.
+
+Every pass runs isolated from the host. Its sandbox root comes from
+`tests/lib/worker_isolation.py`, which places it under the system temporary
+directory, outside the home directory and outside any git repository, so no
+host standing-instruction file reaches the worker. The worker also carries the
+helper's arguments for the resolved vendor. The judge in `judge.py` runs the
+same way from an isolated root of its own. The skill under test is copied into
+the sandbox and path-read from there, never from the repository.
 
 Passes run **concurrently** (`--workers`, default
-`vendor.DEFAULT_PARALLEL_WORKERS`). Every pass owns its own
-staged sandbox and writes only inside it, so the passes share nothing but the
-model endpoint — which is what caps useful concurrency, not correctness. The
-deep sequential-only rule in `tests/CLAUDE.md` covers multi-turn repair loops
-that run for 15–25 minutes each; these passes are one worker call plus one
-judge call, so they parallelize cleanly. Push `--workers` too high and the
-passes contend for the model, which shows up as slower wall-clock per pass and
-eventually as timeouts, not as wrong verdicts.
+`vendor.DEFAULT_PARALLEL_WORKERS`). Every pass owns its own isolated sandbox
+and writes only inside it, so the passes share nothing but the model endpoint,
+which caps useful concurrency without touching correctness. The deep
+sequential-only rule in `tests/CLAUDE.md` covers multi-turn repair loops that
+run for 15 to 25 minutes each; these passes are one worker call plus one judge
+call, so they parallelize cleanly. Push `--workers` too high and the passes
+contend for the model, which shows up as slower wall-clock per pass and
+eventually as timeouts rather than as wrong verdicts.
 
-Per scenario × pass the runner:
+Per scenario and pass the runner:
 
-1. Stages a fresh sandbox via `stage.sh <id> <target>`.
-2. Stages the skill into the sandbox's vendor discovery tree, then spawns one
-   vendor-resolved print-mode worker with the sandbox as its cwd, telling it
-   to load the staged skill and carry out the staged prompt, then to save the
+1. Creates an isolated sandbox root and stages the fixture into it via
+   `stage.sh <id> <root>`.
+2. Copies the skill under test into the root as a project skill
+   (`<root>/.cursor/skills/<name>/` or `<root>/.claude/skills/<name>/`), beside
+   the staged project, and names that copy's path in the worker prompt. It then
+   spawns one vendor-resolved print-mode worker with the staged
+   project as its cwd and the root as its Cursor workspace, telling it to load
+   the copied skill and carry out the staged prompt, then to save the
    delivered document verbatim to `delivered.md`.
-3. Grades the sandbox deterministically with `grade.py` (word counts, ledger
-   items, bullet shape, harness integrity).
+3. Grades the staged project deterministically with `grade.py` (word counts,
+   ledger items, bullet shape, harness integrity).
 4. Grades the qualitative assertions with `judge.py` using the vendor-resolved
    judge policy: on Claude the default judge model inherits (`''`), while on
    Cursor it defaults to `auto`.
 5. Writes `response.txt` / `stderr.txt` / `timing.json` / `verdict.json` under
-   `workspace/run-<ts>/<scenario>/pass-<n>/`.
+   `workspace/run-<ts>/<scenario>/pass-<n>/`, copies the finished sandbox to
+   `pass-<n>/sandbox/` so `regrade.py` can re-grade it later, and removes the
+   temporary root.
+
+The recorded measurement runs on `--vendor cursor`, per `TESTING.md`; the
+Claude worker stays available for a Claude-pinned sample under the same
+isolation contract.
 
 Usage:
     python3 tests/language_humanizer/evals/run.py [scenario ...]
@@ -51,6 +69,7 @@ import datetime
 import json
 import pathlib
 import shlex
+import shutil
 import subprocess
 import sys
 import threading
@@ -64,10 +83,15 @@ WORKSPACE = HARNESS / "workspace"
 RESULTS = HARNESS / "results"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
-import vendor  # noqa: E402  (shared vendor helper; tests/ gitignored)
-from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
+import vendor  # noqa: E402  (shared vendor helper in tests/lib)
+from worker_io import as_text  # noqa: E402  (shared helper in tests/lib)
+import worker_isolation  # noqa: E402  (shared helper in tests/lib)
 
 import judge as judge_mod  # noqa: E402  (sibling module in this harness)
+
+# Every isolated sandbox root this runner creates starts with this prefix, so a
+# leftover root is easy to find under the system temporary directory.
+ISOLATION_PREFIX = "lh_pass_"
 
 SCENARIOS = ["fidelity_padded", "compression_trap", "write_path"]
 
@@ -92,9 +116,9 @@ You are running an automated skill regression eval. Do exactly this:
 4. Emit your full reply to the request in the response itself, exactly as the
    skill specifies.
 5. REQUIRED, and the run is discarded without it: save the document you are
-   delivering — only the document text itself, with none of the surrounding
-   commentary, notes, findings, headers about the process, or metadata lines —
-   verbatim to {workdir}/delivered.md. Write that file before you finish, even
+   delivering verbatim to {workdir}/delivered.md. Save only the document text
+   itself, with none of the surrounding commentary, notes, findings, headers
+   about the process, or metadata lines. Write that file before you finish, even
    when you have already put the same text in your reply. When the mode you
    selected returns no document, write the single line NO_DELIVERED_TEXT to
    that file instead.
@@ -126,21 +150,53 @@ def stage(scenario: str, target: pathlib.Path) -> dict:
 
 def run_pass(scenario: str, n: int, run_dir: pathlib.Path,
              args, resolved: vendor.Resolved) -> dict:
+    """Run one pass inside an isolated sandbox root, then keep a copy of it.
+
+    The live sandbox sits under the system temporary directory, so neither the
+    worker nor the judge runs inside the repository. Once the pass is graded,
+    the finished sandbox is copied to `pass-<n>/sandbox/` for `regrade.py` and
+    for reading, and the temporary root is removed whatever the outcome.
+    """
     pass_dir = run_dir / scenario / f"pass-{n}"
-    target = pass_dir / "sandbox"
-    target.mkdir(parents=True, exist_ok=True)
-    staged = stage(scenario, target)
+    pass_dir.mkdir(parents=True, exist_ok=True)
+    root = worker_isolation.create_sandbox_root(
+        f"{ISOLATION_PREFIX}{scenario}_{n}_")
+    try:
+        return run_isolated_pass(scenario, n, pass_dir, root, args, resolved)
+    finally:
+        try:
+            shutil.copytree(root, pass_dir / "sandbox", symlinks=True,
+                            dirs_exist_ok=True)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+
+def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
+                      root: pathlib.Path, args,
+                      resolved: vendor.Resolved) -> dict:
+    staged = stage(scenario, root)
     workdir = staged["sandbox_proj"]
     skill_src = pathlib.Path(staged["skill_path"])
-    # The skill ships on the ai_editorial branch and is absent from main; fail
-    # fast with that fact rather than letting stage_skill_tree raise mid-pass.
+    # Fail fast with a named cause when the checkout lacks the skill, rather
+    # than letting stage_skill_tree raise mid-pass.
     if not skill_src.is_file():
         raise FileNotFoundError(
-            f"language_humanizer SKILL.md missing at {skill_src} — "
-            "this harness needs the ai_editorial plugin checkout"
+            f"language_humanizer SKILL.md missing at {skill_src}; "
+            "this harness needs a checkout that carries the ai_editorial plugin"
         )
+    # The copy lands as a project skill of the isolated root
+    # (<root>/.cursor/skills/... or <root>/.claude/skills/...), beside the
+    # graded project rather than inside it, and the Cursor workspace is that
+    # root. Traced on 8 October 2026, a Cursor worker told to path-read a copy
+    # staged outside its workspace read the deployed ~/.cursor/skills copy
+    # instead, while a project-skill copy named by path was the one read. That
+    # placement is a mitigation rather than a guarantee: with no path in the
+    # prompt a deployed copy still wins over a project copy, which the shared
+    # micro-deployment in tests_micro-deployed-eval-workers replaces. The copy
+    # travels into pass-<n>/sandbox/ afterwards, which records exactly which
+    # SKILL.md each pass measured.
     staged_skill = vendor.stage_skill_tree(
-        pass_dir / "artefacts",
+        root,
         skill_src.parent,
         resolved.vendor,
     )
@@ -153,7 +209,8 @@ def run_pass(scenario: str, n: int, run_dir: pathlib.Path,
         bin=resolved.bin,
         model=resolved.worker_model,
         prompt=prompt,
-        workspace=str(workdir),
+        workspace=str(root),
+        extra_args=worker_isolation.isolation_args(resolved.vendor),
     )
 
     emit(f"  [{scenario} pass-{n}] running {resolved.config.label} "
@@ -221,8 +278,8 @@ def run_pass(scenario: str, n: int, run_dir: pathlib.Path,
 
     # A worker that answered but skipped the harness's save-to-delivered.md
     # step leaves nothing to measure, so every content assertion reads FAIL on
-    # an empty file. That is a void measurement, not a skill result — the same
-    # category as a timeout — and reporting it as thirteen content failures
+    # an empty file. That is a void measurement rather than a skill result, in
+    # the same category as a timeout, and reporting it as content failures
     # would blame the skill for a harness miss and poison the per-assertion
     # rates. Mark it void, and record the assertions as not-measured.
     void = completed and not integrity.get("delivered_file_written", True)
@@ -246,11 +303,11 @@ def run_pass(scenario: str, n: int, run_dir: pathlib.Path,
 
     diverging = [k for k, ok in {**assertions, **integrity}.items() if not ok]
     if void:
-        label, tail = "VOID", " — worker answered but never wrote delivered.md"
+        label, tail = "VOID", ": worker answered but never wrote delivered.md"
     else:
         label = "PASS" if passed else "FAIL"
         tail = "" if passed else (
-            f" — diverging: {', '.join(diverging) or 'worker did not complete'}")
+            f", diverging: {', '.join(diverging) or 'worker did not complete'}")
     emit(f"  [{scenario} pass-{n}] {label} "
          f"({mech.get('delivered_words')}w/{mech.get('fixture_words')}w, "
          f"{duration:.0f}s){tail}")
@@ -292,9 +349,9 @@ def summarize(results: dict, denominator: int) -> dict:
 
 
 def render(summary: dict) -> str:
-    lines = [f"# language_humanizer eval run — denominator {summary['denominator']}", ""]
+    lines = [f"# language_humanizer eval run, denominator {summary['denominator']}", ""]
     for scenario, s in summary["scenarios"].items():
-        lines.append(f"## {scenario} — {s['pass_rate']} "
+        lines.append(f"## {scenario}: {s['pass_rate']} "
                      f"({'met the bar' if s['met_bar'] else 'below the bar'})")
         lines.append("")
         lines.append(f"Delivered word counts per pass: {s['delivered_words']} "
@@ -312,7 +369,7 @@ def render(summary: dict) -> str:
             lines.append("Diverging assertions:")
             lines.append("")
             for name, rate in s["diverging_assertions"].items():
-                lines.append(f"- `{name}` — {rate}")
+                lines.append(f"- `{name}`: {rate}")
         else:
             lines.append("Every assertion held on every measured pass.")
         lines.append("")
@@ -339,7 +396,7 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--judge-timeout", type=int, default=300)
     ap.add_argument("--skip-judge", action="store_true",
-                    help="Mechanical checks only — leaves the qualitative "
+                    help="Mechanical checks only. Leaves the qualitative "
                          "assertions ungraded, so the run is diagnostic, not a "
                          "measurement of the bar.")
     args = ap.parse_args()
@@ -382,7 +439,7 @@ def main() -> int:
             try:
                 verdicts[(scenario, n)] = fut.result()
             except Exception as exc:  # a harness fault, not a skill verdict
-                emit(f"  [{scenario} pass-{n}] ERROR — harness fault: {exc!r}")
+                emit(f"  [{scenario} pass-{n}] ERROR, harness fault: {exc!r}")
                 verdicts[(scenario, n)] = {
                     "scenario": scenario, "pass": n, "passed": False,
                     "worker_completed": False, "harness_error": repr(exc),

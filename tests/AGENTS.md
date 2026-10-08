@@ -55,15 +55,23 @@ equivalent exists:
 
 ### Skill and agent loading
 
-Workers path-read the skill under test from a staged copy under the eval's
-`artefacts/` directory (beside the sandbox, never inside a git repo or a
-tree graded byte-identical). Named helper agents that must be spawnable
-from the sandbox are copied only into
+Workers path-read the skill under test from a staged copy that sits outside
+every graded tree: either under the eval's `artefacts/` directory beside the
+sandbox, or inside an isolated sandbox root when the harness copies the skill
+there, as `language_humanizer` does. A worker never path-reads the skill from a
+graded tree or from its source in the repository. Named helper agents that
+must be spawnable from the sandbox are copied only into
 `<sandbox>/.{cursor,claude}/agents/`.
 
-Path-read of `SKILL.md` and mini project-dir deploy of skills/agents both
-work under Cursor; the harness uses path-read plus selective agent staging
-so git and tree-identity grades stay honest.
+Path-read of `SKILL.md` and a mini project-dir deploy of skills and agents both
+load under Cursor, but a deployed user-level skill of the same name can win
+over a path-read copy. On 8 October 2026 a traced Cursor worker that was told
+to read a staged copy read the deployed `~/.cursor/skills` copy instead.
+Staging the copy as a project skill of the worker's workspace and naming its
+path in the prompt made the worker read the staged copy, which is how
+`language_humanizer` stages it, but with no path in the prompt a deployed copy
+still won over the project copy. Harnesses
+keep selective agent staging so git and tree-identity grades stay honest.
 
 ## Running under Cursor
 
@@ -76,6 +84,7 @@ bash tests/task/run_all.sh
 # Behavioral evals on Cursor auto
 python3 tests/git_commit/evals/run.py --vendor cursor
 python3 tests/guardrail_audit/evals/run.py --vendor cursor --force
+python3 tests/language_humanizer/evals/run.py --vendor cursor   # the recorded measurement
 
 # Claude default (latest sonnet worker, inherited judge)
 python3 tests/git_commit/evals/run.py

@@ -2,12 +2,14 @@
 """Vendor-aware LLM grader for the language_humanizer assertions.
 
 grade.py owns everything mechanical (word counts, item presence, bullet shape).
-This module owns the rest of each scenario's named assertions — "reads
-plainly", "all nine items at unchanged strength and scope", "opens with its
+This module owns the rest of each scenario's named assertions ("reads
+plainly", "every ledger item at unchanged strength and scope", "opens with its
 main point", "reads as connected prose", "introduces no filler or
-restatement" — by putting the fixture, the delivered text, and one strict
-rubric in front of a vendor-resolved print-mode worker and reading back JSON
-verdicts.
+restatement"). It puts the fixture, the delivered text, and one strict rubric
+in front of a vendor-resolved print-mode worker and reads back JSON verdicts.
+That worker starts from an isolated root of its own, created by
+`tests/lib/worker_isolation.py`, so no host standing-instruction file shapes
+the verdict.
 
 The judge is refute-biased: each rubric line tells it to fail the assertion
 unless the delivered text plainly satisfies it, so a hedged "mostly" reads as
@@ -25,12 +27,18 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import shutil
 import subprocess
 import sys
 
 THIS = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
-import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
+import vendor  # noqa: E402  (shared vendor helper in tests/lib)
+import worker_isolation  # noqa: E402  (shared helper in tests/lib)
+
+# Every isolated root a judge call creates starts with this prefix, so a
+# leftover root is easy to find under the system temporary directory.
+ISOLATION_PREFIX = "lh_judge_"
 
 RUBRICS = {
     "fidelity_padded": {
@@ -41,20 +49,26 @@ RUBRICS = {
             "any paragraph still reads as corporate padding."
         ),
         "strength_unchanged": (
-            "Every one of these nine items is present in the DELIVERED TEXT with its "
-            "strength and scope unchanged from the SOURCE: (1) Priya Raman as the "
+            "Every one of these thirteen items is present in the DELIVERED TEXT with "
+            "its strength and scope unchanged from the SOURCE: (1) Priya Raman as the "
             "owner of the latency fix; (2) the Billing squad as the owner of the "
             "retry migration; (3) the 14 March deadline; (4) the 200 ms committed p95 "
-            "latency; (5) the 99.5% availability floor; (6) the must-strength "
-            "obligations stated as musts; (7) the Billing squad's retry migration "
-            "stated as a should, NOT upgraded to a must; (8) the enterprise-tenant "
-            "exception, still scoped to enterprise tenants, still conditional on the "
-            "contract renegotiation, and still readable as a carve-out from the "
-            "general retry-migration rule rather than as an unrelated parallel "
-            "instruction; (9) the causal link making the deadline follow from the "
-            "contractual commitment — any wording carries it, including 'so' or "
-            "'which is why'. Fail this if any item is missing, flattened, upgraded, "
-            "downgraded, or broadened."
+            "latency; (5) the 99.5% availability floor; (6) the current p95 checkout "
+            "latency of about 340 ms, kept as the present measurement rather than "
+            "turned into a target; (7) Priya shipping the fix, stated as a must; (8) "
+            "availability staying at or above 99.5% for the migration, stated as a "
+            "must; (9) the Billing squad's retry migration, stated as a should and "
+            "NOT upgraded to a must; (10) enterprise retries staying on the "
+            "dedicated worker, stated as a should and NOT upgraded to a must; (11) "
+            "the enterprise-tenant exception, still scoped to enterprise tenants, "
+            "still conditional on the contract renegotiation, and still readable as "
+            "a carve-out from the general retry-migration rule rather than as an "
+            "unrelated parallel instruction; (12) the causal link making the "
+            "deadline follow from the contractual commitment; (13) the causal link "
+            "making the fix necessary because the current latency is above the "
+            "committed 200 ms. Any wording that carries a causal link counts, "
+            "including 'so' or 'which is why'. Fail this if any item is missing, "
+            "flattened, upgraded, downgraded, or broadened."
         ),
         "no_invented_content": (
             "The DELIVERED TEXT adds no fact, number, owner, date, or commitment "
@@ -71,15 +85,15 @@ RUBRICS = {
             "budget first, EVEN THOUGH leadership asks about signups; (c) the "
             "decline sits in self-serve SINCE assisted conversion held flat, and "
             "THEREFORE an assisted-funnel fix addresses only the smaller half. Any "
-            "wording that carries a joint counts — a substituted connective such as "
-            "'yet' for 'but' is fine. Fail this if a joint is gone, if it survives "
+            "wording that carries a joint counts, and a substituted connective such "
+            "as 'yet' for 'but' is fine. Fail this if a joint is gone, if it survives "
             "only as juxtaposition with no connective, or if the argument has been "
             "reduced to a list of disconnected stubs."
         ),
         "hedge_intact": (
             "The onboarding-step explanation is still marked as uncertain in the "
-            "DELIVERED TEXT — it may be the cause, it is not isolated from the "
-            "pricing-page change, the reading is unconfirmed. Fail this if it now "
+            "DELIVERED TEXT: it may be the cause, it is not isolated from the "
+            "pricing-page change, and the reading is unconfirmed. Fail this if it now "
             "reads as an established cause, and fail it also if the uncertainty is "
             "kept while the pricing-page confound is dropped."
         ),
@@ -91,9 +105,9 @@ RUBRICS = {
     },
     "write_path": {
         "opens_with_main_point": (
-            "The DELIVERED TEXT opens with its main point — what has to happen and "
-            "by when — rather than with background, a restatement of the notes, or "
-            "a preamble about the retro."
+            "The DELIVERED TEXT opens with its main point, meaning what has to "
+            "happen and by when, rather than with background, a restatement of the "
+            "notes, or a preamble about the retro."
         ),
         "reads_as_connected_prose": (
             "The DELIVERED TEXT reads as connected prose: full sentences with their "
@@ -181,23 +195,38 @@ def extract_json(text: str) -> dict:
 
 def judge(eval_id: str, fixture: str, delivered: str, response: str,
           vendor_name: str, worker_bin: str, model: str, timeout: int) -> dict:
+    """Grade one pass from an isolated root of the judge's own.
+
+    The root comes from the shared isolation helper, so the judge call starts
+    outside the home directory and outside any git repository and carries the
+    helper's arguments for the resolved vendor. No host standing-instruction
+    file reaches the verdict. The root is removed after the call.
+    """
     prompt = build_prompt(eval_id, fixture, delivered, response)
+    root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     cmd = vendor.build_print_cmd(
         vendor=vendor_name,
         bin=worker_bin,
         model=model,
         prompt=prompt,
+        workspace=str(root),
+        extra_args=worker_isolation.isolation_args(vendor_name),
     )
     try:
-        out = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            env=vendor.worker_env(vendor_name),
-        )
-    except subprocess.TimeoutExpired:
-        return {"_judge_error": {"passed": False, "why": f"judge timed out after {timeout}s"}}
+        try:
+            out = subprocess.run(
+                cmd,
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=vendor.worker_env(vendor_name),
+            )
+        except subprocess.TimeoutExpired:
+            return {"_judge_error": {"passed": False,
+                                     "why": f"judge timed out after {timeout}s"}}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
     if out.returncode != 0 or not out.stdout.strip():
         return {"_judge_error": {
             "passed": False,

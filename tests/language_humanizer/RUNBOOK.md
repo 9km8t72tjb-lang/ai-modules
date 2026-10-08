@@ -4,35 +4,54 @@ Operational guide for the `language_humanizer` behavioral harness. Design and
 rationale live in `README.md`; this file is how to run it and how to read the
 result without misleading yourself.
 
-## Pre-flight: worker auth
-
-Every pass spawns a nested `claude -p` worker, so the CLI's own stored OAuth
-login has to be alive, because the host session's in-memory auth does not
-reach a grandchild process. `run.py` probes it once before spending anything and aborts
-with the remediation rather than 401-ing fifteen runs in a row.
+## The deterministic surface
 
 ```bash
-claude auth status          # "loggedIn": false means the run cannot start
-claude auth login           # interactive; the fix for an expired session
+bash tests/language_humanizer/run_all.sh
 ```
 
-A machine with no interactive login (cron, headless) can park a
-`claude setup-token` in the keychain instead; `tests/lib/worker_auth.py` picks
-it up and it wins over the stored login. See the auth section of
-`tests/CLAUDE.md` for the full picture.
+It runs the static contract (`script_tests/run.sh`) and the grader unit tests
+(`evals/test_grade.py`) in a few seconds with no model call, so run it first
+after any edit to the skill, its READMEs, or the graders. A grader change that
+breaks a faithful or lossy case fails here, before a measurement spends a
+worker call on it.
+
+## Pre-flight: worker auth
+
+Every pass spawns a nested print-mode worker, `agent -p` on Cursor or
+`claude -p` on Claude, so that CLI's own stored login has to be alive. `run.py`
+probes it once with a live call before spending anything and aborts with the
+remediation rather than failing fifteen passes in a row.
+
+```bash
+agent login                 # Cursor: interactive, once; CURSOR_API_KEY for headless runs
+claude auth login           # Claude: the fix for an expired session
+```
+
+On Claude, the host session's in-memory auth does not reach a grandchild
+process, so the worker reads the CLI's stored OAuth login. A machine with no
+interactive login (cron, headless) can park a `claude setup-token` in the
+keychain instead; `tests/lib/worker_auth.py` picks it up and it wins over the
+stored login. See the auth sections of `tests/CLAUDE.md` and `tests/AGENTS.md`
+for the full picture.
 
 ## The recorded measurement
 
 ```bash
-python3 tests/language_humanizer/evals/run.py
+python3 tests/language_humanizer/evals/run.py --vendor cursor
 ```
 
-That is the deliverable run: three scenarios × five passes, `claude-sonnet-4-6`
-for both the worker and the judge. The fifteen passes run four at a time
-(`--workers`, default 4), so budget roughly 8 to 15 minutes rather than the hour
-the same run takes serially. Each pass is one worker call plus one judge call
-inside its own staged sandbox, which is why they parallelize safely, since
-nothing is shared but the model endpoint.
+That is the deliverable run: three scenarios × five passes on the Cursor
+worker (`agent -p`, model `auto`), with the judge on `auto` as well, per
+`TESTING.md`. Leave out `--vendor cursor` for a Claude-pinned sample
+(`claude -p` on `sonnet`, judge on the inherited default model); record which
+vendor a result came from, because the two are separate evidence. The fifteen
+passes run four at a time (`--workers`, default 4), so budget a few minutes
+rather than the much longer serial path. Each pass is one worker call plus one
+judge call, each from its own isolated root under the system temporary
+directory, which is why they parallelize safely, since nothing is shared but
+the model endpoint. `README.md` explains the isolation contract, including why
+the skill copy is staged as a project skill of that root.
 
 `--workers 1` forces the serial path when you want a clean latency reading per
 pass or suspect the concurrency itself is distorting results. Going much above
@@ -43,14 +62,15 @@ throughput problem into void measurements.
 Narrower invocations, for debugging rather than for the record:
 
 ```bash
-# one scenario, one pass — plumbing check, ~2 min
-python3 tests/language_humanizer/evals/run.py write_path --passes 1
+# one scenario, one pass: plumbing check, ~2 min; afterwards git status is
+# unchanged and no lh_pass_* or lh_judge_* root is left under $TMPDIR
+python3 tests/language_humanizer/evals/run.py write_path --passes 1 --vendor cursor
 
-# prove the plumbing with no model at all: point --claude-bin at a stub that
+# prove the plumbing with no model at all: point --worker-bin at a stub that
 # writes a canned delivered.md, and confirm a faithful stub passes while a
 # lossy one fails on exactly the items it dropped
 python3 tests/language_humanizer/evals/run.py --passes 2 --workers 6 \
-  --skip-judge --claude-bin /path/to/stub-claude
+  --skip-judge --worker-bin /path/to/stub-worker
 
 # mechanical checks only: no judge calls, so the qualitative assertions
 # stay ungraded and the run is diagnostic, not a measurement of the bar
@@ -77,8 +97,10 @@ tests/language_humanizer/workspace/run-<ts>/
 ├── summary.json                      # per-scenario rate + per-assertion counts
 ├── summary.md                        # the same, human-readable
 └── <scenario>/pass-<n>/
-    ├── sandbox/proj/{draft.md|notes.md}   # the fixture, must come out untouched
-    ├── sandbox/proj/delivered.md          # the delivered document, verbatim
+    ├── sandbox/                           # copied from the isolated root after grading
+    │   ├── proj/{draft.md|notes.md}       # the fixture, must come out untouched
+    │   ├── proj/delivered.md              # the delivered document, verbatim
+    │   └── .{cursor,claude}/skills/language_humanizer/SKILL.md   # the skill copy measured
     ├── response.txt                       # the skill's whole reply
     ├── verdict.json                       # every assertion, both graders
     └── timing.json
@@ -95,7 +117,7 @@ qualitative failure becomes actionable.
 
 1. **`run.py`'s exit code**: 0 only when every scenario passed on every pass.
 2. **`summary.json`'s `all_scenarios_met_bar`**: the graded verdict.
-3. **`timing.json`'s `claude_rc` per pass**: a worker that timed out or
+3. **`timing.json`'s `worker_rc` per pass**: a worker that timed out or
    crashed makes its pass a void measurement, not a real failure. `run.py`
    already fails such a pass rather than trusting a partial sandbox, so check
    this before reading a red result as a skill regression.

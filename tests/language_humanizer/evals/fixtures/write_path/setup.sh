@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# setup.sh — stage the write_path fixture (write path).
+# setup.sh: stage the write_path fixture (write path).
 #
 # Usage: setup.sh <target_dir>
 #
 # Writes <target_dir>/proj/notes.md: unordered retro notes, no document
-# structure, carrying five load-bearing items among the noise —
+# structure, carrying five load-bearing items among the noise:
 #
 #   1. owner     Dana Okoro (alerting rework)
 #   2. owner     Marco Weiss (postmortem template refresh)

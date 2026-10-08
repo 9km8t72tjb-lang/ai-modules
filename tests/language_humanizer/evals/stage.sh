@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stage.sh — stage one language_humanizer eval and print the agent-ready inputs.
+# stage.sh: stage one language_humanizer eval and print the agent-ready inputs.
 #
 # Usage:
 #   stage.sh <eval_id> [target_dir]

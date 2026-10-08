@@ -1,24 +1,33 @@
 #!/usr/bin/env bash
-# setup.sh — stage the fidelity_padded fixture (rewrite path).
+# setup.sh: stage the fidelity_padded fixture (rewrite path).
 #
 # Usage: setup.sh <target_dir>
 #
 # Writes a padded status update into <target_dir>/proj/draft.md. The draft
-# carries nine load-bearing items wrapped in filler and restatement:
+# carries thirteen load-bearing items wrapped in filler and restatement:
 #
-#   1. actor    Priya Raman
-#   2. actor    the Billing squad
-#   3. deadline 14 March
-#   4. threshold 200 ms (committed p95 checkout latency)
-#   5. threshold 99.5% (availability floor during the migration)
-#   6. must     Priya ships the latency fix / availability stays at the floor
-#   7. should   the Billing squad migrates its retry logic
-#   8. exception enterprise tenants keep retries on the dedicated worker
-#   9. causal joint  the deadline holds *because* the commitment is contractual
+#    1. actor        Priya Raman
+#    2. actor        the Billing squad
+#    3. deadline     14 March
+#    4. threshold    200 ms (committed p95 checkout latency)
+#    5. threshold    99.5% (availability floor during the migration)
+#    6. measurement  about 340 ms (current p95 checkout latency, not a target)
+#    7. must         Priya ships the latency fix
+#    8. must         availability stays at or above 99.5% during the migration
+#    9. should       the Billing squad migrates its retry logic
+#   10. should       enterprise retries stay on the dedicated worker
+#   11. exception    enterprise tenants keep retries on the dedicated worker
+#                    until their contracts are renegotiated
+#   12. causal joint the deadline holds *because* the commitment is contractual
+#   13. causal joint a fix is needed *because* 340 ms is above the 200 ms
+#                    commitment (the draft's "therefore")
 #
-# Those nine items plus the connective prose needed to carry them fit in
-# well under half the draft's words, so a faithful rewrite has room to come
-# in under the 75% ceiling without dropping anything.
+# Those thirteen items plus the connective prose needed to carry them fit in
+# well under half the draft's words (evals/test_grade.py holds a faithful
+# rewrite of all thirteen to that bound), so a faithful rewrite has room to
+# come in under the 75% ceiling without dropping anything. The em dash in the
+# draft's title, like the ones in the write_path notes, is input the skill
+# rewrites, so it stays.
 
 set -euo pipefail
 

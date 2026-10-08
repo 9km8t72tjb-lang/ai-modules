@@ -1,0 +1,134 @@
+---
+description: "Build language_humanizer in ai_editorial: one SKILL.md that reviews, rewrites, or writes prose into clear, coherent first-read text, with a ledger pass proving no load-bearing meaning drops."
+scope: "ai_editorial plugin"
+created: 2026-07-30T20:42:30
+updated: 2026-10-08T12:43:40
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
+---
+
+# Build the language_humanizer skill
+
+## Goal
+
+Add the `language_humanizer` skill to the `ai_editorial` plugin. It delivers human-facing text (a goal statement, spec, proposal, report, status update, README section, or any workplace document) that the intended audience understands on the first read: coherent from beginning to end, carried in language that is easy to take in, and clear and pleasant to read. It works along two paths, and states which one it is on:
+
+- **Optimizing existing text**, where a draft already exists and the job is to make the whole of it more understandable, better ordered, and plainer while keeping what it says.
+- **Writing new text**, where the input is supplied material (notes, bullets, findings, source facts, a brief) and the job is to produce the document that says all of it in that same clear and coherent form.
+
+The guarantee across both paths is the skill's distinguishing commitment. Readability tools drift toward brevity and lose the qualifier, the modal strength, the threshold, or the causal joint that the sentence was carrying. This skill holds both ends at once: every load-bearing element of the input reaches the delivered text intact, while on the rewrite path that text never runs longer than the draft it replaces and a padded or repetitive draft comes out markedly shorter. It reaches that by taking its reduction out of form (filler, restatement, nominalized phrasing, hedging padding) rather than out of content, backed by an explicit fidelity mechanism of an inventory taken before writing and verified after, so the delivered text cannot quietly drop a condition, flatten a requirement into a suggestion, generalize a specific into a vague noun, or compress a connected argument into disconnected stubs.
+
+## Context
+
+- The plugin shell is built (`ai-editorial_plugin-scaffold.md`, archived). This skill lands in `plugins/ai_editorial/skills/language_humanizer/`.
+- **Single self-contained file.** The skill ships as one `SKILL.md` carrying everything it needs: no `scripts/`, no `references/` directory, no external URLs, and no outside standard cited as its authority. Should the body outgrow one coherent unit, split content into a follow-up task rather than adding a reference directory.
+- **Rules carry the guidance without worked examples.** Write each rule so it stands on its own statement, and keep before/after pairs and sample passages out of the body. The demonstrating work belongs in the eval fixtures instead, where a scenario is run and graded rather than read.
+- **Router boundaries against neighbouring prose skills.** Two neighbouring skills in this repo compete for these requests, so the `description:` this task writes must make both splits legible to a router. [ai-editorial_ghost-writer-skill.md](../ai-editorial_ghost-writer-skill.md) also writes and edits prose, so split that pair by what the work optimizes rather than by whether text already exists: `ghost_writer` works toward a target genre's craft standard (what a good essay, case study, or social post is), while `language_humanizer` works toward comprehension and coherence for a named reader, on whatever material it is handed. The shipped `executive_summary` skill competes on the other side: it triggers on condensing content and synthesizing written materials, and its length contract reduces a document to a fraction of its original length, the opposite direction from this skill's. Split that pair by what survives: `language_humanizer` holds the Goal's guarantee that every load-bearing element reaches the delivered text and takes its reduction from form alone. Word the `description:` so a request for a short version at a fraction of the length reaches `executive_summary`, while a request to make a document understandable reaches `language_humanizer` even where a padded draft comes out shorter there too. This task owns the `language_humanizer` side of both splits, and writes them into the compact, trigger-carrying `description:` the standing two-audience rule requires. That field stays within the 1024-character limit the skill specification sets, since a harness that enforces the limit can drop a longer description from its router's view.
+- **Authoring authorities.** Two registers meet here and stay separate. The `SKILL.md` this task writes is itself an instruction an AI consumes, so it follows `ai_instruction_writing` for positive, action-oriented carriers built as ordinary sentences with no em dash or en dash, and `ai_instruction_formatting` for the pseudo-XML body, since those two siblings own how to write for an AI reader and how to shape a skill file. The rules that file carries then govern something else: the prose the skill delivers, which people read. Neither register borrows the other's form, so the skill file stays pseudo-XML while the delivered text stays flowing prose for a reader. This matters more than usual here: much of the skill's substance consists of preservation guarantees, which invite a wall of prohibitions. State each guarantee as what the delivered text carries through, and keep a negative only where `ai_instruction_writing`'s delete-the-negative self-check keeps it.
+- The standing repo rules own the generic skill-authoring checklist: frontmatter shape, directory/`name:`/H1 alignment, the two-audience `description:`, the lint gate, and plugin registration. This task supplies the `language_humanizer`-specific role, workflow, fidelity contract, and output contract.
+
+## Approach
+
+Author `plugins/ai_editorial/skills/language_humanizer/SKILL.md` with frontmatter `name: language_humanizer`, a matching H1, and a pseudo-XML body carrying the sections below.
+
+### Role, activation, and modes
+
+The skill acts as an editor and writer of reader-facing text. It activates when a user asks to make a document easier to understand, simplify wording, cut jargon, unpack a dense paragraph, spell out abbreviations, sharpen a goal or decision so readers can act on it, check whether a draft will land with a particular audience, or turn notes, bullets, or findings into a document a reader can follow.
+
+Three modes, with a stated selection rule:
+
+- **Review** returns findings and leaves the text untouched.
+- **Rewrite** returns the edited version of an existing draft.
+- **Write** returns a new document produced from supplied material.
+
+Each mode runs on one of the two paths the Goal names, and a mode's path follows its input rather than its output: review and rewrite both start from an existing draft, so both run the Goal's optimizing-existing-text path (the **rewrite path** the passes and the fidelity contract name), while write starts from supplied material and runs the Goal's writing-new-text path, the **write path**. The input fixes the path, while what a mode returns sets its route through the three passes: review and rewrite both build pass one's ledger from the draft, and review then holds that ledger as the yardstick for judging the draft against pass two's moves and reports what it finds, rather than producing text for pass three to verify. State this mapping and review's route through the passes once in the skill body, and let the passes, the fidelity contract, and the output contract carry the two path names without restating it.
+
+Select rewrite when the user hands over a draft and asks for it improved; select write when the input is material to turn into a document rather than a draft to fix; select review when they ask what is wrong with a draft, whether it reads clearly, or want to keep authorship of the wording. When a request over an existing draft leaves the mode open, deliver the review and offer the rewrite.
+
+Establish the intended reader and that reader's task before judging anything, drawing on the request and the document itself. When neither names a reader, state the assumed reader in the output so the author can correct it.
+
+### The three passes
+
+Structure the workflow as three ordered passes, each a named section in the body.
+
+**Pass one: inventory what the delivered text is accountable for.** Before writing a word, list the load-bearing elements of the input: the existing draft on the rewrite path, the supplied material on the write path. Enumerate the item classes the ledger covers:
+
+- the central claim, ask, decision, or finding, plus its current placement when the input already has one;
+- every actor and owner named or implied, and who must do what;
+- every number, date, deadline, quantity, unit, threshold, metric, version, and identifier;
+- every product, system, and technical term that carries precision;
+- requirement strength as written (must, should, may, will, might, committed, proposed), plus any hedge marking genuine uncertainty;
+- conditions, exceptions, scope limits, and qualifiers such as "only when", "except", "up to", and "for X but not Y";
+- the causal and logical joints carrying the argument, such as because, therefore, unless, so that, and even though;
+- risks, constraints, dependencies, commitments, and open questions;
+- ordering wherever sequence is meaning, as in steps, precedence, and priority.
+
+**Pass two: produce the text for first-read comprehension.** Apply these moves to the text a mode returns, on the rewrite path and the write path alike:
+
+- lead with the main point, putting the ask, decision, or finding first (in a document that assigns work, the action itself, ahead of any standing constraint or background), with the point's reason carried as the fidelity contract requires and every other detail left to the sentences that follow; when the input argues its way to the point, state the point first and then walk the argument in the input's own order, each step keeping its connective;
+- order the whole so each part follows from the one before it, grouping related material and letting the transitions carry the logic that joins the parts;
+- carry one idea per sentence on a real verb, giving a second claim its own sentence opened by the word that carried the link, and turn an abstract noun back into the verb hiding inside it;
+- name the actor in active voice wherever the actor matters;
+- choose the common word where it is exactly as precise as the rare one, and keep the technical term where replacing it would cost precision, adding a short gloss on first use when the named reader may not carry that term;
+- unpack a stacked clause chain, such as a run of dash-joined asides or nested parentheticals, into separate sentences;
+- spell out an abbreviation on first use, then use the short form;
+- phrase positively wherever the positive says the same thing;
+- give longer text descriptive headings, and set genuinely parallel points as a list or table;
+- give every sentence, and every clause inside it, a job the ledger assigns (carrying a ledger item, glossing a term on first use, or joining two items with their connective), and cut the part that has none;
+- give each ledger item one home in the text: the opening carries the main point, each later sentence, section, table, or list adds only what no earlier part has said, and the text closes on the last item not yet said.
+
+**Pass three: verify the delivered text against the ledger.** Where a mode returns text, walk the ledger item by item against the text about to be returned and confirm each item is present with its strength and scope unchanged, restoring anything missing before returning it. Where first-read comprehension and fidelity pull apart, fidelity decides and the room comes from elsewhere in the text: split the overloaded sentence, then pay for that split by cutting filler, restatement, and nominalized phrasing rather than by letting the text grow.
+
+### The fidelity contract
+
+Give these rules their own body section; they are the skill's load-bearing content and each states what the delivered text keeps:
+
+- Keep every qualifier, condition, and exception, splitting a sentence to accommodate them rather than trimming them to fit.
+- Keep requirement strength exactly as written: a must stays a must, a should stays a should, and a hedge marking real uncertainty stays a hedge, while a phrase that only softens a statement whose modal verb already carries its strength counts as hedging padding.
+- Keep every specific specific: a named team stays named, a number keeps its value and unit, and a threshold keeps both sides of its comparison.
+- Keep the reason beside the claim, so a sentence carrying both a what and a why still carries both afterward, and move every joint attached to a claim (its reason, condition, contrast, and concession) with it whenever a pass-two move relocates the claim or splits its sentence, keeping both sides of a contrast together.
+- Keep the argument's connective tissue by writing full sentences with their articles, verbs, and joining words. This rules out telegraphic or steno phrasing, and a cascade of ever-shorter bullets that splinters one argument into disconnected stubs.
+- Keep a coherent paragraph as prose whenever its transitions are doing the arguing, and reserve the list form for genuinely parallel items.
+- Keep the reader's open questions visible: where the source is genuinely ambiguous, name the competing readings and route the choice to the author, and where a term needs a definition the source never supplies, flag that term for the author. This rules out silently picking one reading or inventing a definition.
+- Keep risks, commitments, and constraints at full force.
+- Keep a rewrite within the length of the draft it replaces. This is the skill's one hard length rule, it governs the rewritten text that rewrite mode returns, and it is measured over that whole delivered text rather than sentence by sentence, so a first-use gloss or a spelled-out abbreviation is paid for by cutting filler elsewhere.
+- Keep no floor under that ceiling: a padded, repetitive, or over-hedged draft comes out markedly shorter, and every word of that reduction is taken from filler, restatement, nominalized phrasing, and hedging padding rather than from any ledger item.
+- Keep a newly written document as long as its content needs and no longer, since the write path has no draft length to measure against: the ledger sets what must be said, and the same filler, restatement, and padding stay out from the first draft onward.
+
+### Output contract
+
+- **Review mode** returns one entry per finding, giving the location as a quoted phrase or named section, what blocks the first read, what the reader loses, and a concrete replacement. It closes with the open items (genuine ambiguities and terms needing a definition), phrased as questions for the author, plus the assumed reader when the source named none.
+- **Rewrite mode** returns the rewritten text first, complete and ready to use, then a short preservation note naming the ledger items that were at risk, confirming they carried through, and pointing at any place where fidelity forced a longer sentence. The same open items and assumed-reader line follow.
+- **Write mode** returns the new document first, complete and ready to use, then the same preservation note taken over the supplied material: which ledger items reached the page, and what the material left open for the author to supply.
+- Every mode declares its selection in one line outside the delivered text, naming the mode that ran and the path it runs on, so the author can correct a wrong selection before reading on.
+- Every mode keeps meta-commentary out of the delivered text: the text states its content, and observations about the document live in the note.
+
+**Out of scope:**
+
+- Flagging AI-writing tells in a draft, owned by [ai-editorial_slop-catch-skill.md](../ai-editorial_slop-catch-skill.md).
+- Genre craft standards (what a good essay, case study, or social post looks like), owned by [ai-editorial_ghost-writer-skill.md](../ai-editorial_ghost-writer-skill.md).
+- Translating between natural languages, and restyling text toward a tone or brand voice.
+
+## Acceptance
+
+- `plugins/ai_editorial/skills/language_humanizer/SKILL.md` exists and is the skill directory's only file, with no `scripts/` or `references/` directory beside it, no external URL in its body, and no rule citing an outside style guide, readability formula, or standard as its authority, and no em dash or en dash anywhere in the file.
+- The body is pseudo-XML in the XML-instruction-body shape and passes `ai_instruction_formatting`'s bundled `scripts/lint_pseudo_xml.py`.
+- The skill's frontmatter `description:` states comprehension and coherence for a named reader, on whatever material the skill is handed, as the skill's subject (the axis this task's **Router boundaries against neighbouring prose skills** context bullet assigns it), so the written field alone carries both splits that bullet names: against the genre-craft sibling that has not shipped yet, and against the shipped `executive_summary` skill on the condensing side. The field is at most 1024 characters long.
+- The body carries the three passes as distinct named sections (the pre-edit ledger, the production moves, and the verification of the delivered text against that ledger), with both the ledger's item classes and pass two's production moves enumerated rather than described in the abstract.
+- The body carries a named role-and-activation section stating the skill's role as editor and writer of reader-facing text and carrying every request shape this task's `### Role, activation, and modes` section names as an activation trigger, plus all three modes with the rule that selects between them and, ahead of any judging, the step that establishes the intended reader and that reader's task; pass one names both inputs a ledger can be built from: an existing draft and supplied material.
+- The body states the mode-to-path mapping exactly once, where the modes are defined, and that one statement also fixes how review threads the three passes: which ledger it builds, which moves it judges the draft against, and that it reports rather than delivering text. Every later section that names a path uses the two path names without restating the mapping.
+- Pass two's production moves apply to the text a mode returns on the rewrite path and the write path alike, and pass three's verification applies where a mode returns text, each stated in its own pass section.
+- Pass three states the precedence rule for the case where first-read comprehension and fidelity pull apart: fidelity decides, the overloaded sentence is split, and the room for that split comes from cutting filler, restatement, and nominalized phrasing rather than from letting the text grow.
+- Every rule in the fidelity-contract section leads with a positive carrier naming what the delivered text keeps, verified by applying `ai_instruction_writing`'s delete-the-negative self-check to each rule, so every surviving negative lands on one of that self-check's keep outcomes.
+- The fidelity-contract section carries every rule this task's `### The fidelity contract` list names as a stated rule, each stated outright rather than left to be inferred, including the open-questions rule that routes a genuine ambiguity and an undefined term to the author, the full-force rule for risks, commitments, and constraints, and all three length rules: the hard rewrite ceiling, its no-floor companion, and the write-path clause that sets length by content.
+- The body carries no before/after pair and no illustrative sample text: every rule stands on its own statement.
+- The body carries the output contract as its own named section covering every element this task's `### Output contract` list states: each mode's delivered shape, the selection line naming the mode and the path it runs on, the shared close of open items and assumed-reader line, and the rule keeping meta-commentary out of the delivered text.
+- Behaviour evals for this skill exist under the repo's regression-harness layout, covering three scenarios:
+  - a padded fidelity fixture whose load-bearing items are counted up front (two named actors, one deadline, two thresholds with units, one current measurement with its unit, two `must` obligations, two `should` statements with one inside the exception, one exception clause, and two causal joints), wrapped in filler and restatement heavy enough that those thirteen items plus the connective prose needed to carry them account for no more than half the fixture's words, asserting that the rewrite reads plainly, comes in at no more than 75% of the fixture's word count, and carries all thirteen items at unchanged strength and scope;
+  - a compression-trap fixture consisting of one long paragraph whose argument lives in its transitions and one hedged uncertain claim, asserting that the rewrite runs no longer than the fixture, keeps the paragraph as connected prose rather than a bullet list of stubs, and keeps the hedge on the uncertain claim;
+  - a write-path fixture supplying unordered material (loose notes carrying two named owners, one deadline, one threshold with a unit, and one `must`), asserting that the produced document states all five, opens with its main point, reads as connected prose, and introduces no filler or restatement.
+- `bash tests/language_humanizer/run_all.sh` exits 0. Its static contract confirms the items above that a read of the skill file settles, including the 1024-character description and the dash-free file, and its grader unit tests prove `grade.py` passes a faithful rewrite of each fixture, including one that carries all thirteen fidelity items in no more than half the fixture's words, and fails each lossy variant on exactly the check naming what it dropped.
+- Each of the three eval scenarios is run over a fixed denominator of five passes, and the recorded per-scenario pass rate over that denominator is the deliverable, kept in `tests/language_humanizer/results/SUMMARY.md` together with the run it came from. The bar is every assertion holding on all five passes; when a scenario misses it, the report carries the measured rate and the diverging assertions and hands the disposition to the user rather than re-running for a better draw.
+- `./deployment/deployment.sh --global --dry-run` previews `language_humanizer` without error.

@@ -929,3 +929,46 @@ pre-existing.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-08 11:05] ingest | Cursor skill-shadowing probes
+
+- raw/notes/cursor-skill-shadowing-probes-2026-10-08.md (new)
+- entities/cursor.md (a deployed user-level skill taking the place of a staged
+  copy outside the workspace, and the project-skill staging that avoided it)
+- concepts/verification-surfaces.md (the two isolated prose harnesses named in
+  place of the backlog pointer, and a pointer to the Cursor skill swap)
+- index.md (Cursor one-liner and Last updated)
+
+## [2026-10-08 11:06] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-08 11:50] ingest | Eval-worker dependency skill reads
+
+- raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md (new)
+- entities/cursor.md (three-of-three frequency for the deployed-copy read, and
+  unstaged dependency skills resolving to their deployed copies)
+- concepts/verification-surfaces.md (unstaged dependency skills resolving to
+  deployed copies or the checkout on both vendors, and the backlog pointer)
+
+## [2026-10-08 11:51] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-08 12:03] ingest | Micro-deployed worker home probes
+
+- raw/notes/micro-deployed-worker-home-probes-2026-10-08.md (new)
+- entities/cursor.md (a project copy does not displace a deployed copy without a
+  path, `CURSOR_CONFIG_DIR` leaves skill discovery on the home directory, and a
+  scratch home with its `Library` linked back loads the skill deployed into it)
+- entities/anthropic-claude-code.md (a scratch config directory lists project
+  skills and loads a skill deployed into its own `skills/` by name)
+- concepts/verification-surfaces.md (scratch home and scratch config directory as
+  the way to take deployed copies out of view)
+
+## [2026-10-08 12:03] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
